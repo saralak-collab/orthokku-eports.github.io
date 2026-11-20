@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a6b3a">
+<title>OrthoFolio — E-Portfolio แพทย์ประจำบ้าน</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<?!= _includeHtml('Styles') ?>
+</head>
+<body>
+<div id="app-root">
+
+<!-- LOGIN -->
+<div id="page-login" class="page active">
+  <div class="login-center">
+  <div class="login-shell">
+    <section class="login-brand" aria-label="ORTHO-FOLIO">
+      <div class="login-window-dots" aria-hidden="true"><span class="brand-dot"></span><span class="brand-dot"></span><span class="brand-dot"></span></div>
+      <div class="brand-mark">OF</div>
+      <p class="brand-kicker">Orthopaedics KKU</p>
+      <h1>ORTHO-FOLIO</h1>
+      <p class="brand-copy">ระบบแฟ้มเก็บข้อมูลแพทย์ฝึกอบรมสาขาวิชาออร์โธปิดิกส์ คณะแพทยศาสตร์ มหาวิทยาลัยขอนแก่น</p>
+      <div class="brand-note" aria-hidden="true">
+      </div>
+    </section>
+  <div class="login-box">
+    <div class="login-logo"><img class="login-logo-img" src="data:image/png;base64,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" alt="โลโก้สาขาวิชาออร์โธปิดิกส์"><h1>OrthoFolio</h1><p>ระบบ E-Portfolio แพทย์ประจำบ้านออร์โธปิดิกส์</p></div>
+    <div class="ltabs">
+      <button class="ltab active" data-ltab="admin">🔐 Admin</button>
+      <button class="ltab" data-ltab="res">👨‍⚕️ แพทย์ประจำบ้าน</button>
+      <button class="ltab" data-ltab="adv">👨‍🏫 อาจารย์</button>
+    </div>
+    <div id="lp-admin" class="lpanel active">
+      <label class="lbl">Username</label><input id="l-auser" class="inp" placeholder="กรอก Username">
+      <label class="lbl">Password</label><input id="l-apass" class="inp" type="password" placeholder="กรอกรหัสผ่าน">
+      <div id="l-aerr" class="lerr">❌ Username หรือ Password ไม่ถูกต้อง</div>
+      <button id="btn-al" class="lbtn" style="background:var(--green)">เข้าสู่ระบบ Admin →</button>
+    </div>
+    <div id="lp-res" class="lpanel">
+      <label class="lbl">รหัสผ่าน</label><input id="l-rpass" class="inp" type="password" autocomplete="current-password" placeholder="กรอกรหัสผ่าน">
+      <div id="l-rerr" class="lerr">❌ รหัสผ่านไม่ถูกต้อง</div>
+      <button id="btn-rl" class="lbtn" style="background:var(--blue)">เข้าดู Portfolio →</button>
+    </div>
+    <div id="lp-adv" class="lpanel">
+      <label class="lbl">รหัสผ่าน</label><input id="l-vpass" class="inp" type="password" autocomplete="current-password" placeholder="กรอกรหัสผ่าน">
+      <div id="l-verr" class="lerr">❌ รหัสผ่านไม่ถูกต้อง</div>
+      <button id="btn-vl" class="lbtn" style="background:var(--purple)">เข้าสู่ระบบอาจารย์ →</button>
+    </div>
+  </div>
+  </div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="page-admin" class="page">
+  <div class="topbar green-bar">
+    <div class="tb-brand">🦴 OrthoFolio</div>
+    <div class="tb-right"><span class="tb-badge">Admin Panel</span><button id="btn-alo" class="tb-btn">ออกจากระบบ</button></div>
+  </div>
+  <div class="admin-wrap">
+    <div class="anav">
+      <button class="anavbtn active" data-ap="residents">👥 แพทย์ประจำบ้าน</button>
+      <button class="anavbtn" data-ap="scores">📝 กรอกคะแนน</button>
+      <button class="anavbtn" data-ap="assessment">📋 แบบประเมิน Rotation</button>
+      <button class="anavbtn" data-ap="meetings">🗓️ ประชุม</button>
+      <button class="anavbtn" data-ap="advisors">👨‍🏫 อาจารย์</button>
+      <button class="anavbtn" data-ap="settings">⚙️ ตั้งค่า</button>
+    </div>
+    <div id="ap-residents" class="apanel active">
+      <div class="stats-grid" id="a-stats"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:15px;font-weight:700">รายชื่อแพทย์ประจำบ้าน</div>
+        <button id="btn-oadd" class="abtn g">＋ เพิ่มแพทย์ประจำบ้าน</button>
+      </div>
+      <div class="score-year-tabs" id="res-year-tabs"></div>
+      <div class="searchbar"><span>🔍</span><input id="a-search" placeholder="ค้นหาชื่อหรือรหัส..."></div>
+      <div class="card"><table class="tbl"><thead><tr><th></th><th>ชื่อ-นามสกุล</th><th>รหัส</th><th>รหัสผ่าน</th><th>สังกัด</th><th>ชั้นปี</th><th>จัดการ</th></tr></thead><tbody id="a-tbody"></tbody></table></div>
+    </div>
+    <div id="ap-scores" class="apanel">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div>
+          <div style="font-size:17px;font-weight:700">📝 กรอกคะแนน</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:3px">เลือกแพทย์เพื่อบันทึกคะแนนราชวิทยาลัย คะแนนกลางภาค-ปลายภาค งานวิจัย และ Feedback</div>
+        </div>
+        <div id="score-db-source" style="font-size:11px;font-weight:700;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;padding:5px 9px;white-space:nowrap">อ่านข้อมูล: DB / DR</div>
+      </div>
+      <div id="sc-breadcrumb" style="min-height:30px;margin-bottom:10px"></div>
+      <div id="sc-picker"></div>
+      <div id="sc-area" style="display:none"></div>
+    </div>
+    <!-- ASSESSMENT PANEL (Admin) -->
+    <div id="ap-assessment" class="apanel">
+      <div id="assess-admin-content"></div>
+    </div>
+    <div id="ap-meetings" class="apanel">
+      <div id="meeting-admin-content"></div>
+    </div>
+    <div id="ap-advisors" class="apanel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:15px;font-weight:700">อาจารย์</div>
+        <button id="btn-oaddadv" class="abtn p">＋ เพิ่มอาจารย์</button>
+      </div>
+      <div class="card"><table class="tbl"><thead><tr><th></th><th>ชื่อ-นามสกุล</th><th>รหัส</th><th>รหัสผ่าน</th><th>ตำแหน่ง/สังกัด</th><th>อีเมล</th><th>สิทธิ์ดู</th><th>จัดการ</th></tr></thead><tbody id="adv-tbody"></tbody></table></div>
+    </div>
+    <div id="ap-settings" class="apanel">
+      <?!= _includeHtml('LegacyDatabaseSettings') ?>
+      <div class="sett-sec">
+        <div class="sett-ttl">🔐 เปลี่ยนรหัสผ่าน Admin</div>
+        <div class="frow"><div class="fgrp"><label class="flbl">รหัสผ่านใหม่</label><input id="np1" type="password" class="finp"></div><div class="fgrp"><label class="flbl">ยืนยันรหัสผ่าน</label><input id="np2" type="password" class="finp"></div></div>
+        <button id="btn-chpass" class="abtn g">✅ บันทึก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT PORTFOLIO -->
+<div id="page-student" class="page">
+  <div class="topbar green-bar">
+    <div class="tb-brand">🦴 OrthoFolio</div>
+    <div class="tb-right"><span class="tb-name" id="tb-uname"></span><button id="btn-rprint" class="tb-btn">🖨️ พิมพ์โปรไฟล์</button><button id="btn-rchpass" class="tb-btn">🔑 เปลี่ยนรหัส</button><button id="btn-rlo" class="tb-btn">ออกจากระบบ</button></div>
+  </div>
+  <div class="port-outer">
+    <div class="port-sidebar"><div class="ps-photo" id="ps-photo"><span id="ps-ini"></span></div><div class="ps-name" id="ps-name"></div><div class="ps-role" id="ps-role"></div></div>
+    <div class="port-main" id="port-main"></div>
+  </div>
+</div>
+
+<!-- ADVISOR VIEW -->
+<div id="page-advisor" class="page">
+  <div class="topbar purple-bar">
+    <div class="tb-brand">🦴 OrthoFolio</div>
+    <div class="tb-right"><span class="tb-badge">อาจารย์</span><span class="tb-name" id="adv-uname"></span><button id="btn-vchpass" class="tb-btn">🔑 เปลี่ยนรหัส</button><button id="btn-vlo" class="tb-btn">ออกจากระบบ</button></div>
+  </div>
+
+  <!-- LIST VIEW: รายชื่อแพทย์ -->
+  <div id="adv-list-view">
+    <div class="adv-wrap">
+      <!-- nav tabs อาจารย์ -->
+      <div class="anav" style="margin-bottom:18px">
+        <button class="anavbtn active" data-advap="residents">👨‍⚕️ แพทย์ในความดูแล</button>
+        <button class="anavbtn" data-advap="assessment">📋 แบบประเมิน</button>
+        <button class="anavbtn" data-advap="meetings">🗓️ ประชุม</button>
+      </div>
+
+      <!-- แพทย์ในความดูแล panel -->
+      <div id="advap-residents" class="apanel active">
+        <div style="margin-bottom:4px">
+          <div style="font-size:18px;font-weight:700" id="adv-welcome"></div>
+          <div style="font-size:13px;color:var(--text2);margin-top:3px">แพทย์ประจำบ้านที่อยู่ในความดูแล</div>
+        </div>
+        <div class="adv-res-grid" id="adv-res-grid"></div>
+      </div>
+
+      <!-- แบบประเมิน panel -->
+      <div id="advap-assessment" class="apanel" style="display:none">
+        <div id="adv-assess-list-content"></div>
+      </div>
+      <div id="advap-meetings" class="apanel" style="display:none">
+        <div id="meeting-advisor-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAIL VIEW: portfolio แพทย์ -->
+  <div id="adv-detail-view" style="display:none">
+    <div class="topbar purple-bar" style="position:relative;top:0;z-index:150">
+      <button id="adv-back-btn" class="back-btn">← กลับ</button>
+      <span class="tb-name" id="adv-detail-name"></span>
+      <button id="btn-adv-print-profile" class="tb-btn">🖨️ พิมพ์โปรไฟล์</button>
+    </div>
+    <div id="vcp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:14px;padding:28px 24px;width:320px;max-width:92vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+        <div style="font-weight:700;font-size:16px;margin-bottom:16px">🔑 เปลี่ยนรหัสผ่าน</div>
+        <label class="lbl">รหัสผ่านใหม่</label><input id="vcp-p1" type="password" class="inp" style="margin-bottom:10px">
+        <label class="lbl">ยืนยันรหัสผ่าน</label><input id="vcp-p2" type="password" class="inp" style="margin-bottom:16px">
+        <div id="vcp-err" style="display:none;color:#e53e3e;font-size:13px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px"><button id="vcp-cancel" class="abtn" style="flex:1;background:#e5e7eb;color:var(--text)">ยกเลิก</button><button id="vcp-save" class="abtn" style="flex:1;background:var(--purple)">บันทึก</button></div>
+      </div>
+    </div>
+    <!-- detail tabs -->
+    <div style="background:#fff;border-bottom:1px solid var(--border);display:flex;gap:0;overflow-x:auto">
+      <button class="adv-detail-tab active" data-dtab="portfolio" style="padding:10px 18px;border:none;border-bottom:3px solid var(--purple);background:transparent;font-size:13px;font-weight:700;color:var(--purple);cursor:pointer;white-space:nowrap">📊 Portfolio</button>
+      <button class="adv-detail-tab" data-dtab="assess" style="padding:10px 18px;border:none;border-bottom:3px solid transparent;background:transparent;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;white-space:nowrap">📋 แบบประเมิน</button>
+    </div>
+    <div id="adv-dtab-portfolio" style="display:block">
+      <div class="port-outer">
+        <div class="port-sidebar"><div class="ps-photo" id="adv-ps-photo"><span id="adv-ps-ini"></span></div><div class="ps-name" id="adv-ps-name"></div><div class="ps-role" id="adv-ps-role"></div></div>
+        <div class="port-main" id="adv-port-main"></div>
+      </div>
+    </div>
+    <div id="adv-dtab-assess" style="display:none;padding:20px">
+      <div id="adv-res-assess-panel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Resident -->
+<div class="modal-ov" id="res-modal">
+  <div class="modal">
+    <div class="modal-ttl" id="m-ttl">เพิ่มแพทย์ประจำบ้าน</div><button class="mclose" id="m-close">✕</button>
+    <div class="frow"><div class="fgrp"><label class="flbl">คำนำหน้า + ชื่อ</label><input id="m-fn" class="finp" placeholder="นพ.ชื่อ"></div><div class="fgrp"><label class="flbl">นามสกุล</label><input id="m-ln" class="finp"></div></div>
+    <div class="frow"><div class="fgrp"><label class="flbl">รหัส</label><input id="m-id" class="finp" placeholder="R001"></div><div class="fgrp"><label class="flbl">รหัสผ่านเริ่มต้น / เปลี่ยนใหม่</label><div class="password-input-wrap"><input id="m-pass" type="password" class="finp" placeholder="กำหนดรหัสผ่าน"><button id="m-pass-toggle" type="button" class="pass-toggle" title="ดูรหัสผ่าน" aria-label="ดูรหัสผ่าน">👁</button></div><div class="password-field-note">กดรูปตาเพื่อดูรหัสเดิม หรือพิมพ์รหัสใหม่</div></div></div>
+    <div class="frow"><div class="fgrp"><label class="flbl">ชั้นปี</label><select id="m-yr" class="finp"><option value="1">R1</option><option value="2">R2</option><option value="3">R3</option><option value="4">R4</option><option value="6">Fellow</option><option value="5">ศิษย์เก่า</option></select></div><div class="fgrp"><label class="flbl">สังกัด</label><input id="m-dept" class="finp" placeholder="รพ.ศิริราช"></div></div>
+    <div class="fgrp"><label class="flbl">อีเมล</label><input id="m-email" type="email" class="finp"></div>
+    <div class="fgrp">
+      <label class="flbl">รูปแพทย์ฝึกอบรม</label>
+      <div class="res-photo-box">
+        <div id="m-photo-preview" class="res-photo-preview"><span>รูป</span></div>
+        <div class="res-photo-actions">
+          <input id="m-photo" type="file" accept="image/*" class="finp" style="margin-bottom:7px">
+          <input id="m-photo-data" type="hidden">
+          <button type="button" id="m-photo-clear" class="abtn" style="background:#e5e7eb;color:var(--text2);padding:6px 11px">ลบรูป</button>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.6">ระบบจะย่อรูปอัตโนมัติเพื่อให้บันทึกและซิงค์ได้เร็วขึ้น</div>
+        </div>
+      </div>
+    </div>
+    <div class="fdiv"></div>
+    <div class="fgrp"><label class="flbl">Portfolio Links (คั่นด้วย Enter)</label><textarea id="m-port" class="finp" rows="2" placeholder="https://github.com/..."></textarea></div>
+    <div class="fgrp"><label class="flbl">กิจกรรม / รางวัล (คั่นด้วย Enter)</label><textarea id="m-act" class="finp" rows="2"></textarea></div>
+    <div class="mbtns"><button class="mbtn-cancel" id="m-cancel">ยกเลิก</button><button class="mbtn-save g" id="m-save">💾 บันทึก</button></div>
+  </div>
+</div>
+
+<!-- MODAL: Advisor -->
+<div class="modal-ov" id="adv-modal">
+  <div class="modal">
+    <div class="modal-ttl" id="am-ttl">เพิ่มอาจารย์</div><button class="mclose" id="am-close">✕</button>
+    <div class="frow"><div class="fgrp"><label class="flbl">คำนำหน้า + ชื่อ</label><input id="am-fn" class="finp" placeholder="รศ.ดร."></div><div class="fgrp"><label class="flbl">นามสกุล</label><input id="am-ln" class="finp"></div></div>
+    <div class="frow"><div class="fgrp"><label class="flbl">รหัส</label><input id="am-id" class="finp" placeholder="ADV001"></div><div class="fgrp"><label class="flbl">รหัสผ่านเริ่มต้น / เปลี่ยนใหม่</label><div class="password-input-wrap"><input id="am-pass" type="password" class="finp" placeholder="กำหนดรหัสผ่าน"><button id="am-pass-toggle" type="button" class="pass-toggle" title="ดูรหัสผ่าน" aria-label="ดูรหัสผ่าน">👁</button></div><div class="password-field-note">กดรูปตาเพื่อดูรหัสเดิม หรือพิมพ์รหัสใหม่</div></div></div>
+    <div class="frow"><div class="fgrp"><label class="flbl">ตำแหน่ง</label><input id="am-title" class="finp" placeholder="รศ.ดร."></div><div class="fgrp"><label class="flbl">สังกัด</label><input id="am-dept" class="finp" placeholder="ภาควิชาออร์โธ"></div></div>
+    <div class="fgrp"><label class="flbl">อีเมล</label><input id="am-email" type="email" class="finp"></div>
+    <div class="mbtns"><button class="mbtn-cancel" id="am-cancel">ยกเลิก</button><button class="mbtn-save p" id="am-save">💾 บันทึก</button></div>
+  </div>
+</div>
+
+<!-- MODAL: Permissions -->
+<div class="modal-ov" id="perm-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-ttl" id="pm-ttl">กำหนดสิทธิ์การดูข้อมูล</div><button class="mclose" id="pm-close">✕</button>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">เลือกแพทย์ประจำบ้านที่อาจารย์ท่านนี้มีสิทธิ์เข้าดูข้อมูล</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.7px">เลือก/ยกเลิกทั้งหมด</span>
+      <div style="display:flex;gap:7px"><button id="pm-selall" class="abtn b" style="padding:5px 11px;font-size:11px">เลือกทั้งหมด</button><button id="pm-deselall" class="abtn" style="padding:5px 11px;font-size:11px;background:#e5e7eb;color:var(--text2)">ยกเลิกทั้งหมด</button></div>
+    </div>
+    <div id="perm-list" style="max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+    <div class="mbtns"><button class="mbtn-cancel" id="pm-cancel">ยกเลิก</button><button class="mbtn-save p" id="pm-save">💾 บันทึกสิทธิ์</button></div>
+  </div>
+</div>
+
+<!-- Change password modal (resident) -->
+<div id="rcp-modal" class="modal-ov">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-ttl">🔑 เปลี่ยนรหัสผ่าน</div>
+    <label class="flbl">รหัสผ่านใหม่</label><input id="rcp-p1" type="password" class="finp" placeholder="เลข ว." style="margin-bottom:10px">
+    <label class="flbl">ยืนยันรหัสผ่าน</label><input id="rcp-p2" type="password" class="finp" placeholder="กรอกอีกครั้ง" style="margin-bottom:12px">
+    <div id="rcp-err" style="display:none;color:#e53e3e;font-size:13px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px"><button id="rcp-cancel" class="abtn" style="flex:1;background:#e5e7eb;color:var(--text)">ยกเลิก</button><button id="rcp-save" class="abtn g" style="flex:1">บันทึก</button></div>
+  </div>
+</div>
+
+<!-- MODAL: Meeting -->
+<div class="modal-ov" id="meeting-modal">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-ttl" id="mt-ttl">🗓️ เพิ่มวาระประชุม</div><button class="mclose" id="mt-close">✕</button>
+    <div class="frow">
+      <div class="fgrp"><label class="flbl">ปี พ.ศ.</label><input id="mt-year" type="number" class="finp" placeholder="2569"></div>
+      <div class="fgrp"><label class="flbl">ครั้งที่</label><input id="mt-no" type="number" class="finp" placeholder="1"></div>
+    </div>
+    <div class="fgrp"><label class="flbl">วันประชุม</label><input id="mt-date" type="date" class="finp"></div>
+    <div class="fgrp"><label class="flbl">หัวข้อ/ชื่อการประชุม</label><input id="mt-title" class="finp" placeholder="ประชุมภาควิชา ครั้งที่ 1"></div>
+    <div class="fgrp"><label class="flbl">วาระประชุม</label><textarea id="mt-agenda" class="finp" rows="5" placeholder="ระบุวาระประชุม"></textarea></div>
+    <div class="fgrp"><label class="flbl">ลิงก์วาระประชุม</label><input id="mt-agenda-link" type="url" class="finp" placeholder="https://..."></div>
+    <div class="fgrp"><label class="flbl">รายงานการประชุม</label><textarea id="mt-minutes" class="finp" rows="6" placeholder="สรุปรายงาน/มติที่ประชุม"></textarea></div>
+    <div class="fgrp"><label class="flbl">ลิงก์รายงานการประชุม</label><input id="mt-minutes-link" type="url" class="finp" placeholder="https://..."></div>
+    <div class="mbtns"><button class="mbtn-cancel" id="mt-cancel">ยกเลิก</button><button class="mbtn-save g" id="mt-save">💾 บันทึกประชุม</button></div>
+  </div>
+</div>
+
+<!-- MODAL: Success popup -->
+<div class="modal-ov" id="success-popup">
+  <div class="modal" style="max-width:380px;text-align:center">
+    <button class="mclose" id="success-popup-close">✕</button>
+    <div class="success-icon">✓</div>
+    <div class="modal-ttl" id="success-popup-title" style="margin-bottom:8px">สำเร็จ</div>
+    <div id="success-popup-msg" style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px"></div>
+    <button id="success-popup-ok" class="abtn g" style="min-width:110px;justify-content:center">ตกลง</button>
+  </div>
+</div>
+
+<!-- MODAL: New Assessment -->
+<div class="modal-ov" id="assess-modal">
+  <div class="modal assess-wide-modal">
+    <div class="modal-ttl" id="assess-modal-ttl">📋 แบบประเมิน Rotation</div>
+    <button class="mclose" id="assess-modal-close">✕</button>
+    <div id="assess-modal-body"></div>
+  </div>
+</div>
+
+<!-- MODAL: View Assessment -->
+<div class="modal-ov" id="view-assess-modal">
+  <div class="modal assess-wide-modal">
+    <div class="modal-ttl" id="view-assess-ttl">📋 ผลการประเมิน</div>
+    <button class="mclose" id="view-assess-close">✕</button>
+    <div id="view-assess-body"></div>
+  </div>
+</div>
+
+<!-- MODAL: Assessment template editor (admin only) -->
+<div class="modal-ov" id="assessment-template-modal">
+  <div class="modal assess-wide-modal">
+    <div class="modal-ttl" id="assessment-template-ttl">จัดการแบบฟอร์มประเมิน</div>
+    <button class="mclose" id="assessment-template-close">✕</button>
+    <div id="assessment-template-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="sheet-save-alert" id="sheet-save-alert" role="alert" aria-live="assertive">
+  <div class="sheet-save-alert-icon">!</div>
+  <div class="sheet-save-alert-body">
+    <div class="sheet-save-alert-title">บันทึกลง Google Sheet ไม่สำเร็จ</div>
+    <div class="sheet-save-alert-detail" id="sheet-save-alert-detail">กรุณาตรวจสอบการเชื่อมต่อและลองบันทึกอีกครั้ง</div>
+    <div class="sheet-save-alert-meta" id="sheet-save-alert-meta"></div>
+  </div>
+  <div class="sheet-save-alert-actions">
+    <button class="sheet-save-alert-retry" id="sheet-save-alert-retry" type="button">ลองบันทึกอีกครั้ง</button>
+    <button class="sheet-save-alert-close" id="sheet-save-alert-close" type="button">ปิด</button>
+  </div>
+</div>
+
+<script>const ORTHOFOLIO_INITIAL_DATA = <?!= initialData ?>; const ORTHOFOLIO_ELECTIVE_FORM = <?!= electiveForm ?>;</script>
+<?!= _includeHtml('LegacyImportUI') ?>
+<?!= _includeHtml('ExternalElectiveAdmin') ?>
+<?!= _includeHtml('Application') ?>
+</div>
+</body>
+</html>
