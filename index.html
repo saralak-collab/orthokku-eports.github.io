@@ -6,9 +6,18 @@
 <meta name="theme-color" content="#1a6b3a">
 <title>OrthoFolio — E-Portfolio แพทย์ประจำบ้าน</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<?!= _includeHtml('Styles') ?>
+<link rel="stylesheet" href="./styles.css">
+<script src="./config.js"></script>
+<script src="./runtime.js" defer></script>
 </head>
-<body>
+<body data-orthofolio-page="main">
+<section id="pages-connection" aria-label="การเชื่อมต่อระบบ" aria-live="polite">
+  <div class="pages-connection-card"><strong>OrthoFolio</strong>
+    <p id="pages-connection-status">กำลังเชื่อมต่อระบบ กรุณารอสักครู่</p>
+    <button id="pages-connection-retry" type="button" hidden>ลองอีกครั้ง</button>
+  </div>
+</section>
+<div id="pages-content" inert>
 <div id="app-root">
 
 <!-- LOGIN -->
@@ -104,7 +113,63 @@
       <div class="card"><table class="tbl"><thead><tr><th></th><th>ชื่อ-นามสกุล</th><th>รหัส</th><th>รหัสผ่าน</th><th>ตำแหน่ง/สังกัด</th><th>อีเมล</th><th>สิทธิ์ดู</th><th>จัดการ</th></tr></thead><tbody id="adv-tbody"></tbody></table></div>
     </div>
     <div id="ap-settings" class="apanel">
-      <?!= _includeHtml('LegacyDatabaseSettings') ?>
+      <div class="sett-sec" id="v3-database-settings">
+  <div class="sett-ttl">🗄️ ฐานข้อมูล Google Sheets</div>
+  <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:11px 14px;margin-bottom:13px;font-size:12px;color:var(--teal2);line-height:1.7">
+    <div class="sett-ttl">ฐานข้อมูลระบบใหม่</div>
+    <label class="flbl" for="sheet-id-input">Target Spreadsheet URL / ID</label>
+    <input id="sheet-id-input" class="finp" placeholder="วาง URL หรือ Spreadsheet ID ของไฟล์ใหม่">
+    <div class="frow" style="margin-top:8px">
+      <div class="fgrp"><label class="flbl" for="v3-target-db">DB Sheet Name</label><input id="v3-target-db" class="finp" value="DB"></div>
+      <div class="fgrp"><label class="flbl" for="v3-target-dr">DR Sheet Name</label><input id="v3-target-dr" class="finp" value="DR"></div>
+    </div>
+    <div id="sheet-id-current" style="font-size:11px;word-break:break-all;margin-top:6px">ยังไม่ได้ตั้งค่าฐานข้อมูลเป้าหมาย</div>
+    <div style="margin-top:4px">ใช้ชีตส่วนตัวของบัญชีที่รัน Web App เพื่อเก็บข้อมูลประเมิน บัญชี และข้อมูลสำรอง</div>
+  </div>
+  <div class="sett-ttl">ฐานข้อมูลเก่า</div>
+  <div class="frow">
+    <div class="fgrp"><label class="flbl" for="v3-legacy-db-id">Legacy DB Spreadsheet URL / ID</label><input id="v3-legacy-db-id" class="finp"></div>
+    <div class="fgrp"><label class="flbl" for="v3-legacy-db">Legacy DB Sheet Name</label><input id="v3-legacy-db" class="finp" value="DB"></div>
+  </div>
+  <div class="frow">
+    <div class="fgrp"><label class="flbl" for="v3-legacy-dr-id">Legacy DR Spreadsheet URL / ID</label><input id="v3-legacy-dr-id" class="finp"></div>
+    <div class="fgrp"><label class="flbl" for="v3-legacy-dr">Legacy DR Sheet Name</label><input id="v3-legacy-dr" class="finp" value="DR"></div>
+  </div>
+  <p style="font-size:12px;color:var(--text2);margin:7px 0 12px">ถ้า DB และ DR อยู่ไฟล์เดียวกัน ให้กรอก URL หรือ ID เพียงช่องเดียว</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+    <button id="btn-save-sheet-id" class="abtn t" type="button">บันทึกการตั้งค่า</button>
+    <button id="btn-check-sheet-id" class="abtn b" type="button">ตรวจสอบฐานเป้าหมาย</button>
+    <button id="v3-test-legacy" class="abtn" type="button" disabled>ตรวจสอบการเชื่อมต่อต้นฉบับ</button>
+    <button id="v3-analyze" class="abtn" type="button" disabled>วิเคราะห์ฐานข้อมูลเก่า</button>
+    <button id="v3-schema" class="abtn" type="button" disabled>แสดงโครงสร้างข้อมูล</button>
+  </div>
+  <div id="sheet-tabs-info" style="margin-bottom:11px;display:none"><div class="flbl">Sheet tabs ที่พบ</div><div id="sheet-tabs-list" style="display:flex;gap:5px;flex-wrap:wrap"></div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+    <button id="btn-sync-up" class="abtn b">💾 บันทึกข้อมูล</button>
+    <button id="btn-sync-down" class="abtn" style="background:#059669">🔄 โหลดข้อมูลล่าสุด</button>
+    <button id="btn-db-consolidate" class="abtn" type="button">จัดแยกฐานข้อมูลและอัปเดตรายงานภาษาไทย</button>
+    <a id="v3-report-link" target="_blank" rel="noopener noreferrer" hidden style="font-size:12px;font-weight:700">เปิดรายงานภาษาไทยใน Google Sheets ↗</a>
+  </div>
+  <div id="sync-status" aria-live="polite" style="font-size:12px;font-weight:600;padding:8px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:7px">— พร้อมใช้งาน —</div>
+</div>
+<div class="sett-sec">
+  <div class="sett-ttl">อัปเดตข้อมูลเก่า</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <button id="v3-preview" class="abtn" type="button" disabled>ดูตัวอย่างก่อนนำเข้า</button>
+    <button id="v3-start" class="abtn g" type="button" disabled>อัปเดตและจัดระเบียบข้อมูลเก่า</button>
+    <button id="v3-history" class="abtn" type="button" disabled>ดูประวัติการนำเข้า</button>
+  </div>
+  <div id="v3-status" role="status" style="font-size:12px;margin-bottom:9px;color:var(--text2)">กรอกและบันทึกการตั้งค่าแหล่งข้อมูลเก่าเพื่อเปิดการนำเข้า</div>
+  <progress id="v3-progress" hidden style="width:100%;margin-bottom:8px" aria-label="ความคืบหน้าการนำเข้า"></progress>
+  <div id="v3-summary" style="margin-bottom:8px"></div>
+  <div id="v3-detail" style="margin-bottom:8px"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button id="v3-confirm" class="abtn g" type="button" hidden>ยืนยันการนำเข้า</button>
+    <button id="v3-resume" class="abtn t" type="button" hidden>ดำเนินงานต่อ</button>
+    <button id="v3-cancel" class="abtn" type="button" hidden>ยกเลิกงานนี้</button>
+  </div>
+</div>
+
       <div class="sett-sec">
         <div class="sett-ttl">🔐 เปลี่ยนรหัสผ่าน Admin</div>
         <div class="frow"><div class="fgrp"><label class="flbl">รหัสผ่านใหม่</label><input id="np1" type="password" class="finp"></div><div class="fgrp"><label class="flbl">ยืนยันรหัสผ่าน</label><input id="np2" type="password" class="finp"></div></div>
@@ -329,10 +394,14 @@
   </div>
 </div>
 
-<script>const ORTHOFOLIO_INITIAL_DATA = <?!= initialData ?>; const ORTHOFOLIO_ELECTIVE_FORM = <?!= electiveForm ?>;</script>
-<?!= _includeHtml('LegacyImportUI') ?>
-<?!= _includeHtml('ExternalElectiveAdmin') ?>
-<?!= _includeHtml('Application') ?>
+
+<style>
+#v3-confirm[hidden], #v3-resume[hidden], #v3-cancel[hidden] { display:none; }
+</style>
+
+
+
+</div>
 </div>
 </body>
 </html>

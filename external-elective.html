@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="referrer" content="no-referrer">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    .external-wrap{max-width:940px;margin:0 auto;padding:24px 14px}
+    .external-summary{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+    .external-summary-details{flex:1;min-width:0;overflow-wrap:anywhere}
+    .external-portrait{width:132px;flex:none;margin:0}
+    .external-portrait-frame{height:164px;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:#f0fdfa;display:flex;align-items:center;justify-content:center}
+    .external-portrait img{display:block;width:100%;height:100%;object-fit:cover;object-position:center top}
+    .external-portrait-empty{padding:12px;text-align:center;font-size:12px;line-height:1.7;color:var(--text3)}
+    .external-portrait figcaption{margin-top:6px;text-align:center;font-size:11px;color:var(--text2)}
+    .external-portrait[hidden],.external-portrait [hidden]{display:none}
+    @media(max-width:520px){.external-summary{gap:12px}.external-portrait{width:96px}.external-portrait-frame{height:120px}}
+    .external-table{width:100%;border-collapse:collapse;min-width:550px}
+    .external-table th,.external-table td{border:1px solid var(--border);padding:10px;font-size:13px}
+    .external-table th{background:#f0fdfa;text-align:left}
+    .external-score{text-align:center;min-width:46px}
+    .external-score label{display:block;padding:9px 0;cursor:pointer}
+    .external-table input{accent-color:var(--teal)}
+    #external-status{line-height:1.7;margin:12px 0;font-size:14px}
+  </style>
+<script src="./config.js"></script>
+<script src="./runtime.js" defer></script>
+</head>
+<body data-orthofolio-page="external">
+<section id="pages-connection" aria-label="การเชื่อมต่อระบบ" aria-live="polite">
+  <div class="pages-connection-card"><strong>OrthoFolio</strong>
+    <p id="pages-connection-status">กำลังเชื่อมต่อระบบ กรุณารอสักครู่</p>
+    <button id="pages-connection-retry" type="button" hidden>ลองอีกครั้ง</button>
+  </div>
+</section>
+<div id="pages-content" inert>
+  <main class="external-wrap">
+    <div class="sett-sec external-summary">
+      <div class="external-summary-details">
+        <div class="sett-ttl">🧭 แบบประเมิน Elective — OrthoFolio</div>
+        <p id="external-status" role="status" aria-live="polite">กำลังเปิดแบบประเมิน...</p>
+        <div id="external-context" style="display:none;font-size:14px;line-height:1.8"></div>
+      </div>
+      <figure id="external-resident-portrait" class="external-portrait" hidden>
+        <div class="external-portrait-frame">
+          <img id="external-resident-photo" referrerpolicy="no-referrer" hidden>
+          <span id="external-resident-photo-empty" class="external-portrait-empty">ยังไม่มีรูปโปรไฟล์</span>
+        </div>
+        <figcaption>แพทย์ผู้ถูกประเมิน</figcaption>
+      </figure>
+    </div>
+    <form id="external-form" style="display:none">
+      <section class="sett-sec">
+        <div class="sett-ttl">ข้อมูลผู้ประเมิน</div>
+        <div class="frow">
+          <div class="fgrp"><label class="flbl" for="external-name">ชื่อ-นามสกุลผู้ประเมิน *</label><input id="external-name" name="evaluatorName" class="finp" maxlength="200" autocomplete="name" required></div>
+          <div class="fgrp"><label class="flbl" for="external-institution">สังกัดผู้ประเมิน *</label><input id="external-institution" name="evaluatorInstitution" class="finp" maxlength="300" required></div>
+        </div>
+      </section>
+      <section class="sett-sec">
+        <div class="sett-ttl">ผลการปฏิบัติงาน</div>
+        <p style="font-size:12px;margin-bottom:10px">ให้คะแนนครบทุกหัวข้อ — 1 ปรับปรุง · 2 พอใช้ · 3 ดี · 4 ดีมาก · 5 ดีเยี่ยม</p>
+        <div style="overflow-x:auto"><table class="external-table"><thead><tr><th>หัวข้อประเมิน</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr></thead><tbody id="external-domains"></tbody></table></div>
+        <div class="fgrp" style="margin-top:14px"><label class="flbl" for="external-comment">ข้อเสนอแนะเพิ่มเติม</label><textarea id="external-comment" class="finp" rows="4" maxlength="5000"></textarea></div>
+        <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.7;margin:12px 0"><input id="external-confirm" type="checkbox" required style="margin-top:5px">ข้าพเจ้ายืนยันว่าเป็นผู้ประเมินและให้ผลจากการปฏิบัติงานของแพทย์รายนี้ด้วยตนเอง</label>
+        <button id="external-submit" type="submit" class="abtn t">ส่งผลประเมิน</button>
+      </section>
+    </form>
+  </main>
+  
+</div>
+</body>
+</html>

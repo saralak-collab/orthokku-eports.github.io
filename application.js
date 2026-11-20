@@ -1,0 +1,9947 @@
+(function(){
+'use strict';
+
+// ═══════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════
+const YEARS=['R1','R2','R3','R4'];
+const SUM_SUBS=[{k:'fk',l:'FK'},{k:'met',l:'Metabolic'},{k:'hand',l:'Hand'},{k:'hk',l:'HK'},{k:'ped',l:'Pediatric'},{k:'spine',l:'Spine'},{k:'sports',l:'Sports'},{k:'trauma',l:'Trauma'},{k:'tumor',l:'Tumor'}];
+const RCOST=[
+  {key:'bss_r1',label:'Basic surgical sciences R1',max:100,col:'left',hasSubs:false},
+  {key:'sum_r2',label:'Summative assessment R2',max:150,col:'right',hasSubs:true,subs:SUM_SUBS},
+  {key:'bkr_r1',label:'Basic knowledge in research R1',max:20,col:'left',hasSubs:false},
+  {key:'sum_r3',label:'Summative assessment R3',max:150,col:'right',hasSubs:true,subs:SUM_SUBS},
+  {key:'bso_r2',label:'Basic science in orthopaedics R2',max:100,col:'left',hasSubs:false},
+  {key:'seq_r3',label:'Summative assessment SEQ R3',max:1200,col:'right',hasSubs:true,subs:SUM_SUBS},
+];
+const RESIDENT_YEAR_ORDER=['1','2','3','4','6','5'];
+const YR_LABELS={1:'R1',2:'R2',3:'R3',4:'R4',5:'ศิษย์เก่า',6:'Fellow'};
+const YR_CLASS={1:'yr1',2:'yr2',3:'yr3',4:'yr4',5:'yr5',6:'yr6'};
+const FM_YEAR_LABELS={R1:'ระดับชั้นปีที่ 1',R2:'ระดับชั้นปีที่ 2',R3:'ระดับชั้นปีที่ 3',R4:'ระดับชั้นปีที่ 4'};
+const RESEARCH_TYPES=[
+  {value:'retrospective',label:'Retrospective study',group:'short'},
+  {value:'cross_sectional',label:'Cross-sectional study',group:'short'},
+  {value:'systematic_review',label:'Systematic review',group:'short'},
+  {value:'prospective_cohort',label:'Prospective cohort',group:'long'},
+  {value:'randomized_controlled_trial',label:'Randomized controlled trial',group:'long'},
+  {value:'other',label:'อื่น ๆ',group:'other'}
+];
+const RESEARCH_PROPOSAL_STATUSES=[
+  ['thinking','กำลังคิดเรื่องทำวิจัย'],['writing','กำลังเขียน proposal'],['reviewing_literature','กำลัง review literature'],
+  ['submitted','ส่ง proposal แล้วและเตรียมสอบร่างวิจัย'],['passed','ผ่านการสอบจากกรรมการราชวิทยาลัยออร์โธฯ แล้ว'],['other','อื่น ๆ']
+];
+const RESEARCH_EC_STATUSES=[
+  ['not_ready','ยังไม่พร้อมส่งร่างวิจัยเข้ากรรมการจริยธรรม (EC)'],['preparing','เตรียมส่งร่างวิจัยเข้า EC แต่ยังไม่ส่ง'],
+  ['first_submission','ส่งร่างวิจัยเข้า EC ครั้งแรก'],['revising','อยู่ระหว่างแก้ไขเพื่อส่งใหม่'],['approved','ผ่าน EC แล้ว'],['other','อื่น ๆ']
+];
+const RESEARCH_PROGRESS_STATUSES=[
+  ['not_started','ยังไม่เริ่มเก็บข้อมูล'],['collecting','กำลังเก็บข้อมูล'],['analyzing','กำลังวิเคราะห์ผล'],
+  ['analysis_complete','วิเคราะห์ผลแล้ว แต่ยังไม่ได้เริ่มเขียนสรุปผล'],['summary_complete','เขียนสรุปผลแล้ว แต่ยังไม่ได้เขียน manuscript'],
+  ['manuscript_complete','เขียน manuscript แล้ว แต่ยังไม่ได้ส่ง'],['submitted','เขียน manuscript และส่งแล้ว'],
+  ['awaiting_publication','รอตีพิมพ์'],['presented','นำเสนอผลงานวิจัยในการประชุมวิชาการแล้ว'],['published','ได้รับการตีพิมพ์แล้ว'],['other','อื่น ๆ']
+];
+const RESEARCH_MILESTONES=[
+  ['dataCollectionComplete','เก็บข้อมูลเสร็จสมบูรณ์'],['dataAnalysisComplete','วิเคราะห์ข้อมูลเสร็จสมบูรณ์'],
+  ['manuscriptOutline','มีเค้าโครง Manuscript'],['manuscriptComplete','Manuscript เสร็จสมบูรณ์'],
+  ['submitted','ส่งผลงานแล้ว'],['presented','นำเสนอในการประชุมวิชาการ'],['published','ได้รับการตีพิมพ์']
+];
+const RESEARCH_CRITERIA={
+  short:{R2:'Data collection เสร็จสมบูรณ์',R3:'Data analysis เสร็จสมบูรณ์ และมีเค้าโครง Manuscript',R4:'Manuscript เสร็จสมบูรณ์ และ/หรือ Submission'},
+  long:{R2:'แสดงความก้าวหน้างานวิจัยทุก 2 เดือน',R3:'Data collection & analysis เสร็จสมบูรณ์ และ/หรือแสดงความก้าวหน้าทุก 2 เดือน และ/หรือมีเค้าโครง Manuscript',R4:'Manuscript เสร็จสมบูรณ์ และ/หรือ Submission'},
+  other:{R2:'ให้อาจารย์ที่ปรึกษาประเมินเทียบเคียงเกณฑ์ชั้นปีที่ 2',R3:'ให้อาจารย์ที่ปรึกษาประเมินเทียบเคียงเกณฑ์ชั้นปีที่ 3',R4:'ให้อาจารย์ที่ปรึกษาประเมินเทียบเคียงเกณฑ์ชั้นปีที่ 4'}
+};
+
+// ═══════════════════════════════════════════════════════
+//  ROTATION ASSESSMENT CONFIG
+// ═══════════════════════════════════════════════════════
+const ROTATIONS=[
+  {id:'trauma',   label:'Trauma',          emoji:'🦺'},
+  {id:'tumor',    label:'Tumor',           emoji:'🔬'},
+  {id:'pediatric',label:'Pediatric',       emoji:'👶'},
+  {id:'sports',   label:'Sports',          emoji:'⚽'},
+  {id:'spine',    label:'Spine',           emoji:'🦷'},
+  {id:'hk',       label:'Hip & Knee',      emoji:'🦵'},
+  {id:'footankle',label:'Foot & Ankle',    emoji:'🦶'},
+  {id:'hand',     label:'Hand',            emoji:'🤲'},
+  {id:'elective', label:'Elective',        emoji:'🧭'},
+  {id:'unit_rotation',label:'วนหน่วย',     emoji:'🔄'},
+  {id:'jc',       label:'Journal Club',    emoji:'📚'},
+];
+
+const THAI_MONTHS=[
+  {v:'1',short:'ม.ค.',label:'มกราคม'},
+  {v:'2',short:'ก.พ.',label:'กุมภาพันธ์'},
+  {v:'3',short:'มี.ค.',label:'มีนาคม'},
+  {v:'4',short:'เม.ย.',label:'เมษายน'},
+  {v:'5',short:'พ.ค.',label:'พฤษภาคม'},
+  {v:'6',short:'มิ.ย.',label:'มิถุนายน'},
+  {v:'7',short:'ก.ค.',label:'กรกฎาคม'},
+  {v:'8',short:'ส.ค.',label:'สิงหาคม'},
+  {v:'9',short:'ก.ย.',label:'กันยายน'},
+  {v:'10',short:'ต.ค.',label:'ตุลาคม'},
+  {v:'11',short:'พ.ย.',label:'พฤศจิกายน'},
+  {v:'12',short:'ธ.ค.',label:'ธันวาคม'},
+];
+
+const ELECTIVE_UNITS=['Trauma','Tumor','Hip&Knee','Pediatric','Sports','Spine','Footankle','Metabolic','Hand','Rehab','Rheumato','Geriatric','Sx Trauma','Anes'];
+const ELECTIVE_SCORE_LABELS={1:'ปรับปรุง',2:'พอใช้',3:'ดี',4:'ดีมาก',5:'ดีเยี่ยม'};
+const ELECTIVE_FORM=ORTHOFOLIO_ELECTIVE_FORM;
+
+const UNIT_ROTATION_PERIODS=[
+  {v:'jul_aug',label:'ก.ค.-ส.ค.',startMonth:7},
+  {v:'sep_oct',label:'ก.ย.-ต.ค.',startMonth:9},
+  {v:'nov_dec',label:'พ.ย.-ธ.ค.',startMonth:11},
+  {v:'jan_feb',label:'ม.ค.-ก.พ.',startMonth:1},
+  {v:'mar_apr',label:'มี.ค.-เม.ย.',startMonth:3},
+  {v:'may_jun',label:'พ.ค.-มิ.ย.',startMonth:5},
+];
+const UNIT_ROTATION_WORK_LINES=['Trauma','Tumor','Hip&Knee','Pediatric','Sports','Spine','Footankle','Metabolic','Hand','สาย A','สาย B'];
+const UNIT_ROTATION_WORK_LINE_KEYS={'Trauma':'trauma','Tumor':'tumor','Hip&Knee':'hk','Pediatric':'pediatric','Sports':'sports','Spine':'spine','Footankle':'footankle','Metabolic':'metabolic','Hand':'hand','สาย A':'lineA','สาย B':'lineB'};
+const UNIT_ROTATION_SCHEDULE_RAW=`ชยุต|R4|jul_aug|2569|spine|Spine / Spine
+ชยุต|R4|nov_dec|2569|hand|Hand / Hand
+ชยุต|R4|jan_feb|2570|pediatric|Ped / Ped
+ชยุต|R4|mar_apr|2570|sports|Sport / Sport
+ธนดล|R4|sep_oct|2569|sports|Sport / Sport
+ธนดล|R4|nov_dec|2569|trauma|Trauma / Metabolic/Trauma
+ธนดล|R4|nov_dec|2569|metabolic|Trauma / Metabolic/Trauma
+ธนดล|R4|jan_feb|2570|hand|Hand / Hand
+ธนดล|R4|mar_apr|2570|spine|Spine / Spine
+ธัญจิรา|R4|jul_aug|2569|hk|Hipknee / Hipknee
+ธัญจิรา|R4|sep_oct|2569|sports|Sport / Sport
+ธัญจิรา|R4|jan_feb|2570|tumor|Footankle / Tumor
+ธัญจิรา|R4|jan_feb|2570|footankle|Footankle / Tumor
+ธัญจิรา|R4|mar_apr|2570|trauma|Metabolic / Trauma
+ธัญจิรา|R4|mar_apr|2570|metabolic|Metabolic / Trauma
+พรภัทร์|R4|jul_aug|2569|hk|Trauma รพ.เชียงราย / Hipknee + Trauma รพ.จุฬา
+พรภัทร์|R4|sep_oct|2569|hand|Hand / Hand
+พรภัทร์|R4|nov_dec|2569|tumor|Footankle / Tumor
+พรภัทร์|R4|nov_dec|2569|footankle|Footankle / Tumor
+พรภัทร์|R4|jan_feb|2570|sports|Sport / Sport
+พรภัทร์|R4|mar_apr|2570|trauma|Trauma / Metabolic
+พรภัทร์|R4|mar_apr|2570|metabolic|Trauma / Metabolic
+ภัฏฏิ|R4|jul_aug|2569|trauma|Trauma / Metabolic/Trauma
+ภัฏฏิ|R4|jul_aug|2569|metabolic|Trauma / Metabolic/Trauma
+ภัฏฏิ|R4|nov_dec|2569|sports|Sport / Sport
+ภัฏฏิ|R4|jan_feb|2570|pediatric|Ped / Ped
+ภัฏฏิ|R4|mar_apr|2570|hk|Hipknee / Hipknee
+วิเศษ|R4|jul_aug|2569|sports|Sport / Sport
+วิเศษ|R4|sep_oct|2569|hand|Hand / Hand
+วิเศษ|R4|nov_dec|2569|spine|Spine / Spine
+วิเศษ|R4|mar_apr|2570|tumor|Footankle / Tumor
+วิเศษ|R4|mar_apr|2570|footankle|Footankle / Tumor
+ณัฐพงศ์|R4|jul_aug|2569|pediatric|Ped / Ped
+ณัฐพงศ์|R4|sep_oct|2569|spine|Spine / Spine
+ณัฐพงศ์|R4|jan_feb|2570|sports|Sport / Sport
+ณัฐพงศ์|R4|mar_apr|2570|hk|Hipknee / Hipknee
+วิศรุต|R4|jul_aug|2569|hand|Hand / Hand
+วิศรุต|R4|nov_dec|2569|tumor|Tumor / Footankle
+วิศรุต|R4|nov_dec|2569|footankle|Tumor / Footankle
+วิศรุต|R4|jan_feb|2570|spine|Spine / Spine
+วิศรุต|R4|mar_apr|2570|sports|Sport / Sport
+จิรโชติ|R4|jul_aug|2569|footankle|Metabolic / Footankle
+จิรโชติ|R4|jul_aug|2569|metabolic|Metabolic / Footankle
+จิรโชติ|R4|sep_oct|2569|pediatric|Ped / Ped
+จิรโชติ|R4|nov_dec|2569|hand|Hand / Hand
+จิรโชติ|R4|jan_feb|2570|spine|Spine / Spine
+จิรโชติ|R4|mar_apr|2570|hk|Trauma รพ.อุดรธานี / HipKnee KKU
+ธนภัทร|R4|jul_aug|2569|hand|Hand / Hand
+ธนภัทร|R4|sep_oct|2569|hk|Hipknee / Hipknee
+ธนภัทร|R4|nov_dec|2569|pediatric|Ped / Ped
+ธนภัทร|R4|mar_apr|2570|tumor|Tumor / Footankle
+ธนภัทร|R4|mar_apr|2570|footankle|Tumor / Footankle
+ปานเทพ|R3|nov_dec|2569|pediatric|Ped / Ped
+ปานเทพ|R3|mar_apr|2570|sports|Sport / Sport
+ปานเทพ|R3|may_jun|2570|hk|Hipknee / Hipknee
+สหโชค|R3|sep_oct|2569|tumor|Tumor / Footankle
+สหโชค|R3|sep_oct|2569|footankle|Tumor / Footankle
+สหโชค|R3|mar_apr|2570|trauma|Metabolic / Trauma
+สหโชค|R3|mar_apr|2570|metabolic|Metabolic / Trauma
+สหโชค|R3|may_jun|2570|hand|Hand / Hand
+รัชชานนท์|R3|jul_aug|2569|tumor|Tumor / Footankle
+รัชชานนท์|R3|jul_aug|2569|footankle|Tumor / Footankle
+รัชชานนท์|R3|jan_feb|2570|hk|Hipknee / Hipknee
+รัชชานนท์|R3|mar_apr|2570|pediatric|Ped / Ped
+พีรพล|R3|sep_oct|2569|trauma|Trauma / Metabolic/Trauma
+พีรพล|R3|sep_oct|2569|metabolic|Trauma / Metabolic/Trauma
+พีรพล|R3|jan_feb|2570|tumor|Tumor / Footankle
+พีรพล|R3|jan_feb|2570|footankle|Tumor / Footankle
+พีรพล|R3|mar_apr|2570|spine|Spine / Spine
+ปวิชญา|R3|jul_aug|2569|tumor|Footankle / Tumor
+ปวิชญา|R3|jul_aug|2569|footankle|Footankle / Tumor
+ปวิชญา|R3|mar_apr|2570|hand|Hand / Hand
+ปวิชญา|R3|may_jun|2570|spine|Spine / Spine
+กฤตณภัทร|R3|nov_dec|2569|hk|Hipknee / Hipknee
+กฤตณภัทร|R3|jan_feb|2570|hand|Hand / Hand
+กฤตณภัทร|R3|may_jun|2570|pediatric|Ped / Ped
+พงศธร|R3|jan_feb|2570|trauma|Trauma / Metabolic/Trauma
+พงศธร|R3|jan_feb|2570|metabolic|Trauma / Metabolic/Trauma
+พงศธร|R3|mar_apr|2570|hk|Hipknee / Hipknee
+พงศธร|R3|may_jun|2570|sports|Sport / Sport
+ยลรดี|R3|jul_aug|2569|hk|Hipknee / Hipknee
+ยลรดี|R3|sep_oct|2569|tumor|Footankle / Tumor
+ยลรดี|R3|sep_oct|2569|footankle|Footankle / Tumor
+ยลรดี|R3|may_jun|2570|trauma|Trauma / Metabolic/Trauma
+ยลรดี|R3|may_jun|2570|metabolic|Trauma / Metabolic/Trauma
+มัณธนพร|R2|jul_aug|2569|hk|Geri/Trauma / Hipknee
+มัณธนพร|R2|sep_oct|2569|hand|Rehab / Hand
+มัณธนพร|R2|nov_dec|2569|tumor|Tumor / Footankle
+มัณธนพร|R2|nov_dec|2569|footankle|Tumor / Footankle
+มัณธนพร|R2|jan_feb|2570|trauma|Rheumato / Trauma
+มัณธนพร|R2|mar_apr|2570|spine|Trauma รพ.อุดรธานี / Spine
+มัณธนพร|R2|may_jun|2570|pediatric|Ped / Sport
+มัณธนพร|R2|may_jun|2570|sports|Ped / Sport
+ธนัชชา|R2|jul_aug|2569|tumor|Spine / Tumor
+ธนัชชา|R2|jul_aug|2569|spine|Spine / Tumor
+ธนัชชา|R2|sep_oct|2569|pediatric|Ped / Footankle
+ธนัชชา|R2|sep_oct|2569|footankle|Ped / Footankle
+ธนัชชา|R2|nov_dec|2569|trauma|Trauma / Trauma รพ.มหาสารคาม
+ธนัชชา|R2|jan_feb|2570|hk|Hipknee / Rehab
+ธนัชชา|R2|mar_apr|2570|sports|Sport / Rheumato
+ธนัชชา|R2|may_jun|2570|hand|Hand / Geri/Trauma
+ชิติพัทธ์|R2|jul_aug|2569|trauma|Trauma / Trauma รพ.มหาสารคาม
+ชิติพัทธ์|R2|sep_oct|2569|tumor|Tumor / Ped
+ชิติพัทธ์|R2|sep_oct|2569|pediatric|Tumor / Ped
+ชิติพัทธ์|R2|nov_dec|2569|spine|Spine / Rehab
+ชิติพัทธ์|R2|jan_feb|2570|hk|Geri/Trauma / Hipknee
+ชิติพัทธ์|R2|mar_apr|2570|footankle|Hand / Footankle
+ชิติพัทธ์|R2|mar_apr|2570|hand|Hand / Footankle
+ชิติพัทธ์|R2|may_jun|2570|sports|Sport / Rheumato
+จตุรวิทย์|R2|jul_aug|2569|pediatric|Ped / Sport
+จตุรวิทย์|R2|jul_aug|2569|sports|Ped / Sport
+จตุรวิทย์|R2|sep_oct|2569|hand|Hand / Rehab
+จตุรวิทย์|R2|nov_dec|2569|hk|Rheumato / Hipknee
+จตุรวิทย์|R2|jan_feb|2570|trauma|Trauma / Trauma รพ.เชียงราย
+จตุรวิทย์|R2|mar_apr|2570|tumor|Geri/Trauma / Tumor
+จตุรวิทย์|R2|may_jun|2570|spine|Spine / Footankle
+จตุรวิทย์|R2|may_jun|2570|footankle|Spine / Footankle
+มัชฌิมากร|R2|sep_oct|2569|trauma|Geri/Trauma / Trauma
+มัชฌิมากร|R2|nov_dec|2569|spine|Trauma รพ.อุดรธานี / Spine
+มัชฌิมากร|R2|jan_feb|2570|footankle|Hand / Footankle
+มัชฌิมากร|R2|jan_feb|2570|hand|Hand / Footankle
+มัชฌิมากร|R2|mar_apr|2570|pediatric|Ped / Sport
+มัชฌิมากร|R2|mar_apr|2570|sports|Ped / Sport
+มัชฌิมากร|R2|may_jun|2570|tumor|Hipknee / Tumor
+มัชฌิมากร|R2|may_jun|2570|hk|Hipknee / Tumor
+วิทวัส|R2|jul_aug|2569|tumor|Tumor / Geri/Trauma
+วิทวัส|R2|sep_oct|2569|hk|Footankle / Hipknee
+วิทวัส|R2|sep_oct|2569|footankle|Footankle / Hipknee
+วิทวัส|R2|nov_dec|2569|sports|Rehab / Sport
+วิทวัส|R2|jan_feb|2570|spine|Spine / Hand
+วิทวัส|R2|jan_feb|2570|hand|Spine / Hand
+วิทวัส|R2|may_jun|2570|trauma|Trauma / Ped
+วิทวัส|R2|may_jun|2570|pediatric|Trauma / Ped
+สมลฏ์|R2|jul_aug|2569|pediatric|Rehab / Ped
+สมลฏ์|R2|sep_oct|2569|spine|Spine / Rheumato
+สมลฏ์|R2|nov_dec|2569|trauma|Geri/Trauma / Trauma
+สมลฏ์|R2|jan_feb|2570|sports|Trauma รพ.อุดรธานี / Sport
+สมลฏ์|R2|mar_apr|2570|tumor|Tumor / Hand
+สมลฏ์|R2|mar_apr|2570|hand|Tumor / Hand
+สมลฏ์|R2|may_jun|2570|hk|Footankle / Hipknee
+สมลฏ์|R2|may_jun|2570|footankle|Footankle / Hipknee
+ภัทรพล|R2|jul_aug|2569|trauma|Sport / Trauma
+ภัทรพล|R2|jul_aug|2569|sports|Sport / Trauma
+ภัทรพล|R2|sep_oct|2569|spine|Trauma รพ.มหาสารคาม / Spine
+ภัทรพล|R2|nov_dec|2569|hk|Hipknee / Geri/Trauma
+ภัทรพล|R2|jan_feb|2570|tumor|Tumor / Rheumato
+ภัทรพล|R2|mar_apr|2570|pediatric|Footankle / Ped
+ภัทรพล|R2|mar_apr|2570|footankle|Footankle / Ped
+ภัทรพล|R2|may_jun|2570|hand|Rehab / Hand
+คณาธิป|R2|jul_aug|2569|footankle|Footankle / Hand
+คณาธิป|R2|jul_aug|2569|hand|Footankle / Hand
+คณาธิป|R2|sep_oct|2569|trauma|Trauma / Trauma รพ.มหาสารคาม
+คณาธิป|R2|nov_dec|2569|sports|Sport / Rheumato
+คณาธิป|R2|jan_feb|2570|pediatric|Ped / Geri/Trauma
+คณาธิป|R2|mar_apr|2570|hk|Rehab / Hipknee
+คณาธิป|R2|may_jun|2570|tumor|Tumor / Spine
+คณาธิป|R2|may_jun|2570|spine|Tumor / Spine
+ชวิศ|R1|jul_aug|2569|lineA|A (Hipknee) / B (Sport)
+ชวิศ|R1|jul_aug|2569|lineB|A (Hipknee) / B (Sport)
+ชวิศ|R1|sep_oct|2569|lineA|Anes / A
+ชวิศ|R1|nov_dec|2569|lineA|B (PED) / A
+ชวิศ|R1|nov_dec|2569|lineB|B (PED) / A
+ชวิศ|R1|jan_feb|2570|lineA|A / B (Spine)
+ชวิศ|R1|jan_feb|2570|lineB|A / B (Spine)
+ชวิศ|R1|mar_apr|2570|lineA|B / A (Trauma)
+ชวิศ|R1|mar_apr|2570|lineB|B / A (Trauma)
+ชวิศ|R1|may_jun|2570|lineA|B (Hand) / A (Tumor)
+ชวิศ|R1|may_jun|2570|lineB|B (Hand) / A (Tumor)
+ณัฐพัสกร|R1|jul_aug|2569|lineA|A / A (Tumor)
+ณัฐพัสกร|R1|sep_oct|2569|lineB|B (Hand) / Anes
+ณัฐพัสกร|R1|nov_dec|2569|lineA|A / B
+ณัฐพัสกร|R1|nov_dec|2569|lineB|A / B
+ณัฐพัสกร|R1|jan_feb|2570|lineA|B (Spine) / A (Trauma)
+ณัฐพัสกร|R1|jan_feb|2570|lineB|B (Spine) / A (Trauma)
+ณัฐพัสกร|R1|mar_apr|2570|lineA|B (Sport) / A (Hipknee)
+ณัฐพัสกร|R1|mar_apr|2570|lineB|B (Sport) / A (Hipknee)
+ณัฐพัสกร|R1|may_jun|2570|lineA|A / B (PED)
+ณัฐพัสกร|R1|may_jun|2570|lineB|A / B (PED)
+ปนัสยา|R1|jul_aug|2569|lineA|B (Sport) / A
+ปนัสยา|R1|jul_aug|2569|lineB|B (Sport) / A
+ปนัสยา|R1|sep_oct|2569|lineA|B (Spine) / A (Hipknee)
+ปนัสยา|R1|sep_oct|2569|lineB|B (Spine) / A (Hipknee)
+ปนัสยา|R1|nov_dec|2569|lineA|Anes / A (Trauma)
+ปนัสยา|R1|jan_feb|2570|lineA|A (Tumor) / B (Hand)
+ปนัสยา|R1|jan_feb|2570|lineB|A (Tumor) / B (Hand)
+ปนัสยา|R1|mar_apr|2570|lineA|A / B (PED)
+ปนัสยา|R1|mar_apr|2570|lineB|A / B (PED)
+ปนัสยา|R1|may_jun|2570|lineA|B / A
+ปนัสยา|R1|may_jun|2570|lineB|B / A
+สมเจต|R1|jul_aug|2569|lineB|B / B (Hand)
+สมเจต|R1|sep_oct|2569|lineA|A (Hipknee) / A (Trauma)
+สมเจต|R1|nov_dec|2569|lineB|B (Sport) / Anes
+สมเจต|R1|jan_feb|2570|lineA|A / A (Tumor)
+สมเจต|R1|mar_apr|2570|lineA|B (PED) / A
+สมเจต|R1|mar_apr|2570|lineB|B (PED) / A
+สมเจต|R1|may_jun|2570|lineA|A / B (Spine)
+สมเจต|R1|may_jun|2570|lineB|A / B (Spine)
+กนิฎฐกัณฑ์|R1|jul_aug|2569|lineA|B (Spine) / A (Trauma)
+กนิฎฐกัณฑ์|R1|jul_aug|2569|lineB|B (Spine) / A (Trauma)
+กนิฎฐกัณฑ์|R1|sep_oct|2569|lineB|B (PED) / B (Hand)
+กนิฎฐกัณฑ์|R1|nov_dec|2569|lineA|A (Tumor) / B
+กนิฎฐกัณฑ์|R1|nov_dec|2569|lineB|A (Tumor) / B
+กนิฎฐกัณฑ์|R1|jan_feb|2570|lineA|Anes / A (Hipknee)
+กนิฎฐกัณฑ์|R1|mar_apr|2570|lineA|A / B (Sport)
+กนิฎฐกัณฑ์|R1|mar_apr|2570|lineB|A / B (Sport)
+กนิฎฐกัณฑ์|R1|may_jun|2570|lineA|A / A
+ณัฎฐดนย์|R1|jul_aug|2569|lineA|A / B
+ณัฎฐดนย์|R1|jul_aug|2569|lineB|A / B
+ณัฎฐดนย์|R1|sep_oct|2569|lineA|A (Trauma) / A
+ณัฎฐดนย์|R1|nov_dec|2569|lineA|B (Hand) / A (Tumor)
+ณัฎฐดนย์|R1|nov_dec|2569|lineB|B (Hand) / A (Tumor)
+ณัฎฐดนย์|R1|jan_feb|2570|lineA|A (Hipknee) / Anes
+ณัฎฐดนย์|R1|mar_apr|2570|lineA|B (Spine) / A
+ณัฎฐดนย์|R1|mar_apr|2570|lineB|B (Spine) / A
+ณัฎฐดนย์|R1|may_jun|2570|lineB|B (PED) / B (Sport)
+ณรงค์ฤทธิ์|R1|jul_aug|2569|lineA|B (Hand) / A
+ณรงค์ฤทธิ์|R1|jul_aug|2569|lineB|B (Hand) / A
+ณรงค์ฤทธิ์|R1|sep_oct|2569|lineA|A / B
+ณรงค์ฤทธิ์|R1|sep_oct|2569|lineB|A / B
+ณรงค์ฤทธิ์|R1|nov_dec|2569|lineA|A (Hipknee) / B (PED)
+ณรงค์ฤทธิ์|R1|nov_dec|2569|lineB|A (Hipknee) / B (PED)
+ณรงค์ฤทธิ์|R1|jan_feb|2570|lineA|B (Sport) / A
+ณรงค์ฤทธิ์|R1|jan_feb|2570|lineB|B (Sport) / A
+ณรงค์ฤทธิ์|R1|mar_apr|2570|lineA|Anes / A (Tumor)
+ณรงค์ฤทธิ์|R1|may_jun|2570|lineA|B (Spine) / A (Trauma)
+ณรงค์ฤทธิ์|R1|may_jun|2570|lineB|B (Spine) / A (Trauma)
+ชาลิสา|R1|jul_aug|2569|lineB|B (PED) / B (Spine)
+ชาลิสา|R1|sep_oct|2569|lineA|A / B (Sport)
+ชาลิสา|R1|sep_oct|2569|lineB|A / B (Sport)
+ชาลิสา|R1|nov_dec|2569|lineA|A / A (Hipknee)
+ชาลิสา|R1|jan_feb|2570|lineB|B (Hand) / B
+ชาลิสา|R1|mar_apr|2570|lineA|A (Trauma) / Anes
+ชาลิสา|R1|may_jun|2570|lineA|A (Tumor) / A
+ภูดิศก์|R1|jul_aug|2569|lineA|A (Trauma) / B (PED)
+ภูดิศก์|R1|jul_aug|2569|lineB|A (Trauma) / B (PED)
+ภูดิศก์|R1|sep_oct|2569|lineA|A / A (Tumor)
+ภูดิศก์|R1|nov_dec|2569|lineA|B (Spine) / A
+ภูดิศก์|R1|nov_dec|2569|lineB|B (Spine) / A
+ภูดิศก์|R1|jan_feb|2570|lineA|A / B (Sport)
+ภูดิศก์|R1|jan_feb|2570|lineB|A / B (Sport)
+ภูดิศก์|R1|mar_apr|2570|lineA|A (Hipknee) / B (Hand)
+ภูดิศก์|R1|mar_apr|2570|lineB|A (Hipknee) / B (Hand)
+ภูดิศก์|R1|may_jun|2570|lineB|Anes / B
+สุพัชญา|R1|jul_aug|2569|lineA|A (Tumor) / A (Hipknee)
+สุพัชญา|R1|sep_oct|2569|lineB|B (Sport) / B (PED)
+สุพัชญา|R1|nov_dec|2569|lineA|A (Trauma) / B (Hand)
+สุพัชญา|R1|nov_dec|2569|lineB|A (Trauma) / B (Hand)
+สุพัชญา|R1|jan_feb|2570|lineA|B / A
+สุพัชญา|R1|jan_feb|2570|lineB|B / A
+สุพัชญา|R1|mar_apr|2570|lineA|A / B (Spine)
+สุพัชญา|R1|mar_apr|2570|lineB|A / B (Spine)
+สุพัชญา|R1|may_jun|2570|lineA|A / Anes`;
+const UNIT_ROTATION_SCHEDULE_EXTRA_RAW=`ปานเทพ|R3|jul_aug|2569|lineA|Chief B / Chief A
+ปานเทพ|R3|jul_aug|2569|lineB|Chief B / Chief A
+ปานเทพ|R3|jan_feb|2570|lineB|Footankle รพ.ธรรมศาสตร์ / Chief B
+สหโชค|R3|nov_dec|2569|lineA|Chief A / Sport รพ.จุฬา
+สหโชค|R3|jan_feb|2570|lineA|Chief B / Chief A
+สหโชค|R3|jan_feb|2570|lineB|Chief B / Chief A
+รัชชานนท์|R3|sep_oct|2569|lineA|Trauma รพ.มหาสารคาม / Chief A
+รัชชานนท์|R3|may_jun|2570|lineA|Chief B / Chief A
+รัชชานนท์|R3|may_jun|2570|lineB|Chief B / Chief A
+พีรพล|R3|nov_dec|2569|lineB|Trauma รพ.สิริกิตต์ / Chief B
+พีรพล|R3|may_jun|2570|lineA|Chief A / Chief B
+พีรพล|R3|may_jun|2570|lineB|Chief A / Chief B
+ปวิชญา|R3|sep_oct|2569|lineA|Chief A / Chief B
+ปวิชญา|R3|sep_oct|2569|lineB|Chief A / Chief B
+ปวิชญา|R3|jan_feb|2570|lineA|Chief A / Trauma รพ.เชียงราย
+กฤตณภัทร|R3|sep_oct|2569|lineB|Chief B / Trauma รพ.เชียงราย
+กฤตณภัทร|R3|mar_apr|2570|lineA|Chief B / Chief A
+กฤตณภัทร|R3|mar_apr|2570|lineB|Chief B / Chief A
+พงศธร|R3|jul_aug|2569|lineA|Chief A / Chief B
+พงศธร|R3|jul_aug|2569|lineB|Chief A / Chief B
+พงศธร|R3|nov_dec|2569|lineB|Chief B / Hipknee รพ.ธรรมศาสตร์
+ยลรดี|R3|nov_dec|2569|lineA|Trauma รพ.ร้อยเอ็ด / Chief A
+ยลรดี|R3|mar_apr|2570|lineA|Chief A / Chief B
+ยลรดี|R3|mar_apr|2570|lineB|Chief A / Chief B`;
+const UNIT_ROTATION_SCHEDULE=(UNIT_ROTATION_SCHEDULE_RAW+'\n'+UNIT_ROTATION_SCHEDULE_EXTRA_RAW).trim().split('\n').filter(Boolean).map(line=>{
+  const parts=line.split('|');
+  return {name:parts[0],level:parts[1],period:parts[2],beYear:parts[3],workLineKey:parts[4],source:parts.slice(5).join('|')};
+});
+const UNIT_ROTATION_SCORE_ZONES=[
+  {label:'ต่ำกว่าความคาดหวัง',range:'ระดับคะแนน 1-3',min:1,max:3,bg:'#fee2e2',color:'#b91c1c'},
+  {label:'บรรลุความคาดหวัง',range:'ระดับคะแนน 4-6',min:4,max:6,bg:'#fef9c3',color:'#b45309'},
+  {label:'สูงกว่าความคาดหวัง',range:'ระดับคะแนน 7-9',min:7,max:9,bg:'#dcfce7',color:'#15803d'},
+];
+const UNIT_ROTATION_OVERALL_NOTES=[
+  'หมายเลข 1 ไม่สามารถจัดการกับปัญหาธรรมดาๆที่พบบ่อยที่สุดในผู้ป่วยได้',
+  'หมายเลข 3 สามารถจัดการกับปัญหาธรรมดาที่พบบ่อยที่สุดในผู้ป่วยได้',
+  'หมายเลข 5 สามารถจัดการกับปัญหาที่พบเสมอในผู้ป่วยได้เป็นอย่างดี',
+  'หมายเลข 7 สามารถจัดการกับปัญหาส่วนใหญ่ในผู้ป่วยได้อย่างมีประสิทธิภาพ',
+  'หมายเลข 9 สามารถจัดการกับปัญหาของผู้ป่วยได้หมดทุกปัญหาอย่างมีประสิทธิภาพ',
+];
+const UNIT_ROTATION_FORM={
+  id:'unit_rotation',
+  label:'แบบประเมินแพทย์ฝึกอบรมแบบวนหน่วย',
+  abbr:'วนหน่วย',
+  sections:[
+    {id:'patient_care',label:'1. การดูแลผู้ป่วย (Patient care)',items:[
+      {id:'patient_care_1',label:'1.1 ทักษะการซักประวัติและตรวจร่างกายเพื่อวินิจฉัยโรค'},
+      {id:'patient_care_2',label:'1.2 การบันทึกรายงานทางการแพทย์'}
+    ]},
+    {id:'medical_knowledge',label:'2. ความรู้ ความเชี่ยวชาญ และความสามารถในการนำไปใช้แก้ปัญหาของผู้ป่วยและสังคมรอบด้าน (Medical knowledge and skills)',items:[
+      {id:'medical_knowledge_1',label:'2.1 มีความรู้ความสามารถในวิชาชีพสาขาออร์โธปิดิกส์ตามระดับชั้นปี'}
+    ]},
+    {id:'learning_improvement',label:'3. การเรียนรู้และการพัฒนา (Learning and Improvement)',items:[
+      {id:'learning_improvement_1',label:'3.1 มีการพัฒนาตนเองและการเรียนรู้จากการปฏิบัติ (Practice-based)'}
+    ]},
+    {id:'communication',label:'4. ทักษะปฏิสัมพันธ์ และการสื่อสาร (Interpersonal and Communication Skills)',items:[
+      {id:'communication_1',label:'4.1 นำเสนอข้อมูลผู้ป่วย และอภิปรายปัญหาอย่างมีประสิทธิภาพตามระดับชั้นปี'},
+      {id:'communication_2',label:'4.2 ถ่ายทอดความรู้และทักษะ ให้แพทย์ และบุคลากรทางการแพทย์'},
+      {id:'communication_3',label:'4.3 สื่อสารให้ข้อมูลแก่ญาติ และผู้ป่วย ได้อย่างถูกต้องและมีประสิทธิภาพ โดยมีความเมตตา เคารพการตัดสินใจและศักดิ์ศรีของความเป็นมนุษย์'},
+      {id:'communication_4',label:'4.4 มีมนุษยสัมพันธ์ที่ดี ทำงานกับผู้ร่วมงานทุกระดับอย่างมีประสิทธิภาพ'}
+    ]},
+    {id:'professionalism',label:'5. ความเป็นมืออาชีพ (Professionalism)',items:[
+      {id:'professionalism_1',label:'5.1 มีคุณธรรม จริยธรรม และเจตคติอันดีต่อผู้ป่วย ญาติ ผู้ร่วมงาน เพื่อนร่วมวิชาชีพ'},
+      {id:'professionalism_2',label:'5.2 มีความสนใจใฝ่รู้ และสามารถพัฒนาไปสู่ความเป็นผู้เรียนรู้ต่อเนื่องตลอดชีวิต (Continuous Professional Development)'},
+      {id:'professionalism_3',label:'5.3 ความรับผิดชอบต่องานที่ได้รับมอบหมาย'},
+      {id:'professionalism_4',label:'5.4 คำนึงถึงผลประโยชน์ส่วนรวม'}
+    ]},
+    {id:'system_based',label:'6. การปฏิบัติงานให้เข้ากับระบบ (System-based Practice)',items:[
+      {id:'system_based_1',label:'6.1 มีความรู้และมีส่วนร่วมในการพัฒนาคุณภาพในการดูแลผู้ป่วย'},
+      {id:'system_based_2',label:'6.2 มีการใช้ทรัพยากรสุขภาพอย่างเหมาะสม (Cost consciousness medicine) และปรับเปลี่ยนการดูแลรักษาผู้ป่วยให้เข้ากับบริบทของการบริการสาธารณสุขได้ตามมาตรฐานวิชาชีพ'}
+    ]},
+    {id:'overall',label:'ความสามารถโดยรวม',items:[
+      {id:'overall_1',label:'ความสามารถโดยรวม',isOverall:true}
+    ]},
+  ]
+};
+
+const DEFAULT_DOMAINS=[
+  {id:'knowledge', label:'ความรู้ (Knowledge)',           sublabel:'ความรู้ทางทฤษฎีและหลักการทางคลินิก'},
+  {id:'skill',     label:'ทักษะ (Clinical Skills)',      sublabel:'ทักษะการตรวจร่างกายและหัตถการ'},
+  {id:'attitude',  label:'ทัศนคติ (Professionalism)',    sublabel:'จริยธรรม การสื่อสาร การทำงานเป็นทีม'},
+  {id:'research',  label:'งานวิจัย (Research)',          sublabel:'การนำข้อมูลวิชาการมาใช้ในการรักษา'},
+  {id:'overall',   label:'ภาพรวม (Overall)',             sublabel:'ผลการปฏิบัติงานในภาพรวม'},
+];
+function getDomainsForRotation(rotId){return DEFAULT_DOMAINS;}
+
+// ═══════════════════════════════════════════════════════
+//  PEDIATRIC ASSESSMENT FORM DEFINITIONS
+// ═══════════════════════════════════════════════════════
+const PED_FORMS={
+  cbd:{
+    id:'cbd', label:'Case-Based Discussion', abbr:'CBD',
+    epa:['EPA 3 — Common injuries in Children','EPA 5 — Common Pediatric Orthopedic Problems'],
+    settings:['OPD','IPD','A&E','Case conference'],
+    fields:['diagnosis'],
+    domains:[
+      {id:'clinical', label:'Clinical assessment', desc:'การรวบรวมข้อมูลจากการประวัติ การตรวจร่างกาย เพื่อการวินิจฉัยที่เหมาะสม'},
+      {id:'investigation', label:'Investigation', desc:'การวางแผนส่งตรวจเพื่อการวินิจฉัยและรักษาที่เหมาะสม และการแปรผลที่ถูกต้อง'},
+      {id:'management', label:'Management', desc:'การวางแผนการรักษาที่เหมาะสม'},
+      {id:'critical', label:'Critical thinking & clinical reasoning', desc:'มีการคิดวิเคราะห์ที่เป็นระบบและเป็นเหตุเป็นผลที่ถูกต้อง มีการใช้หลักฐานเชิงประจักษ์มาประยุกต์ใช้'},
+    ],
+    levels:[
+      {l:'L1',desc:'มีความรู้พื้นฐานเกี่ยวกับปัญหาผู้ป่วย'},
+      {l:'L2',desc:'สามารถซักประวัติ ตรวจร่างกาย และส่งตรวจเพื่อการวินิจฉัยได้อย่างเหมาะสม ให้การวินิจฉัยปัญหาผู้ป่วยได้อย่างถูกต้อง'},
+      {l:'L3',desc:'วางแผนการรักษาผู้ป่วยได้อย่างถูกต้อง อธิบายการรักษาได้ทั้งหมดรวมถึงวิธีการผ่าตัด การดูแลรักษาต่อเนื่องและการฟื้นฟู'},
+      {l:'L4',desc:'บอกการเปลี่ยนแปลงวิธีการรักษาได้หากมีสถานการณ์เปลี่ยนแปลง'},
+    ]
+  },
+  minicex:{
+    id:'minicex', label:'Mini-CEX', abbr:'Mini-CEX',
+    epa:['EPA 7 — Providing perioperative evaluation and care for Pediatric Orthopedic patients'],
+    settings:['IPD','Case conference'],
+    fields:['diagnosis','operation'],
+    domains:[
+      {id:'clinical', label:'Clinical assessment', desc:'การรวบรวมข้อมูลจากการประวัติ การตรวจร่างกาย เพื่อการวินิจฉัยที่เหมาะสม'},
+      {id:'investigation', label:'Investigation', desc:'การวางแผนส่งตรวจเพื่อการวินิจฉัยและรักษาที่เหมาะสม และการแปรผลที่ถูกต้อง'},
+      {id:'management', label:'Management', desc:'การวางแผนการรักษาที่เหมาะสม รวมถึงการบิหารจัดการให้เกิดการผ่าตัดที่มีประสิทธิผล มีการคิดวิเคราะห์ที่เป็นระบบ'},
+      {id:'communication', label:'Communications & attitudes', desc:'การให้ข้อมูลที่เหมาะสม เพียงพอต่อผู้ปกครองหรือญาติที่ดูแล เพื่อการดูแลรักษาที่เหมาะสมในระยะก่อนและหลังการผ่าตัด ด้วยท่าทีที่เหมาะสม'},
+    ],
+    levels:[
+      {l:'L1',desc:'มีความรู้ในการซักประวัติ ตรวจร่างกาย การวินิจฉัยและแนวทางในการรักษา และเข้าร่วมการปฏิบัติงานกับอาจารย์'},
+      {l:'L2',desc:'สามารถทำตามขั้นตอนได้โดยปฏิบัติงานร่วมกับอาจารย์'},
+      {l:'L3',desc:'สามารถทำตามขั้นตอนได้เอง และอาจารย์มาตรวจสอบภายหลัง'},
+      {l:'L4',desc:'สามารถทำตามขั้นตอนได้เอง และปรึกษาอาจารย์เมื่อมีปัญหา (ในการปฏิบัติจริงหากทำไม่ได้จะเป็น level 3)'},
+    ]
+  },
+  pba:{
+    id:'pba', label:'Procedure-Based Assessment', abbr:'PBA',
+    epa:['EPA 3 — Common injuries in Children'],
+    settings:[],
+    fields:['diagnosis','procedure'],
+    domains:[
+      {id:'consent', label:'Consent & communication', desc:'การให้ข้อมูลเกี่ยวกับการทำหัตถการที่เหมาะสมเพียงพอต่อการขอความยินยอม การใช้ภาษาที่เหมาะสม และมีผู้ป่วยเป็นศูนย์กลาง'},
+      {id:'planning', label:'Preoperative / procedure planning', desc:'การระบุข้อบ่งชี้ ข้อห้ามหรือข้อจำกัดในการทำหัตถการ การส่งตรวจที่จำเป็นต่อการทำหัตถการที่ถูกต้อง โดยใช้การวิเคราะห์และหลักฐานเชิงประจักษ์ที่เหมาะสม'},
+      {id:'approach', label:'Surgical / procedure approach', desc:'การจัดท่าในการทำหัตถการ การเลือก approach / วิธีการทำหัตถการที่เหมาะสม'},
+      {id:'technique', label:'Surgical / procedure technique', desc:'การทำตามขั้นตอนการผ่าตัดหรือหัตถการที่ถูกต้องและปลอดภัย'},
+      {id:'postop', label:'Postoperative / post-procedure management', desc:'วางแผนในการดูแลหลังการผ่าตัดหรือหัตถการได้สมบูรณ์'},
+    ],
+    levelsPreop:[
+      {l:'L1',desc:'อธิบายหัตถการและขั้นตอนการทำได้'},
+      {l:'L2',desc:'อธิบายปัญหาที่เกิดระหว่างการทำหัตถการได้'},
+      {l:'L3',desc:'อธิบายวิธีการแก้ปัญหาระหว่างการทำหัตถการได้'},
+    ],
+    levelsScene:[
+      {l:'ไม่ผ่าน 1',desc:'ไม่สามารถทำตามขั้นตอนที่อธิบาย'},
+      {l:'ไม่ผ่าน 2',desc:'เกิดปัญหาแต่ไม่สามารถบอกได้'},
+      {l:'ไม่ผ่าน 3',desc:'เกิดปัญหาแล้วไม่สามารถแก้ไขได้'},
+    ]
+  },
+  dops:{
+    id:'dops', label:'DOPS', abbr:'DOPS',
+    epa:['EPA 5 — Common Pediatric Orthopedic Problems'],
+    settings:['OPD','IPD','A&E'],
+    fields:['diagnosis','procedure'],
+    domains:[
+      {id:'anatomy', label:'Indications, relevant anatomy & techniques', desc:'การบอกข้อบ่งชี้ ข้อห้าม ข้อควรระวัง อธิบายกายวิภาคที่สัมพันธ์ต่อการทำหัตถการ และขั้นตอนการทำหัตถการตามลำดับ'},
+      {id:'consent', label:'Consent & communications', desc:'การให้ข้อมูลเกี่ยวกับการทำหัตถการที่เหมาะสมเพียงพอต่อการขอความยินยอม การใช้ภาษาที่เหมาะสม และมีผู้ป่วยเป็นศูนย์กลาง'},
+      {id:'prepare', label:'Preparing equipment & patient', desc:'การเตรียมอุปกรณ์ และการเตรียมผู้ป่วยก่อนการทำหัตถการได้เหมาะสม'},
+      {id:'technique', label:'Procedure technique', desc:'การทำตามขั้นตอนของหัตถการที่ถูกต้องและปลอดภัย รวมถึงการใช้การระงับปวดเฉพาะที่และเทคนิคการปลอดเชื้อในหัตถการที่ต้องมี'},
+      {id:'postcare', label:'Post-procedure care & follow up', desc:'บอกการดูแลหลังหัตถการได้สมบูรณ์และการนัดติดตามอาการที่เหมาะสม'},
+    ],
+    levels:[
+      {l:'L2',desc:'ปฏิบัติเองโดยมีอาจารย์กำกับโดยตรง (มีอาจารย์อยู่ด้วยตลอดเวลา)'},
+      {l:'L3',desc:'ปฏิบัติเองโดยมีอาจารย์อยู่ในพื้นที่เดียวกัน (อาจารย์ไม่ได้อยู่ด้วยตลอดเวลา)'},
+      {l:'L4',desc:'สามารถทำได้ด้วยตนเองและปรึกษาอาจารย์เมื่อมีปัญหาหรือข้อสงสัย'},
+    ]
+  },
+  peer:{
+    id:'peer', label:'Peer / Patient 360°', abbr:'Peer',
+    epa:[],
+    settings:[],
+    fields:[],
+    raterTypes:['พยาบาล','บุคลากรการแพทย์อื่นๆ','ผู้ป่วยและญาติ'],
+    categories:[
+      {cat:'คุณธรรม จริยธรรมและความเป็นมืออาชีพ', items:[
+        'ปฏิบัติงานโดยมีผู้ป่วยเป็นศูนย์กลาง เอื้ออาทร',
+        'เคารพในศักดิ์ศรีในความเป็นมนุษย์ของทุกคน',
+        'ตรงต่อเวลา',
+        'แต่งกายเหมาะสมต่อวิชาชีพ',
+        'ประเมินขีดความสามารถและยอมรับในข้อผิดพลาดของตนเอง',
+      ]},
+      {cat:'ทักษะระหว่างบุคคลและการสื่อสาร', items:[
+        'การมีมนุษยสัมพันธ์ ปฏิสัมพันธ์ที่ดี',
+        'ทักษะการสื่อสารกับเพื่อนร่วมงาน',
+        'ทักษะการสื่อสารกับผู้ป่วยและญาติ',
+      ]},
+    ]
+  }
+};
+const PED_FORM_KEYS=['cbd','minicex','pba','dops','peer'];
+
+// ═══════════════════════════════════════════════════════
+//  SPORTS ASSESSMENT FORM DEFINITIONS (scale 1-9)
+// ═══════════════════════════════════════════════════════
+const SPORTS_FORMS={
+  minicex:{
+    id:'minicex', label:'Mini-CEX', abbr:'Mini-CEX',
+    scale:9,
+    settings:['ผู้ป่วยนอก','ผู้ป่วยใน','ห้องฉุกเฉิน'],
+    fields:['patientAge','patientSex','diagnosis','difficulty','timesTrainee','timesEvaluator'],
+    domains:[
+      {id:'interview',  label:'1. ทักษะการสัมภาษณ์ผู้ป่วย'},
+      {id:'physical',   label:'2. ทักษะการตรวจร่างกาย'},
+      {id:'profession', label:'3. คุณลักษณะวิชาชีพแพทย์'},
+      {id:'plan',       label:'4. การวางแผนและการตัดสินใจในการดูแลผู้ป่วย'},
+      {id:'counsel',    label:'5. ทักษะการให้คำแนะนำหรือคำปรึกษาแก่ผู้ป่วย'},
+      {id:'time',       label:'6. การบริหารเวลา'},
+      {id:'overall',    label:'สมรรถนะทางคลินิกโดยภาพรวม', isSummary:true},
+    ]
+  },
+  cbd:{
+    id:'cbd', label:'Case-based Discussion', abbr:'CbD',
+    scale:9,
+    settings:['ผู้ป่วยนอก','ผู้ป่วยใน','ห้องฉุกเฉิน'],
+    fields:['patientAge','patientSex','diagnosis','difficulty','timesTrainee','timesEvaluator'],
+    domains:[
+      {id:'record',     label:'1. การบันทึกเวชระเบียน'},
+      {id:'history',    label:'2. ข้อมูลประวัติที่สำคัญของผู้ป่วย'},
+      {id:'physicalex', label:'3. ผลการตรวจร่างกายและการแปลผล'},
+      {id:'plan',       label:'4. วางแผนดูแลรักษาผู้ป่วย'},
+      {id:'followup',   label:'5. การติดตามผลการรักษา และการวางแผนเพื่อดูแลรักษาต่อเนื่อง/ระยะยาว'},
+      {id:'profession', label:'6. คุณลักษณะวิชาชีพแพทย์'},
+      {id:'overall',    label:'สมรรถนะในการตัดสินใจโดยภาพรวม', isSummary:true},
+    ]
+  },
+  dops:{
+    id:'dops', label:'DOPS', abbr:'DOPS',
+    scale:9,
+    settings:[],
+    fields:['procedure','difficulty','timesTrainee','timesEvaluator'],
+    domains:[
+      {id:'anatomy',    label:'1. การบอกข้อบ่งชี้ กายวิภาคที่เกี่ยวข้อง และเทคนิคในการทำหัตถการ'},
+      {id:'consent',    label:'2. การขอความยินยอมจากผู้ป่วย'},
+      {id:'prepare',    label:'3. การเตรียมผู้ป่วยและอุปกรณ์ก่อนการทำหัตถการ'},
+      {id:'analgesia',  label:'4. การใช้ยาระงับความรู้สึกเฉพาะที่'},
+      {id:'aseptic',    label:'5. เทคนิคปลอดเชื้อ'},
+      {id:'technique',  label:'6. ขั้นตอนและเทคนิคการทำหัตถการ'},
+      {id:'problem',    label:'7. การแก้ปัญหาเฉพาะหน้า และการร้องขอความช่วยเหลือได้อย่างเหมาะสม'},
+      {id:'postcare',   label:'8. การดูแลหลังทำหัตถการ'},
+      {id:'comm',       label:'9. ทักษะการสื่อสาร'},
+      {id:'profession', label:'10. คุณลักษณะวิชาชีพแพทย์'},
+      {id:'overall',    label:'ความสามารถในการทำหัตถการโดยภาพรวม', isSummary:true},
+    ]
+  },
+  pba:{
+    id:'pba', label:'PBA', abbr:'PBA',
+    scale:9,
+    settings:[],
+    fields:['procedure','difficulty','timesTrainee','timesEvaluator'],
+    domains:[
+      {id:'consent',    label:'1. การขอความยินยอมจากผู้ป่วยในการทำผ่าตัด'},
+      {id:'preplan',    label:'2. การวางแผนก่อนการผ่าตัด'},
+      {id:'prepare',    label:'3. การเตรียมก่อนการผ่าตัด'},
+      {id:'incision',   label:'4. การเปิดและปิดแผลผ่าตัด'},
+      {id:'technique',  label:'5. ขั้นตอนและเทคนิคการผ่าตัด'},
+      {id:'postop',     label:'6. การดูแลหลังการผ่าตัด'},
+      {id:'overall',    label:'ความสามารถในการทำผ่าตัดโดยภาพรวม', isSummary:true},
+    ]
+  }
+};
+const SPORTS_FORM_KEYS=['minicex','cbd','dops','pba'];
+
+// ═══════════════════════════════════════════════════════
+//  SPINE ASSESSMENT FORM DEFINITIONS (scale 0-4)
+//  0=Not enough evidence, 1=Below expectation,
+//  2=Borderline, 3=Meet expectation, 4=Exceeding expectation
+// ═══════════════════════════════════════════════════════
+const SPINE_SCORE_LABELS={0:'Not enough evidence',1:'Below expectation',2:'Borderline',3:'Meet expectation',4:'Exceeding expectation'};
+const SPINE_LEVELS=[
+  {l:'L1',desc:'Knows and Know how'},
+  {l:'L2',desc:'Shows how'},
+  {l:'L3',desc:'Does under supervision'},
+  {l:'L4',desc:'Does alone'}
+];
+
+const SPINE_FORMS={
+  minicex:{
+    id:'minicex', label:'Mini-CEX', abbr:'Mini-CEX',
+    scale:4, setting:'OPD / Ward round (MPL≥3 all)',
+    fields:['diagnosis','hn'],
+    domains:[
+      {id:'d1', label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation — การซักประวัติและการตรวจร่างกาย'},
+        {id:'d1_2', label:'1.2 Plan of management', isHeader:true, sub:[
+          {id:'d1_2_1', label:'1.2.1 การส่ง investigation'},
+          {id:'d1_2_2', label:'1.2.2 สามารถวิเคราะห์และสรุปปัญหาและข้อบ่งชี้ในการรักษา'},
+        ]},
+      ]},
+      {id:'d2', label:'2. Demonstration of appropriate diagnosis and management', isHeader:true, sub:[
+        {id:'d2_1', label:'2.1 การวินิจฉัย'},
+        {id:'d2_2', label:'2.2 การวินิจฉัยแยกโรค'},
+        {id:'d2_3', label:'2.3 การเลือกแนวทางการรักษาที่เหมาะสม'},
+        {id:'d2_4', label:'2.4 การบันทึกเวชระเบียน'},
+      ]},
+      {id:'d3', label:'3. Communication skills', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 การอภิปรายปัญหากับผู้ป่วยและญาติ รวมถึงการชี้แจงขั้นตอนการรักษา'},
+        {id:'d3_2', label:'3.2 การบอกพยากรณ์โรค'},
+      ]},
+      {id:'d4', label:'4. Professionalism / Consideration of patient'},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  cbd:{
+    id:'cbd', label:'CBD', abbr:'CBD',
+    scale:4, setting:'Case Conference (MPL≥3 all)',
+    fields:['diagnosis'],
+    domains:[
+      {id:'d1', label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation — การซักประวัติและการตรวจร่างกาย'},
+        {id:'d1_2', label:'1.2 Plan of management', isHeader:true, sub:[
+          {id:'d1_2_1', label:'1.2.1 การส่ง investigation'},
+          {id:'d1_2_2', label:'1.2.2 สามารถสรุปปัญหาและข้อบ่งชี้ในการรักษา'},
+        ]},
+      ]},
+      {id:'d2', label:'2. Demonstration of appropriate pre-procedure preparation', isHeader:true, sub:[
+        {id:'d2_1', label:'2.1 การเตรียมผู้ป่วยก่อนผ่าตัด'},
+        {id:'d2_2', label:'2.2 การเตรียมทีมผ่าตัดและเครื่องมือ'},
+      ]},
+      {id:'d3', label:'3. Post procedure management', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 การสังเกตอาการและติดตามภาวะแทรกซ้อนหลังผ่าตัด'},
+        {id:'d3_2', label:'3.2 การวางแผนในการดูแลผู้ป่วยต่อเนื่อง'},
+      ]},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  pba:{
+    id:'pba', label:'PBA', abbr:'PBA',
+    scale:4, setting:'Admission ward round, Pre-operative conference & OR (MPL≥3 all)',
+    fields:['diagnosis','procedure'],
+    domains:[
+      {id:'d1', label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation — การซักประวัติและการตรวจร่างกาย'},
+        {id:'d1_2', label:'1.2 Plan of management', isHeader:true, sub:[
+          {id:'d1_2_1', label:'1.2.1 การส่ง investigation'},
+          {id:'d1_2_2', label:'1.2.2 สามารถสรุปปัญหาและข้อบ่งชี้ในการรักษา'},
+        ]},
+      ]},
+      {id:'d2', label:'2. Informed consent — ชี้แจงข้อบ่งชี้และภาวะแทรกซ้อนที่อาจเกิดขึ้นจากการผ่าตัด'},
+      {id:'d3', label:'3. Demonstration of appropriate pre-procedure preparation', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 การเตรียมผู้ป่วยก่อนผ่าตัด'},
+        {id:'d3_2', label:'3.2 การเตรียมทีมผ่าตัดและเครื่องมือ'},
+      ]},
+      {id:'d4', label:'4. Procedure technique', isHeader:true, sub:[
+        {id:'d4_1', label:'4.1 Aseptic technique'},
+        {id:'d4_2', label:'4.2 การวางแผนการผ่าตัด (incision and surgical approach)'},
+        {id:'d4_3', label:'4.3 ความสามารถในการทำหัตถการและการแก้ไขปัญหาเฉพาะหน้า'},
+        {id:'d4_4', label:'4.4 การป้องกันภาวะแทรกซ้อน'},
+      ]},
+      {id:'d5', label:'5. Post procedure management', isHeader:true, sub:[
+        {id:'d5_1', label:'5.1 การสังเกตอาการและติดตามภาวะแทรกซ้อนหลังผ่าตัด'},
+        {id:'d5_2', label:'5.2 การดูแลแผลผ่าตัดและการให้คำแนะนำด้านกายภาพบำบัด'},
+        {id:'d5_3', label:'5.3 การวางแผนในการดูแลผู้ป่วยต่อเนื่อง'},
+        {id:'d5_4', label:'5.4 การบันทึกเวชระเบียน'},
+      ]},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  dops:{
+    id:'dops', label:'DOPS', abbr:'DOPS',
+    scale:'su', // S/U checklist
+    setting:'Operative Procedure (MPL≥3 all)',
+    fields:['diagnosis'],
+    procedure:'Lumbar Decompressive Laminectomy',
+    items:[
+      'Pre-operative evaluation',
+      'Instrumentation preparation',
+      'Universal precaution',
+      'Adequate pain management',
+      'Urinary catheter',
+      'Proper skin incision',
+      'Meticulous soft tissue dissection',
+      'Homeostasis',
+      'Nerve root and dural sac identified and exploration',
+      'Radivac drain placement',
+      'Skin closure',
+      'Use of fluoroscope',
+      'Peri-operative complication assessment',
+      'Chart record',
+      'Postoperative rehabilitation',
+      'Informed consent',
+      'Communication skill',
+      'Professionalism',
+    ]
+  }
+};
+const SPINE_FORM_KEYS=['minicex','cbd','pba','dops'];
+
+// ═══════════════════════════════════════════════════════
+//  FOOT & ANKLE ASSESSMENT FORM DEFINITIONS
+//  CBD: scale 0-4  |  DOPS: S/U checklist (2 procedures)
+// ═══════════════════════════════════════════════════════
+const FOOT_ANKLE_FORMS={
+  cbd:{
+    id:'cbd', label:'CBD', abbr:'CBD',
+    scale:4,
+    setting:'Case Conference (MPL≥3 all)',
+    fields:['diagnosis'],
+    domains:[
+      {id:'d1', label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation — การซักประวัติและการตรวจร่างกาย'},
+        {id:'d1_2', label:'1.2 Plan of management', isHeader:true, sub:[
+          {id:'d1_2_1', label:'1.2.1 การส่ง investigation'},
+          {id:'d1_2_2', label:'1.2.2 สามารถสรุปปัญหาและข้อบ่งชี้ในการรักษา'},
+        ]},
+      ]},
+      {id:'d2', label:'2. Demonstration of appropriate pre-procedure preparation', isHeader:true, sub:[
+        {id:'d2_1', label:'2.1 การเตรียมผู้ป่วยก่อนผ่าตัด'},
+        {id:'d2_2', label:'2.2 การเตรียมทีมผ่าตัดและเครื่องมือ'},
+      ]},
+      {id:'d3', label:'3. Post procedure management', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 การสังเกตอาการและติดตามภาวะแทรกซ้อนหลังผ่าตัด'},
+        {id:'d3_2', label:'3.2 การวางแผนในการดูแลผู้ป่วยต่อเนื่อง'},
+      ]},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  dops_arthro:{
+    id:'dops_arthro', label:'DOPS: Ankle Arthrocentesis', abbr:'DOPS-Arthro',
+    scale:'su',
+    setting:'Case Conference (MPL≥3 all)',
+    fields:['diagnosis'],
+    procedure:'Ankle arthrocentesis',
+    items:[
+      '1. Explain procedure & indication and inform consent',
+      '2. Position is appropriate',
+      '3. Identify anatomical landmark (joint line, Medial malleolus, Tibialis anterior)',
+      '4. Appropriate prepare the syringe, needles, and other equipment',
+      '5. Proper aseptic technique procedure',
+      '6. Select the proper approach to puncture for ankle joint',
+      '7. Appropriate gently hand skill',
+      '8. Complete the objective of the procedure',
+    ]
+  },
+  dops_orif:{
+    id:'dops_orif', label:'DOPS: Ankle ORIF', abbr:'DOPS-ORIF',
+    scale:'su',
+    setting:'Case Conference (MPL≥3 all)',
+    fields:['diagnosis'],
+    procedure:'Ankle ORIF',
+    items:[
+      '1. Pre-operative planning evaluation',
+      '2. Skin incision planning comply with definite surgical incision',
+      '3. Appropriate surgical approach',
+      '4. Appropriate reduction of the fracture',
+      '5. Appropriate technique for checking the reduction',
+      '6. Perform good fixation technique',
+      '7. Appropriate technique for checking the syndesmosis and deltoid ligament status',
+      '8. If syndesmosis was injury, appropriate reduction and fixation of syndesmosis',
+      '9. Appropriate determination of post-operative care',
+    ]
+  }
+};
+const FOOT_ANKLE_FORM_KEYS=['cbd','dops_arthro','dops_orif'];
+
+// ═══════════════════════════════════════════════════════
+//  HAND ASSESSMENT FORM DEFINITIONS (scale 0-4 + DOPS S/U)
+// ═══════════════════════════════════════════════════════
+const HAND_FORMS={
+  minicex:{
+    id:'minicex', label:'Mini-CEX', abbr:'Mini-CEX',
+    scale:4, setting:'OPD / Ward (MPL≥3 all)',
+    fields:['diagnosis','hn'], hasAcuity:true,
+    domains:[
+      {id:'d1', label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation — การซักประวัติและตรวจร่างกายได้ถูกต้องและเหมาะสม'},
+        {id:'d1_2', label:'1.2 Plan of management', isHeader:true, sub:[
+          {id:'d1_2_1', label:'1.2.1 การส่ง Investigation อย่างเหมาะสมและคุ้มค่า'},
+          {id:'d1_2_2', label:'1.2.2 สามารถสรุปปัญหา และข้อบ่งชี้ ในการรักษา'},
+        ]},
+      ]},
+      {id:'d2', label:'2. Demonstration of appropriate management', isHeader:true, sub:[
+        {id:'d2_1', label:'2.1 การวินิจฉัย'},
+        {id:'d2_2', label:'2.2 การเลือกแนวทางการรักษาที่เหมาะสม'},
+        {id:'d2_3', label:'2.3 การบันทึกเวชระเบียน'},
+      ]},
+      {id:'d6', label:'6. Communication skills', isHeader:true, sub:[
+        {id:'d6_1', label:'6.1 การอภิปรายปัญหากับผู้ป่วยและญาติ รวมถึงการชี้แจงขั้นตอนการรักษา'},
+        {id:'d6_2', label:'6.2 Prognosis advisements'},
+      ]},
+      {id:'d7', label:'7. Consideration of patient / Professionalism'},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  cbd:{
+    id:'cbd', label:'CBD', abbr:'CBD',
+    scale:4, setting:'Case Conference (MPL≥3)',
+    fields:['diagnosis'], hasAcuity:false,
+    domains:[
+      {id:'d1', label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation — การซักประวัติและตรวจร่างกาย'},
+        {id:'d1_2', label:'1.2 Plan of management', isHeader:true, sub:[
+          {id:'d1_2_1', label:'1.2.1 การส่ง Investigation'},
+          {id:'d1_2_2', label:'1.2.2 สามารถสรุปปัญหา และข้อบ่งชี้ ในการผ่าตัด'},
+        ]},
+      ]},
+      {id:'d3', label:'3. Demonstration of appropriate pre-procedure preparation', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 การเตรียมผู้ป่วยก่อนผ่าตัด'},
+        {id:'d3_2', label:'3.2 การเตรียมทีมผ่าตัดและเครื่องมือ'},
+      ]},
+      {id:'d5', label:'5. Post procedure management', isHeader:true, sub:[
+        {id:'d5_1', label:'5.1 การสังเกตอาการและติดตามภาวะแทรกซ้อนหลังผ่าตัด'},
+        {id:'d5_2', label:'5.2 การวางแผนในการดูแลผู้ป่วยต่อเนื่อง'},
+      ]},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  pba:{
+    id:'pba', label:'PBA', abbr:'PBA',
+    scale:4, setting:'Admission WR or Pre-op conf + OR (MPL≥3 all)',
+    fields:['diagnosis','procedure'], hasAcuity:true,
+    domains:[
+      {id:'d1', label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation — การซักประวัติและตรวจร่างกาย'},
+        {id:'d1_2', label:'1.2 Plan of management', isHeader:true, sub:[
+          {id:'d1_2_1', label:'1.2.1 การส่ง Investigation'},
+          {id:'d1_2_2', label:'1.2.2 สามารถสรุปปัญหา และข้อบ่งชี้ ในการรักษา'},
+        ]},
+      ]},
+      {id:'d2', label:'2. Informed consent', isHeader:true, sub:[
+        {id:'d2_1', label:'2.1 ชี้แจงข้อบ่งชี้และ ภาวะแทรกซ้อนที่อาจเกิดขึ้นจากการผ่าตัดต่อผู้ป่วย'},
+      ]},
+      {id:'d3', label:'3. Demonstration of appropriate pre-procedure preparation', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 การเตรียมผู้ป่วยก่อนผ่าตัด'},
+        {id:'d3_2', label:'3.2 การเตรียมทีมผ่าตัดและเครื่องมือ'},
+      ]},
+      {id:'d4', label:'4. Intra procedural technique', isHeader:true, sub:[
+        {id:'d4_1', label:'4.1 Aseptic technique'},
+        {id:'d4_2', label:'4.2 การวางแผนการผ่าตัด (Surgical approach / incision)'},
+        {id:'d4_3', label:'4.3 ความสามารถในการทำหัตถการและการแก้ไขปัญหาเฉพาะหน้า'},
+        {id:'d4_4', label:'4.4 การป้องกันภาวะแทรกซ้อน'},
+      ]},
+      {id:'d5', label:'5. Post procedure management', isHeader:true, sub:[
+        {id:'d5_1', label:'5.1 การสังเกตอาการและติดตามภาวะแทรกซ้อนหลังผ่าตัด'},
+        {id:'d5_2', label:'5.2 การดูแลแผลผ่าตัดและการให้คำแนะนำด้านกายภาพบำบัด'},
+        {id:'d5_3', label:'5.3 การวางแผนในการดูแลผู้ป่วยต่อเนื่อง'},
+        {id:'d5_4', label:'5.4 การบันทึกเวชระเบียน'},
+      ]},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  dops_cts:{
+    id:'dops_cts', label:'DOPS: CTS Release', abbr:'DOPS-CTS',
+    scale:'su',
+    setting:'OR minor (เกณฑ์ผ่านคือได้คะแนน S ตั้งแต่ 6 ข้อขึ้นไป)',
+    fields:['diagnosis'],
+    procedure:'CTS release',
+    passThreshold:6,
+    items:[
+      '1. Local anesthesia',
+      '2. Planning of the surgical incision correctly',
+      '3. Incise the skin meticulously & prevent palmar cutaneous nerve from injury',
+      '4. Good skin handle technique & identified palmar fascia',
+      '5. Incise the flexor retinaculum with concerning of median nerve and tendon injuries',
+      '6. Checking for completely release flexor retinaculum',
+      '7. Complications concern',
+      '8. Post-operative care and advice',
+    ]
+  },
+  dops_injection:{
+    id:'dops_injection', label:'DOPS: Local Injection', abbr:'DOPS-Injection',
+    scale:'su',
+    setting:'OPD (เกณฑ์ผ่านคือได้คะแนน S ≥ 4 ข้อ)',
+    fields:['diagnosis','hn'],
+    procedure:'Local injection of tendinopathy',
+    passThreshold:4,
+    items:[
+      '1. Anatomical landmark was identified by palpation',
+      '2. Needle was introduced through skin in correct direction',
+      '3. Make sure the needle doesn\'t impinge in the tendon',
+      '4. Injection after dramatic relief resistance / good technique and procedure',
+      '5. Ask patient, palpate the wave of fluid through the tendon sheath',
+      '6. Post-injection advice',
+    ]
+  }
+};
+const HAND_FORM_KEYS=['minicex','cbd','pba','dops_cts','dops_injection'];
+
+// ═══════════════════════════════════════════════════════
+//  HIP & KNEE ASSESSMENT FORM DEFINITIONS (scale 0-4 + DOPS S/U)
+// ═══════════════════════════════════════════════════════
+const HK_SCORE_LABELS={
+  0:'Unable to perform, need improvement',
+  1:'Unable to perform with close observation',
+  2:'Unable to perform, able to give concept',
+  3:'Able to perform, needs suggestion',
+  4:'Completely perform'
+};
+
+const HK_FORMS={
+  minicex:{
+    id:'minicex', label:'Mini-CEX', abbr:'Mini-CEX',
+    scale:4,
+    setting:'OPD / Ward (MPL=22)',
+    fields:['diagnosis','hn'],
+    scoreLabels: HK_SCORE_LABELS,
+    domains:[
+      {id:'patient_eval',  label:'1. Patient evaluation (history taking / physical exam / summary problems / investigations / plan of management)'},
+      {id:'diagnosis',     label:'2. Diagnosis & management (primary Dx / differential Dx / treatment / medical record)'},
+      {id:'communication', label:'3. Communication skills (patient counseling / education / prognosis)'},
+      {id:'professionalism',label:'4. Professionalism / Consideration of patient'},
+      {id:'overall',       label:'Overall performance', isOverall:true},
+    ]
+  },
+  cbd:{
+    id:'cbd', label:'CBD', abbr:'CBD',
+    scale:4,
+    setting:'Case conference (MPL=10 สำหรับ PGY1-2 / MPL=16 สำหรับ PGY3-4)',
+    fields:['diagnosis','hn'],
+    scoreLabels: HK_SCORE_LABELS,
+    hasPGY:true,
+    // Domain structure ตาม PDF: Pre-op eval + HIP section + KNEE section
+    preop:[
+      {id:'preop_1_1', label:'1.1 Summarize patient problems'},
+      {id:'preop_1_2', label:'1.2 Point out the concerning problems'},
+      {id:'preop_1_3', label:'1.3 Select the appropriate type of prosthesis'},
+    ],
+    hip:[
+      {id:'hip_2_1', label:'2.1 Selected and provide the proper radiography'},
+      {id:'hip_2_2', label:'2.2 Demonstrate the parameters for templating at stem/cup'},
+      {id:'hip_2_3', label:'2.3 Demonstrate center of rotation, acetabular coverage, and bone loss issue'},
+      {id:'hip_2_4', label:'2.4 Demonstrate the "how-to" template the proper size and position (stem/cup)'},
+      {id:'hip_2_5', label:'2.5 Identify the precaution and clinically relevant'},
+    ],
+    knee:[
+      {id:'knee_2_1', label:'2.1 Selected and provide the proper radiography'},
+      {id:'knee_2_2', label:'2.2 Demonstrate the parameter for femoral/tibial templating'},
+      {id:'knee_2_3', label:'2.3 Demonstrate distal femoral and tibial angle and bone cut'},
+      {id:'knee_2_4', label:'2.4 Demonstrate the "how-to" template the proper size and position (femur/tibia)'},
+      {id:'knee_2_5', label:'2.5 Identify the precaution and clinically relevant'},
+    ]
+  },
+  pba:{
+    id:'pba', label:'PBA', abbr:'PBA',
+    scale:4,
+    setting:'Admission WR or Pre-op conf + OR (MPL=36)',
+    fields:['diagnosis','hn','procedure'],
+    scoreLabels: HK_SCORE_LABELS,
+    hasPGY:true,
+    domains:[
+      {id:'patient_eval',  label:'1. Patient evaluation (history / exam / investigation / critical problems / multidisciplinary consult)'},
+      {id:'plan_tx',       label:'2. Plan of treatment (surgical approach / prosthesis selection)'},
+      {id:'special_cons',  label:'3. Special consideration (co-morbidity / case-specific)'},
+      {id:'preop_mgmt',    label:'4. Pre-procedural management (patient optimization / confirm prostheses & instruments)'},
+      {id:'intraop',       label:'5. Intra-operative management (peri-op / identify intra-op complications)'},
+      {id:'postop',        label:'6. Post-procedural management (pain/VTE / complications / rehab / medical record / discharge planning)'},
+      {id:'communication', label:'7. Communication skills (pre-op counseling / effective communication)'},
+      {id:'professionalism',label:'8. Professionalism'},
+      {id:'overall',       label:'Overall performance', isOverall:true},
+    ]
+  },
+  dops:{
+    id:'dops', label:'DOPS', abbr:'DOPS',
+    scale:'su',
+    setting:'MPL = S (ทุก PGY)',
+    fields:['diagnosis','hn'],
+    // Each PGY has its own procedure + items
+    pgyForms:{
+      'PGY-2':{
+        procedure:'Aspiration or Injection for Knee Joint',
+        items:[
+          {label:'1. Identify indications for the procedure'},
+          {label:'2. Inform consent and patient counseling', isHeader:true, sub:[
+            '2.1 Reason & advantage',
+            '2.2 Adverse reactions',
+            '2.3 Post-procedure care',
+          ]},
+          {label:'3. Appropriate prepare the syringe, needles, and other equipment'},
+          {label:'4. Proper aseptic technique procedure'},
+          {label:'5. Select the proper approach to puncture for knee joint'},
+          {label:'6. Appropriate gently hand skill'},
+          {label:'7. Complete the objective of the procedure'},
+        ]
+      },
+      'PGY-3':{
+        procedure:'Surgical Wound Closure for THA/TKA',
+        items:[
+          {label:'1. Identify the anatomy of structure, fascial layer, and soft tissue'},
+          {label:'2. Demonstrate the sutures and technique for each layer', isHeader:true, sub:[
+            '2.1 Sutures material & sizes',
+            '2.2 Needle-holder & forceps',
+          ]},
+          {label:'3. Perform wound closure with meticulous technique'},
+          {label:'4. Demonstrate the gently soft tissue handle and less trauma'},
+          {label:'5. Perform a proper ligate and surgical knot'},
+          {label:'6. Complete the objective of water-tight technique for wound closure'},
+        ]
+      },
+      'PGY-4':{
+        procedure:'Hands-on Assistance for Hemiarthroplasty in FNFx',
+        items:[
+          {label:'1. Summary patient problems and indications for surgery'},
+          {label:'2. Patient position and operative table preparation'},
+          {label:'3. Provide the step of surgical approach and anatomy'},
+          {label:'4. Request and utilize the surgical instruments without suggestion'},
+          {label:'5. Assist the surgery according to the instructions'},
+          {label:'6. Assist surgery with safe and meticulous techniques'},
+          {label:'7. Successfully perform hip reduction with proper maneuver'},
+          {label:'8. Overall performance'},
+        ]
+      }
+    }
+  }
+};
+const HK_FORM_KEYS=['minicex','cbd','pba','dops'];
+
+// ═══════════════════════════════════════════════════════
+//  TRAUMA ASSESSMENT FORM DEFINITIONS (scale 0-4 + DOPS S/U)
+// ═══════════════════════════════════════════════════════
+const TRAUMA_FORMS={
+  minicex:{
+    id:'minicex', label:'Mini-CEX', abbr:'Mini-CEX',
+    scale:4, setting:'OPD / Ward round (MPL≥3 all)',
+    fields:['diagnosis','hn'], hasAcuity:true,
+    domains:[
+      {id:'d1', label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation \u2014 \u0e01\u0e32\u0e23\u0e0b\u0e31\u0e01\u0e1b\u0e23\u0e30\u0e27\u0e31\u0e15\u0e34\u0e41\u0e25\u0e30\u0e01\u0e32\u0e23\u0e15\u0e23\u0e27\u0e08\u0e23\u0e48\u0e32\u0e07\u0e01\u0e32\u0e22'},
+        {id:'d1_2', label:'1.2 Plan of management', isHeader:true, sub:[
+          {id:'d1_2_1', label:'1.2.1 \u0e01\u0e32\u0e23\u0e2a\u0e48\u0e07 investigation'},
+          {id:'d1_2_2', label:'1.2.2 \u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e27\u0e34\u0e40\u0e04\u0e23\u0e32\u0e30\u0e2b\u0e4c\u0e41\u0e25\u0e30\u0e2a\u0e23\u0e38\u0e1b\u0e1b\u0e31\u0e0d\u0e2b\u0e32\u0e41\u0e25\u0e30\u0e02\u0e49\u0e2d\u0e1a\u0e48\u0e07\u0e0a\u0e35\u0e49\u0e43\u0e19\u0e01\u0e32\u0e23\u0e23\u0e31\u0e01\u0e29\u0e32'},
+        ]},
+      ]},
+      {id:'d2', label:'2. Demonstration of appropriate diagnosis and management', isHeader:true, sub:[
+        {id:'d2_1', label:'2.1 \u0e01\u0e32\u0e23\u0e27\u0e34\u0e19\u0e34\u0e08\u0e09\u0e31\u0e22'},
+        {id:'d2_2', label:'2.2 \u0e01\u0e32\u0e23\u0e27\u0e34\u0e19\u0e34\u0e08\u0e09\u0e31\u0e22\u0e41\u0e22\u0e01\u0e42\u0e23\u0e04'},
+        {id:'d2_3', label:'2.3 \u0e01\u0e32\u0e23\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e41\u0e19\u0e27\u0e17\u0e32\u0e07\u0e01\u0e32\u0e23\u0e23\u0e31\u0e01\u0e29\u0e32\u0e17\u0e35\u0e48\u0e40\u0e2b\u0e21\u0e32\u0e30\u0e2a\u0e21'},
+        {id:'d2_4', label:'2.4 \u0e01\u0e32\u0e23\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e40\u0e27\u0e0a\u0e23\u0e30\u0e40\u0e1a\u0e35\u0e22\u0e19'},
+      ]},
+      {id:'d3', label:'3. Communication skills', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 \u0e01\u0e32\u0e23\u0e2d\u0e20\u0e34\u0e1b\u0e23\u0e32\u0e22\u0e1b\u0e31\u0e0d\u0e2b\u0e32\u0e01\u0e31\u0e1a\u0e1c\u0e39\u0e49\u0e1b\u0e48\u0e27\u0e22\u0e41\u0e25\u0e30\u0e0d\u0e32\u0e15\u0e34 \u0e23\u0e27\u0e21\u0e16\u0e36\u0e07\u0e01\u0e32\u0e23\u0e0a\u0e35\u0e49\u0e41\u0e08\u0e07\u0e02\u0e31\u0e49\u0e19\u0e15\u0e2d\u0e19\u0e01\u0e32\u0e23\u0e23\u0e31\u0e01\u0e29\u0e32'},
+        {id:'d3_2', label:'3.2 \u0e01\u0e32\u0e23\u0e1a\u0e2d\u0e01\u0e1e\u0e22\u0e32\u0e01\u0e23\u0e13\u0e4c\u0e42\u0e23\u0e04'},
+      ]},
+      {id:'d4', label:'4. Professionalism / Consideration of patient'},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  cbd:{
+    id:'cbd', label:'CBD', abbr:'CBD',
+    scale:4, setting:'Case Conference (MPL\u22653 all)',
+    fields:['diagnosis'], hasAcuity:false,
+    domains:[
+      {id:'d1', label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation \u2014 \u0e01\u0e32\u0e23\u0e0b\u0e31\u0e01\u0e1b\u0e23\u0e30\u0e27\u0e31\u0e15\u0e34\u0e41\u0e25\u0e30\u0e01\u0e32\u0e23\u0e15\u0e23\u0e27\u0e08\u0e23\u0e48\u0e32\u0e07\u0e01\u0e32\u0e22'},
+        {id:'d1_2', label:'1.2 Plan of management', isHeader:true, sub:[
+          {id:'d1_2_1', label:'1.2.1 \u0e01\u0e32\u0e23\u0e2a\u0e48\u0e07 investigation'},
+          {id:'d1_2_2', label:'1.2.2 \u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e2a\u0e23\u0e38\u0e1b\u0e1b\u0e31\u0e0d\u0e2b\u0e32\u0e41\u0e25\u0e30\u0e02\u0e49\u0e2d\u0e1a\u0e48\u0e07\u0e0a\u0e35\u0e49\u0e43\u0e19\u0e01\u0e32\u0e23\u0e23\u0e31\u0e01\u0e29\u0e32'},
+        ]},
+      ]},
+      {id:'d2', label:'2. Demonstration of appropriate pre-procedure preparation', isHeader:true, sub:[
+        {id:'d2_1', label:'2.1 \u0e01\u0e32\u0e23\u0e40\u0e15\u0e23\u0e35\u0e22\u0e21\u0e1c\u0e39\u0e49\u0e1b\u0e48\u0e27\u0e22\u0e01\u0e48\u0e2d\u0e19\u0e1c\u0e48\u0e32\u0e15\u0e31\u0e14'},
+        {id:'d2_2', label:'2.2 \u0e01\u0e32\u0e23\u0e40\u0e15\u0e23\u0e35\u0e22\u0e21\u0e17\u0e35\u0e21\u0e1c\u0e48\u0e32\u0e15\u0e31\u0e14\u0e41\u0e25\u0e30\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e21\u0e37\u0e2d'},
+      ]},
+      {id:'d3', label:'3. Post procedure management', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 \u0e01\u0e32\u0e23\u0e2a\u0e31\u0e07\u0e40\u0e01\u0e15\u0e2d\u0e32\u0e01\u0e32\u0e23\u0e41\u0e25\u0e30\u0e15\u0e34\u0e14\u0e15\u0e32\u0e21\u0e20\u0e32\u0e27\u0e30\u0e41\u0e17\u0e23\u0e01\u0e0b\u0e49\u0e2d\u0e19\u0e2b\u0e25\u0e31\u0e07\u0e1c\u0e48\u0e32\u0e15\u0e31\u0e14'},
+        {id:'d3_2', label:'3.2 \u0e01\u0e32\u0e23\u0e27\u0e32\u0e07\u0e41\u0e1c\u0e19\u0e43\u0e19\u0e01\u0e32\u0e23\u0e14\u0e39\u0e41\u0e25\u0e1c\u0e39\u0e49\u0e1b\u0e48\u0e27\u0e22\u0e15\u0e48\u0e2d\u0e40\u0e19\u0e37\u0e48\u0e2d\u0e07'},
+      ]},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  pba:{
+    id:'pba', label:'PBA', abbr:'PBA',
+    scale:4, setting:'Admission ward round, Pre-operative conference & OR (MPL\u22653 all)',
+    fields:['diagnosis','procedure'], hasAcuity:true,
+    domains:[
+      {id:'d1', label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation \u2014 \u0e01\u0e32\u0e23\u0e0b\u0e31\u0e01\u0e1b\u0e23\u0e30\u0e27\u0e31\u0e15\u0e34\u0e41\u0e25\u0e30\u0e01\u0e32\u0e23\u0e15\u0e23\u0e27\u0e08\u0e23\u0e48\u0e32\u0e07\u0e01\u0e32\u0e22'},
+        {id:'d1_2', label:'1.2 Plan of management', isHeader:true, sub:[
+          {id:'d1_2_1', label:'1.2.1 \u0e01\u0e32\u0e23\u0e2a\u0e48\u0e07 investigation'},
+          {id:'d1_2_2', label:'1.2.2 \u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e2a\u0e23\u0e38\u0e1b\u0e1b\u0e31\u0e0d\u0e2b\u0e32\u0e41\u0e25\u0e30\u0e02\u0e49\u0e2d\u0e1a\u0e48\u0e07\u0e0a\u0e35\u0e49\u0e43\u0e19\u0e01\u0e32\u0e23\u0e23\u0e31\u0e01\u0e29\u0e32'},
+        ]},
+      ]},
+      {id:'d2', label:'2. Informed consent \u2014 \u0e0a\u0e35\u0e49\u0e41\u0e08\u0e07\u0e02\u0e49\u0e2d\u0e1a\u0e48\u0e07\u0e0a\u0e35\u0e49\u0e41\u0e25\u0e30\u0e20\u0e32\u0e27\u0e30\u0e41\u0e17\u0e23\u0e01\u0e0b\u0e49\u0e2d\u0e19\u0e17\u0e35\u0e48\u0e2d\u0e32\u0e08\u0e40\u0e01\u0e34\u0e14\u0e02\u0e36\u0e49\u0e19\u0e08\u0e32\u0e01\u0e01\u0e32\u0e23\u0e1c\u0e48\u0e32\u0e15\u0e31\u0e14'},
+      {id:'d3', label:'3. Demonstration of appropriate pre-procedure preparation', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 \u0e01\u0e32\u0e23\u0e40\u0e15\u0e23\u0e35\u0e22\u0e21\u0e1c\u0e39\u0e49\u0e1b\u0e48\u0e27\u0e22\u0e01\u0e48\u0e2d\u0e19\u0e1c\u0e48\u0e32\u0e15\u0e31\u0e14'},
+        {id:'d3_2', label:'3.2 \u0e01\u0e32\u0e23\u0e40\u0e15\u0e23\u0e35\u0e22\u0e21\u0e17\u0e35\u0e21\u0e1c\u0e48\u0e32\u0e15\u0e31\u0e14\u0e41\u0e25\u0e30\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e21\u0e37\u0e2d'},
+      ]},
+      {id:'d4', label:'4. Procedure technique', isHeader:true, sub:[
+        {id:'d4_1', label:'4.1 Aseptic technique'},
+        {id:'d4_2', label:'4.2 \u0e01\u0e32\u0e23\u0e27\u0e32\u0e07\u0e41\u0e1c\u0e19\u0e01\u0e32\u0e23\u0e1c\u0e48\u0e32\u0e15\u0e31\u0e14 (incision and surgical approach)'},
+        {id:'d4_3', label:'4.3 \u0e04\u0e27\u0e32\u0e21\u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e43\u0e19\u0e01\u0e32\u0e23\u0e17\u0e33\u0e2b\u0e31\u0e15\u0e16\u0e01\u0e32\u0e23\u0e41\u0e25\u0e30\u0e01\u0e32\u0e23\u0e41\u0e01\u0e49\u0e44\u0e02\u0e1b\u0e31\u0e0d\u0e2b\u0e32\u0e40\u0e09\u0e1e\u0e32\u0e30\u0e2b\u0e19\u0e49\u0e32'},
+        {id:'d4_4', label:'4.4 \u0e01\u0e32\u0e23\u0e1b\u0e49\u0e2d\u0e07\u0e01\u0e31\u0e19\u0e20\u0e32\u0e27\u0e30\u0e41\u0e17\u0e23\u0e01\u0e0b\u0e49\u0e2d\u0e19'},
+      ]},
+      {id:'d5', label:'5. Post procedure management', isHeader:true, sub:[
+        {id:'d5_1', label:'5.1 \u0e01\u0e32\u0e23\u0e2a\u0e31\u0e07\u0e40\u0e01\u0e15\u0e2d\u0e32\u0e01\u0e32\u0e23\u0e41\u0e25\u0e30\u0e15\u0e34\u0e14\u0e15\u0e32\u0e21\u0e20\u0e32\u0e27\u0e30\u0e41\u0e17\u0e23\u0e01\u0e0b\u0e49\u0e2d\u0e19\u0e2b\u0e25\u0e31\u0e07\u0e1c\u0e48\u0e32\u0e15\u0e31\u0e14'},
+        {id:'d5_2', label:'5.2 \u0e01\u0e32\u0e23\u0e14\u0e39\u0e41\u0e25\u0e41\u0e1c\u0e25\u0e1c\u0e48\u0e32\u0e15\u0e31\u0e14\u0e41\u0e25\u0e30\u0e01\u0e32\u0e23\u0e43\u0e2b\u0e49\u0e04\u0e33\u0e41\u0e19\u0e30\u0e19\u0e33\u0e14\u0e49\u0e32\u0e19\u0e01\u0e32\u0e22\u0e20\u0e32\u0e1e\u0e1a\u0e33\u0e1a\u0e31\u0e14'},
+        {id:'d5_3', label:'5.3 \u0e01\u0e32\u0e23\u0e27\u0e32\u0e07\u0e41\u0e1c\u0e19\u0e43\u0e19\u0e01\u0e32\u0e23\u0e14\u0e39\u0e41\u0e25\u0e1c\u0e39\u0e49\u0e1b\u0e48\u0e27\u0e22\u0e15\u0e48\u0e2d\u0e40\u0e19\u0e37\u0e48\u0e2d\u0e07'},
+        {id:'d5_4', label:'5.4 \u0e01\u0e32\u0e23\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e40\u0e27\u0e0a\u0e23\u0e30\u0e40\u0e1a\u0e35\u0e22\u0e19'},
+      ]},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  dops_trauma:{
+    id:'dops_trauma', label:'DOPS: Multiple Trauma', abbr:'DOPS-Trauma',
+    scale:'su',
+    setting:'MPL≥3 all',
+    fields:['diagnosis'],
+    procedure:'Multiple Trauma Management in Orthopedics',
+    // items grouped by year
+    itemGroups:[
+      {group:'Year 1', items:[
+        'Initial evaluation and appropriate initial investigation',
+        'Initial diagnosis and initial resuscitation',
+        'Basic science of injury, systemic response to injury and relevant anatomy',
+      ]},
+      {group:'Year 2', items:[
+        'Diagnosis of orthopedic injury',
+        'Apply appropriate immobilization (splint and slab)',
+        'Evaluation and treatment follow primary survey',
+        'Evaluation and treatment follow damage control orthopedic',
+        'Team communication',
+        'Principle of basic external fixator',
+        'Pre- and post-op evaluation and complication prevention',
+      ]},
+      {group:'Year 3', items:[
+        'Diagnosis of orthopedics and concomitant injury with multidisciplinary treatment plan',
+        'Evaluation and treatment follow primary survey and DCO',
+        'Debridement and external fixation in uncomplex fracture under supervision',
+        'Complication prevention and treatment (Year 3)',
+      ]},
+      {group:'Year 4', items:[
+        'Complete treatment plan in multiple trauma patient',
+        'Debridement and external fixation in complex fracture under supervision',
+        'Complication prevention and treatment (Year 4)',
+      ]},
+    ]
+  },
+  dops_approach:{
+    id:'dops_approach', label:'DOPS: Surgical Approach', abbr:'DOPS-Approach',
+    scale:'su',
+    setting:'Cadaveric workshop (เกณฑ์ผ่าน S ≥ 3 ข้อ)',
+    fields:['diagnosis'],
+    procedure:'Surgical Approach for Extremities',
+    passThreshold:3,
+    items:[
+      '1. Pre-operative planning of surgical approach',
+      '2. Appropriate skin incision',
+      '3. Performed appropriate plane of soft tissue dissection',
+      '4. Performed gentle soft tissue dissection',
+      '5. Adequate exposure for specific part of bone',
+    ]
+  }
+};
+const TRAUMA_FORM_KEYS=['minicex','cbd','pba','dops_trauma','dops_approach'];
+
+// ═══════════════════════════════════════════════════════
+//  TUMOR ASSESSMENT FORM DEFINITIONS (scale 0-4 + DOPS S/U)
+// ═══════════════════════════════════════════════════════
+const TUMOR_FORMS={
+  minicex:{
+    id:'minicex', label:'Mini-CEX', abbr:'Mini-CEX',
+    scale:4, setting:'OPD / Ward round (MPL≥3 all)',
+    fields:['diagnosis','hn'], hasAcuity:true,
+    domains:[
+      {id:'d1',  label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation — การซักประวัติและการตรวจร่างกาย'},
+        {id:'d1_2', label:'1.2 Plan of management — การส่ง investigation / วิเคราะห์และสรุปปัญหาและข้อบ่งชี้'},
+      ]},
+      {id:'d2',  label:'2. Demonstration of appropriate diagnosis and management', isHeader:true, sub:[
+        {id:'d2_1', label:'2.1 การวินิจฉัย'},
+        {id:'d2_2', label:'2.2 การวินิจฉัยแยกโรค'},
+        {id:'d2_3', label:'2.3 การเลือกแนวทางการรักษาที่เหมาะสม'},
+        {id:'d2_4', label:'2.4 การบันทึกเวชระเบียน'},
+      ]},
+      {id:'d3',  label:'3. Communication skills', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 การอภิปรายปัญหากับผู้ป่วยและญาติ รวมถึงการชี้แจงขั้นตอนการรักษา'},
+        {id:'d3_2', label:'3.2 การบอกพยากรณ์โรค'},
+      ]},
+      {id:'d4',  label:'4. Professionalism / Consideration of patient'},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  cbd:{
+    id:'cbd', label:'CBD', abbr:'CBD',
+    scale:4, setting:'Case Conference (MPL≥3 all)',
+    fields:['diagnosis'], hasAcuity:false,
+    domains:[
+      {id:'d1',  label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation — การซักประวัติและการตรวจร่างกาย'},
+        {id:'d1_2', label:'1.2 Plan of management', isHeader:true, sub:[
+          {id:'d1_2_1', label:'1.2.1 การส่ง investigation'},
+          {id:'d1_2_2', label:'1.2.2 สามารถสรุปปัญหาและข้อบ่งชี้ในการรักษา'},
+        ]},
+      ]},
+      {id:'d2',  label:'2. Demonstration of appropriate pre-procedure preparation', isHeader:true, sub:[
+        {id:'d2_1', label:'2.1 การเตรียมผู้ป่วยก่อนผ่าตัด'},
+        {id:'d2_2', label:'2.2 การเตรียมทีมผ่าตัดและเครื่องมือ'},
+      ]},
+      {id:'d3',  label:'3. Post procedure management', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 การสังเกตอาการและติดตามภาวะแทรกซ้อนหลังผ่าตัด'},
+        {id:'d3_2', label:'3.2 การวางแผนในการดูแลผู้ป่วยต่อเนื่อง'},
+      ]},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  pba:{
+    id:'pba', label:'PBA', abbr:'PBA',
+    scale:4, setting:'Admission ward round, Pre-operative conference & OR (MPL≥3 all)',
+    fields:['diagnosis','procedure'], hasAcuity:true,
+    domains:[
+      {id:'d1',  label:'1. Demonstration of understanding regarding the indications, relevant anatomy and technique', isHeader:true, sub:[
+        {id:'d1_1', label:'1.1 Patient evaluation — การซักประวัติและการตรวจร่างกาย'},
+        {id:'d1_2', label:'1.2 Plan of management — การส่ง investigation / สรุปปัญหาและข้อบ่งชี้'},
+      ]},
+      {id:'d2',  label:'2. Informed consent — ชี้แจงข้อบ่งชี้และภาวะแทรกซ้อนที่อาจเกิดขึ้นจากการผ่าตัด'},
+      {id:'d3',  label:'3. Demonstration of appropriate pre-procedure preparation', isHeader:true, sub:[
+        {id:'d3_1', label:'3.1 การเตรียมผู้ป่วยก่อนผ่าตัด'},
+        {id:'d3_2', label:'3.2 การเตรียมทีมผ่าตัดและเครื่องมือ'},
+      ]},
+      {id:'d4',  label:'4. Procedure technique', isHeader:true, sub:[
+        {id:'d4_1', label:'4.1 Aseptic technique'},
+        {id:'d4_2', label:'4.2 การวางแผนการผ่าตัด (incision and surgical approach)'},
+        {id:'d4_3', label:'4.3 ความสามารถในการทำหัตถการและการแก้ไขปัญหาเฉพาะหน้า'},
+        {id:'d4_4', label:'4.4 การป้องกันภาวะแทรกซ้อน'},
+      ]},
+      {id:'d5',  label:'5. Post procedure management', isHeader:true, sub:[
+        {id:'d5_1', label:'5.1 การสังเกตอาการและติดตามภาวะแทรกซ้อนหลังผ่าตัด'},
+        {id:'d5_2', label:'5.2 การดูแลแผลผ่าตัดและการให้คำแนะนำด้านกายภาพบำบัด'},
+        {id:'d5_3', label:'5.3 การวางแผนในการดูแลผู้ป่วยต่อเนื่อง'},
+        {id:'d5_4', label:'5.4 การบันทึกเวชระเบียน'},
+      ]},
+      {id:'overall', label:'Overall performance', isOverall:true},
+    ]
+  },
+  dops_biopsy:{
+    id:'dops_biopsy', label:'DOPS: Incisional Biopsy', abbr:'DOPS-Biopsy',
+    scale:'su', setting:'Case Conference (MPL≥3 all)',
+    fields:['diagnosis'], procedure:'Incisional Biopsy for soft tissue/bone tumors',
+    items:[
+      '1. Pre-operative planning evaluation',
+      '2. Skin incision planning comply with definite surgical incision',
+      '3. Meticulous and gentle soft tissue dissection',
+      '4. Performed direct dissection through muscle compartment',
+      '5. Appropriate site and amount of soft tissue sampling (or bone window if necessary)',
+      '6. Perform stop bleeding meticulously',
+      '7. Appropriate position of drainage placement',
+      '8. Appropriate skin suturing',
+      '9. Appropriate determination of post-operative immobilization',
+    ]
+  },
+  dops_approach:{
+    id:'dops_approach', label:'DOPS: Surgical Approach', abbr:'DOPS-Approach',
+    scale:'su', setting:'Cadaveric workshop (เกณฑ์ผ่าน S ≥ 3 ข้อ)',
+    fields:['diagnosis'], procedure:'Surgical Approach for Extremities and Spine',
+    passThreshold:3,
+    items:[
+      '1. Pre-operative planning of surgical approach',
+      '2. Appropriate skin incision',
+      '3. Performed appropriate plane of soft tissue dissection',
+      '4. Performed gentle soft tissue dissection',
+      '5. Adequate exposure for specific part of bone or spine',
+    ]
+  }
+};
+const TUMOR_FORM_KEYS=['minicex','cbd','pba','dops_biopsy','dops_approach'];
+
+// map rotation id to form set
+const ROTATION_FORM_TYPE={
+  pediatric:'pediatric',
+  sports:'sports',
+  spine:'spine',
+  footankle:'footankle',
+  hand:'hand',
+  hk:'hk',
+  trauma:'trauma',
+  tumor:'tumor',
+  elective:'elective',
+  unit_rotation:'unit_rotation',
+  jc:'jc'
+};
+function getRotationFormType(rotId){ return ROTATION_FORM_TYPE[rotId]||'general'; }
+
+// ─── Admin-managed assessment templates ───────────────
+// Templates are stored with modernization data so only an admin session can persist changes.
+const LEGACY_TEMPLATE_FIELD_LABELS={
+  diagnosis:'การวินิจฉัย',operation:'หัตถการ/การผ่าตัด',procedure:'หัตถการ',
+  patientAge:'อายุผู้ป่วย',patientSex:'เพศผู้ป่วย',difficulty:'ความซับซ้อน',
+  timesTrainee:'ครั้งที่ผู้รับการฝึกปฏิบัติ',timesEvaluator:'ครั้งที่ผู้ประเมิน',
+  hn:'HN ผู้ป่วย',topic:'หัวข้อ',journal:'วารสาร',pubYear:'ปีพิมพ์'
+};
+const LEGACY_TEMPLATE_NUMERIC_FIELDS=['patientAge','timesTrainee','timesEvaluator','pubYear'];
+
+function cloneAssessmentValue(value){
+  return JSON.parse(JSON.stringify(value===undefined?null:value));
+}
+function assessmentTemplateKey(prefix){
+  return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);
+}
+function assessmentPositiveNumber(value,fallback=5){
+  const n=Number(value);
+  if(!Number.isFinite(n)||n<=0)return fallback;
+  return Math.round(Math.min(Math.max(n,.5),100)*100)/100;
+}
+function templateItemMaxScore(item,template){
+  return assessmentPositiveNumber(item?.maxScore,assessmentPositiveNumber(template?.defaultMaxScore,5));
+}
+function templateTopicCount(template){
+  return (template?.sections||[]).reduce((sum,section)=>sum+(section.items||[]).length,0);
+}
+function templateConfiguredMaxScore(template){
+  return (template?.sections||[]).reduce((sum,section)=>sum+(section.items||[]).reduce((itemSum,item)=>itemSum+templateItemMaxScore(item,template),0),0);
+}
+function displayTemplateNumber(value){
+  const n=Number(value);
+  if(!Number.isFinite(n))return '0';
+  return Number.isInteger(n)?String(n):n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'');
+}
+function assessmentRotations(){
+  const catalog=Array.isArray(DB?.modernization?.rotationCatalog)?DB.modernization.rotationCatalog:[];
+  const seen=new Set(ROTATIONS.map(r=>r.id));
+  const custom=catalog.filter(r=>{
+    if(!r||!r.id||r.archived||seen.has(r.id))return false;
+    seen.add(r.id);
+    return true;
+  }).map(r=>({id:String(r.id),label:String(r.label||r.id),emoji:String(r.emoji||'📋'),custom:true}));
+  return ROTATIONS.map(r=>({...r})).concat(custom);
+}
+function getAssessmentRotation(rotationId){
+  return assessmentRotations().find(r=>r.id===rotationId);
+}
+function activeAssessmentTemplatesForRotation(rotationId){
+  const list=Array.isArray(DB?.modernization?.assessmentTemplates)?DB.modernization.assessmentTemplates:[];
+  return list.filter(template=>template&&template.rotationId===rotationId&&template.active!==false&&!template.archived);
+}
+function assessmentTemplateById(templateId){
+  const list=Array.isArray(DB?.modernization?.assessmentTemplates)?DB.modernization.assessmentTemplates:[];
+  return list.find(template=>template&&template.id===templateId)||null;
+}
+function activeAssessmentTemplateById(templateId){
+  const template=assessmentTemplateById(templateId);
+  return template&&template.active!==false&&!template.archived?template:null;
+}
+function assessmentRotationHasLegacyForm(rotationId){
+  return ROTATIONS.some(rotation=>rotation.id===rotationId);
+}
+function makeAssessmentTemplateItem(label='',maxScore=5){
+  return{id:assessmentTemplateKey('item'),label,help:'',maxScore:assessmentPositiveNumber(maxScore,5)};
+}
+function makeAssessmentTemplateSection(title='หัวข้อประเมิน',maxScore=5){
+  return{id:assessmentTemplateKey('section'),title,items:[makeAssessmentTemplateItem('',maxScore)]};
+}
+function makeAssessmentTemplateField(label=''){
+  return{id:assessmentTemplateKey('field'),label,type:'text',required:false,options:[]};
+}
+function makeAssessmentTemplateLevel(value='',label=''){
+  return{value,label};
+}
+function makeAssessmentTemplateFeedback(label=''){
+  return{id:assessmentTemplateKey('feedback'),label:label||'ข้อเสนอแนะเพิ่มเติม',placeholder:'กรอกข้อความ...',required:false};
+}
+function uniqueAssessmentKey(value,used,prefix){
+  let stem=String(value||'').toLowerCase().replace(/[^a-z0-9_-]+/g,'_').replace(/^[_-]+|[_-]+$/g,'').slice(0,48);
+  if(!stem)stem=prefix;
+  let candidate=stem,number=2;
+  while(used.has(candidate)){candidate=stem+'_'+number;number++;}
+  used.add(candidate);
+  return candidate;
+}
+function normalizeAssessmentTemplateDraft(draft){
+  const defaultMax=assessmentPositiveNumber(draft?.defaultMaxScore,5);
+  const usedFields=new Set(),usedSections=new Set(),usedItems=new Set(),usedFeedback=new Set(),usedLevelGroups=new Set();
+  const fields=(draft?.fields||[]).map((field,index)=>{
+    const label=String(field?.label||'').trim();
+    if(!label)return null;
+    const type=['text','number','date','select','multiselect'].includes(field.type)?field.type:'text';
+    return{
+      id:uniqueAssessmentKey(field.id,usedFields,'field_'+(index+1)),
+      label,
+      type,
+      required:!!field.required,
+      options:['select','multiselect'].includes(type)?(Array.isArray(field.options)?field.options:String(field.options||'').split('\n')).map(x=>String(x).trim()).filter(Boolean):[]
+    };
+  }).filter(Boolean);
+  const sections=(draft?.sections||[]).map((section,sectionIndex)=>{
+    const title=String(section?.title||'').trim()||'หมวดที่ '+(sectionIndex+1);
+    const items=(section?.items||[]).map((item,itemIndex)=>{
+      const label=String(item?.label||'').trim();
+      if(!label)return null;
+      return{
+        id:uniqueAssessmentKey(item.id,usedItems,'item_'+(sectionIndex+1)+'_'+(itemIndex+1)),
+        label,
+        help:String(item?.help||'').trim(),
+        maxScore:assessmentPositiveNumber(item?.maxScore,defaultMax)
+      };
+    }).filter(Boolean);
+    if(!items.length)return null;
+    return{id:uniqueAssessmentKey(section.id,usedSections,'section_'+(sectionIndex+1)),title,items};
+  }).filter(Boolean);
+  const passRaw=String(draft?.passPercent??'').trim();
+  const passPercent=passRaw===''?'':Math.min(Math.max(Number(passRaw)||0,0),100);
+  const scoreMin=Math.min(Math.max(Number(draft?.scoreMin)||0,0),defaultMax);
+  const feedbackFields=(draft?.feedbackFields||[]).map((field,index)=>{
+    const label=String(field?.label||'').trim();
+    if(!label)return null;
+    return{
+      id:uniqueAssessmentKey(field.id,usedFeedback,'feedback_'+(index+1)),
+      label,
+      placeholder:String(field?.placeholder||'กรอกข้อความ...').trim(),
+      required:!!field?.required
+    };
+  }).filter(Boolean);
+  const rawLevelGroups=Array.isArray(draft?.levelGroups)&&draft.levelGroups.length?draft.levelGroups:[];
+  const levelGroups=rawLevelGroups.map((group,index)=>({
+    id:uniqueAssessmentKey(group?.id,usedLevelGroups,'level_group_'+(index+1)),
+    label:String(group?.label||'Level').trim()||'Level',
+    options:(group?.options||[]).map(level=>({
+      value:String(level?.value||level?.l||'').trim(),
+      label:String(level?.label||level?.desc||'').trim()
+    })).filter(level=>level.value)
+  })).filter(group=>group.options.length);
+  return{
+    id:String(draft?.id||''),
+    legacyReferenceId:String(draft?.legacyReferenceId||''),
+    rotationId:String(draft?.rotationId||''),
+    name:String(draft?.name||'').trim(),
+    code:String(draft?.code||'').trim(),
+    description:String(draft?.description||'').trim(),
+    scoreGuide:String(draft?.scoreGuide||'').trim(),
+    scoreMin,
+    ratingMode:['su','uss'].includes(draft?.ratingMode)?draft.ratingMode:'score',
+    itemComments:!!draft?.itemComments,
+    itemCommentPlaceholder:String(draft?.itemCommentPlaceholder||'ความเห็น...').trim(),
+    settingText:String(draft?.settingText||'').trim(),
+    procedureText:String(draft?.procedureText||'').trim(),
+    passCount:draft?.ratingMode==='su'?Math.max(0,Math.round(Number(draft?.passCount)||0)):0,
+    showLevel:!!draft?.showLevel,
+    levelOptions:(draft?.showLevel?(draft?.levelOptions||SPINE_LEVELS):[]).map(level=>({
+      value:String(level?.value||level?.l||'').trim(),
+      label:String(level?.label||level?.desc||'').trim()
+    })).filter(level=>level.value),
+    levelGroups,
+    showComment:draft?.showComment!==false,
+    commentLabel:String(draft?.commentLabel||'ข้อเสนอแนะเพิ่มเติม (Staff comment)').trim(),
+    commentPlaceholder:String(draft?.commentPlaceholder||'ความเห็นของอาจารย์...').trim(),
+    feedbackFields,
+    defaultMaxScore:defaultMax,
+    passPercent,
+    fields,
+    sections,
+    active:draft?.active!==false,
+    archived:!!draft?.archived
+  };
+}
+function newAssessmentTemplateDraft(rotationId=''){
+  return{
+    id:'',
+    rotationId:rotationId||ROTATIONS[0]?.id||'',
+    name:'',
+    code:'',
+    description:'',
+    scoreGuide:'',
+    scoreMin:0,
+    ratingMode:'score',
+    itemComments:false,
+    itemCommentPlaceholder:'ความเห็น...',
+    settingText:'',
+    procedureText:'',
+    passCount:0,
+    showLevel:false,
+    levelOptions:[],
+    levelGroups:[],
+    showComment:true,
+    commentLabel:'ข้อเสนอแนะเพิ่มเติม (Staff comment)',
+    commentPlaceholder:'ความเห็นของอาจารย์...',
+    feedbackFields:[],
+    defaultMaxScore:5,
+    passPercent:'',
+    fields:[],
+    sections:[makeAssessmentTemplateSection('หัวข้อประเมิน',5)],
+    active:true,
+    archived:false,
+    newRotation:{id:'',label:'',emoji:'📋'}
+  };
+}
+function legacyTemplateFields(form,rotationId){
+  const fields=[];
+  const used=new Set();
+  const add=(id,label,type='text',options=[],required=false)=>{
+    if(!id||used.has(id))return;
+    used.add(id);
+    fields.push({id,label,type,required,options});
+  };
+  if(rotationId==='elective'){
+    add('trainingUnit','หน่วยฝึกอบรม','select',ELECTIVE_UNITS,true);
+    add('institution','สถาบันที่ประเมิน');
+    add('evaluatorName','ชื่อผู้ประเมิน');
+  }
+  if(rotationId==='unit_rotation'){
+    add('assessPeriod','ช่วงเดือนที่ประเมิน','select',UNIT_ROTATION_PERIODS.map(period=>period.label),true);
+    add('assessBEYear','ปี พ.ศ.','number',[],true);
+    add('workLine','สายปฏิบัติงาน','select',UNIT_ROTATION_WORK_LINES,true);
+    add('evaluatorName','ชื่อผู้ประเมิน');
+  }
+  if(rotationId==='jc'){
+    add('topic','หัวข้อบทความ');
+    add('journal','วารสาร');
+    add('pubYear','ปีพิมพ์','number');
+  }
+  if(Array.isArray(form?.epa)&&form.epa.length)add('selectedEpas','เลือก EPA ที่เกี่ยวข้อง','multiselect',form.epa);
+  if(Array.isArray(form?.settings)&&form.settings.length)add(rotationId==='sports'?'setting':'settings','Clinical setting',rotationId==='sports'?'select':'multiselect',form.settings);
+  (form?.fields||[]).forEach(id=>{
+    if(id==='patientSex')add(id,LEGACY_TEMPLATE_FIELD_LABELS[id],'select',['ชาย','หญิง']);
+    else if(id==='difficulty')add(id,LEGACY_TEMPLATE_FIELD_LABELS[id],'select',['ง่าย','ปานกลาง','ยาก']);
+    else if(id==='timesTrainee'||id==='timesEvaluator')add(id,LEGACY_TEMPLATE_FIELD_LABELS[id],'select',['0','1','2','3','4','≥5']);
+    else add(id,LEGACY_TEMPLATE_FIELD_LABELS[id]||id,LEGACY_TEMPLATE_NUMERIC_FIELDS.includes(id)?'number':'text');
+  });
+  if(Array.isArray(form?.raterTypes)&&form.raterTypes.length)add('raterType','ผู้ประเมิน','select',form.raterTypes);
+  if(Array.isArray(form?.raterTypes)&&form.raterTypes.length)add('duration','ระยะเวลาที่ปฏิบัติงาน');
+  if(form?.hasAcuity||(rotationId==='spine'&&form?.scale!=='su'))add('acuity','Acuity to seek help where required','select',['Yes','No']);
+  if(form?.hasPGY)add('pgy','ระดับชั้นปี','select',['PGY-1','PGY-2','PGY-3','PGY-4']);
+  if(rotationId==='sports')add('overallResult','ผลการประเมินโดยรวม','select',['ผ่าน','ไม่ผ่าน']);
+  return fields;
+}
+function legacyTemplateItem(value,index,maxScore){
+  const fallbackId='legacy_item_'+String(index===undefined?'1':index).replace(/[^a-zA-Z0-9_-]+/g,'_');
+  if(typeof value==='string')return{id:fallbackId,label:value,help:'',maxScore};
+  if(!value||typeof value!=='object')return null;
+  const label=String(value.label||value.title||value.name||value.id||'').trim();
+  if(!label)return null;
+  return{id:String(value.id||fallbackId),label,help:String(value.desc||value.sublabel||value.help||'').trim(),maxScore};
+}
+function legacyTemplateFlattenItems(items,maxScore,parentLabel='',path='root'){
+  const result=[];
+  (items||[]).forEach((item,index)=>{
+    if(item&&typeof item==='object'&&Array.isArray(item.sub)&&item.sub.length){
+      const label=String(item.label||item.title||'').trim();
+      result.push(...legacyTemplateFlattenItems(item.sub,maxScore,[parentLabel,label].filter(Boolean).join(' › '),path+'_'+index));
+      return;
+    }
+    const normalized=legacyTemplateItem(item,path+'_'+index,maxScore);
+    if(!normalized)return;
+    if(parentLabel&&!normalized.help)normalized.help=parentLabel;
+    result.push(normalized);
+  });
+  return result;
+}
+function legacyTemplateSections(form,maxScore){
+  const make=(title,items,index)=>{
+    const normalized=legacyTemplateFlattenItems(items,maxScore,'','section_'+index);
+    return normalized.length?{id:'legacy_section_'+(index+1),title:String(title||'หัวข้อที่ '+(index+1)),items:normalized}:null;
+  };
+  if(Array.isArray(form?.sections)){
+    return form.sections.map((section,index)=>make(section.label||section.title||section.cat,section.items||section.domains,index)).filter(Boolean);
+  }
+  if(Array.isArray(form?.categories)){
+    return form.categories.map((category,index)=>make(category.cat||category.label,category.items,index)).filter(Boolean);
+  }
+  if(Array.isArray(form?.itemGroups))return form.itemGroups.map((group,index)=>make(group.group||group.label,group.items,index)).filter(Boolean);
+  if(Array.isArray(form?.preop)||Array.isArray(form?.hip)||Array.isArray(form?.knee))return[
+    make('Pre-operative evaluation',form.preop||[],0),
+    make('Hip',form.hip||[],1),
+    make('Knee',form.knee||[],2)
+  ].filter(Boolean);
+  if(Array.isArray(form?.domains)){
+    const hasNested=form.domains.some(domain=>Array.isArray(domain?.sub)&&domain.sub.length);
+    return hasNested?form.domains.map((domain,index)=>make(domain.label||'หัวข้อที่ '+(index+1),domain.sub?.length?domain.sub:[domain],index)).filter(Boolean):[make('หัวข้อประเมิน',form.domains,0)].filter(Boolean);
+  }
+  if(Array.isArray(form?.items)){
+    const hasNested=form.items.some(item=>item&&typeof item==='object'&&Array.isArray(item.sub)&&item.sub.length);
+    return hasNested?form.items.map((item,index)=>make(item?.label||'หัวข้อที่ '+(index+1),item?.sub?.length?item.sub:[item],index)).filter(Boolean):[make('หัวข้อประเมิน',form.items,0)].filter(Boolean);
+  }
+  return[];
+}
+function legacyTemplateScoreGuide(rotationId,form,maxScore){
+  if(rotationId==='elective')return Object.keys(ELECTIVE_SCORE_LABELS).map(score=>score+' = '+ELECTIVE_SCORE_LABELS[score]).join(', ');
+  if(rotationId==='jc')return Object.keys(JC_SCORE_LABELS).sort().map(score=>score+' = '+JC_SCORE_LABELS[score]).join(', ');
+  if(rotationId==='unit_rotation')return'1-3 = ต่ำกว่าความคาดหวัง, 4-6 = บรรลุความคาดหวัง, 7-9 = สูงกว่าความคาดหวัง';
+  if(rotationId==='sports')return'1-3 = Unsatisfactory, 4-6 = Satisfactory, 7-9 = Superior';
+  if(Array.isArray(form?.raterTypes))return'1 = ควรปรับปรุง, 10 = ไม่มีที่ติ';
+  const labels=form?.scoreLabels||(maxScore===4?SPINE_SCORE_LABELS:null);
+  return labels?Object.keys(labels).map(score=>score+' = '+labels[score]).join(', '):'';
+}
+function legacyTemplateFeedbackFields(rotationId,form){
+  if(rotationId==='sports')return[
+    {id:'strength',label:'จุดแข็ง / สิ่งที่ทำได้ดี',placeholder:'ระบุสิ่งที่ทำได้ดี...',required:false},
+    {id:'suggest',label:'ข้อเสนอแนะ / พัฒนาสู่ Superior',placeholder:'ระบุประเด็นที่ควรพัฒนา...',required:false}
+  ];
+  if(rotationId==='pediatric'&&Array.isArray(form?.raterTypes))return[
+    {id:'praise',label:'คุณลักษณะที่ดี',placeholder:'ระบุคุณลักษณะที่ดี...',required:false},
+    {id:'suggest',label:'ข้อเสนอแนะ',placeholder:'ระบุข้อเสนอแนะ...',required:false}
+  ];
+  if(rotationId==='pediatric')return[
+    {id:'reflection',label:'Trainee reflection (staff interview)',placeholder:'สะท้อนความคิดของแพทย์ผู้รับการฝึกอบรม...',required:false},
+    {id:'strength',label:'จุดแข็ง / สิ่งที่ทำได้ดี',placeholder:'ระบุสิ่งที่ทำได้ดี...',required:false},
+    {id:'suggest',label:'ข้อเสนอแนะ / พัฒนาสู่ Superior',placeholder:'ระบุประเด็นที่ควรพัฒนา...',required:false}
+  ];
+  return[];
+}
+function legacyTemplateReference(id,rotationId,label,form,defaultMaxScore){
+  const ratingMode=rotationId==='pediatric'&&Array.isArray(form?.domains)?'uss':form?.scale==='su'?'su':'score';
+  const maxScore=ratingMode==='su'?1:ratingMode==='uss'?2:assessmentPositiveNumber(form?.scale,form?.raterTypes?10:defaultMaxScore);
+  const scoreMin=ratingMode==='score'&&(['elective','unit_rotation','jc','sports'].includes(rotationId)||Array.isArray(form?.raterTypes))?1:0;
+  const sourceLevels=form?.levels||form?.levelsPreop||[];
+  const showLevel=['spine','footankle','hand','hk','trauma','tumor'].includes(rotationId)||(rotationId==='pediatric'&&sourceLevels.length>0);
+  const fields=legacyTemplateFields(form,rotationId).map(field=>{
+    if(rotationId!=='pediatric')return field;
+    if(field.id==='diagnosis')return Object.assign({},field,{label:'ปัญหาและวินิจฉัยของผู้ป่วย'});
+    if(field.id==='operation')return Object.assign({},field,{label:'การผ่าตัดที่วางแผนในการรักษา'});
+    return field;
+  });
+  const levelGroups=rotationId==='pediatric'&&Array.isArray(form?.levelsPreop)&&Array.isArray(form?.levelsScene)?[
+    {id:'preop',label:'ผลการประเมิน — Preop / procedure',options:form.levelsPreop.map(level=>({value:level.l,label:level.desc}))},
+    {id:'scene',label:'ผลการประเมิน — At scene / outcomes evaluation',options:form.levelsScene.map(level=>({value:level.l,label:level.desc}))}
+  ]:(showLevel?[{id:'level',label:'Level',options:(rotationId==='pediatric'?sourceLevels:SPINE_LEVELS).map(level=>({value:level.l,label:level.desc}))}]:[]);
+  return{
+    id,
+    label,
+    rotationId,
+    template:{
+      id:'',
+      legacyReferenceId:id,
+      rotationId,
+      name:form?.label||label,
+      code:form?.abbr||'',
+      description:'แบบประเมินเดิมที่ปรับแก้โดยผู้ดูแลระบบ',
+      scoreGuide:legacyTemplateScoreGuide(rotationId,form,maxScore),
+      scoreMin,
+      ratingMode,
+      itemComments:ratingMode==='uss',
+      itemCommentPlaceholder:'ความเห็น...',
+      settingText:String(form?.setting||''),
+      procedureText:String(form?.procedure||''),
+      passCount:ratingMode==='su'?Math.max(0,Math.round(Number(form?.passThreshold)||0)):0,
+      showLevel,
+      levelOptions:showLevel?(rotationId==='pediatric'?sourceLevels:SPINE_LEVELS).map(level=>({value:level.l,label:level.desc})):[],
+      levelGroups,
+      showComment:!['pediatric','sports'].includes(rotationId),
+      commentLabel:'ข้อเสนอแนะเพิ่มเติม (Staff comment)',
+      commentPlaceholder:'ความเห็นของอาจารย์...',
+      feedbackFields:legacyTemplateFeedbackFields(rotationId,form),
+      defaultMaxScore:maxScore,
+      passPercent:'',
+      fields,
+      sections:legacyTemplateSections(form,maxScore),
+      active:true,
+      archived:false,
+      newRotation:{id:'',label:'',emoji:'📋'}
+    }
+  };
+}
+function legacyTemplateReferences(){
+  const refs=[
+    legacyTemplateReference('legacy-elective','elective','Elective',ELECTIVE_FORM,5),
+    legacyTemplateReference('legacy-unit-rotation','unit_rotation','วนหน่วย',UNIT_ROTATION_FORM,9),
+    legacyTemplateReference('legacy-journal-club','jc','Journal Club',JC_FORM,5)
+  ];
+  const groups=[
+    {rotationId:'pediatric',forms:PED_FORMS,defaultMax:5},
+    {rotationId:'sports',forms:SPORTS_FORMS,defaultMax:9},
+    {rotationId:'spine',forms:SPINE_FORMS,defaultMax:4},
+    {rotationId:'footankle',forms:FOOT_ANKLE_FORMS,defaultMax:4},
+    {rotationId:'hand',forms:HAND_FORMS,defaultMax:4},
+    {rotationId:'hk',forms:HK_FORMS,defaultMax:4},
+    {rotationId:'trauma',forms:TRAUMA_FORMS,defaultMax:4},
+    {rotationId:'tumor',forms:TUMOR_FORMS,defaultMax:4}
+  ];
+  groups.forEach(group=>{
+    Object.entries(group.forms||{}).forEach(([key,form])=>{
+      if(form?.pgyForms&&typeof form.pgyForms==='object'){
+        Object.entries(form.pgyForms).forEach(([subKey,subForm])=>{
+          const merged=Object.assign({},form,subForm,{label:(form.label||key)+' ('+subKey+')',abbr:(form.abbr||key)+' '+subKey});
+          refs.push(legacyTemplateReference('legacy-'+group.rotationId+'-'+key+'-'+subKey,group.rotationId,group.rotationId+' — '+merged.label,merged,group.defaultMax));
+        });
+        return;
+      }
+      refs.push(legacyTemplateReference('legacy-'+group.rotationId+'-'+key,group.rotationId,group.rotationId+' — '+(form?.label||key),form,group.defaultMax));
+    });
+  });
+  return refs.filter(ref=>templateTopicCount(ref.template)>0);
+}
+function templateDraftFromLegacyReference(referenceId){
+  const ref=legacyTemplateReferences().find(item=>item.id===referenceId);
+  return ref?cloneAssessmentValue(ref.template):null;
+}
+function assessmentTemplateLegacyReferenceId(template){
+  const explicit=String(template?.legacyReferenceId||'');
+  if(explicit)return explicit;
+  if(!template?.rotationId)return'';
+  const templateName=String(template.name||'').trim().toLowerCase();
+  const templateCode=String(template.code||'').trim().toLowerCase();
+  const matches=legacyTemplateReferences().filter(reference=>{
+    if(reference.rotationId!==template.rotationId)return false;
+    const refName=String(reference.template?.name||'').trim().toLowerCase();
+    const refCode=String(reference.template?.code||'').trim().toLowerCase();
+    return !!((templateName&&templateName===refName)||(templateCode&&templateCode===refCode));
+  });
+  return matches.length===1?matches[0].id:'';
+}
+function assessmentTemplateForLegacyReference(referenceId,activeOnly=true){
+  if(!referenceId)return null;
+  const templates=Array.isArray(DB?.modernization?.assessmentTemplates)?DB.modernization.assessmentTemplates:[];
+  const matches=templates.filter(template=>template&&assessmentTemplateLegacyReferenceId(template)===referenceId&&(!activeOnly||(template.active!==false&&!template.archived)));
+  matches.sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''))||Number(b.version||0)-Number(a.version||0));
+  return matches[0]||null;
+}
+function assessmentTemplatePresentation(template){
+  if(!template)return null;
+  const referenceId=assessmentTemplateLegacyReferenceId(template);
+  const legacy=referenceId?legacyTemplateReferences().find(reference=>reference.id===referenceId)?.template:null;
+  const presented=Object.assign({},legacy||{},cloneAssessmentValue(template));
+  presented.fields=Array.isArray(template.fields)?template.fields:cloneAssessmentValue(legacy?.fields||[]);
+  presented.sections=Array.isArray(template.sections)?template.sections:cloneAssessmentValue(legacy?.sections||[]);
+  presented.ratingMode=template.ratingMode||legacy?.ratingMode||'score';
+  presented.scoreMin=template.scoreMin!==undefined?Number(template.scoreMin||0):Number(legacy?.scoreMin||0);
+  presented.itemComments=template.itemComments!==undefined?!!template.itemComments:!!legacy?.itemComments;
+  presented.itemCommentPlaceholder=template.itemCommentPlaceholder!==undefined?template.itemCommentPlaceholder:(legacy?.itemCommentPlaceholder||'ความเห็น...');
+  presented.settingText=template.settingText!==undefined?template.settingText:(legacy?.settingText||'');
+  presented.procedureText=template.procedureText!==undefined?template.procedureText:(legacy?.procedureText||'');
+  presented.passCount=template.passCount!==undefined?Number(template.passCount||0):Number(legacy?.passCount||0);
+  presented.showLevel=template.showLevel!==undefined?!!template.showLevel:!!legacy?.showLevel;
+  presented.levelOptions=Array.isArray(template.levelOptions)&&template.levelOptions.length?template.levelOptions:cloneAssessmentValue(legacy?.levelOptions||[]);
+  presented.levelGroups=Array.isArray(template.levelGroups)&&template.levelGroups.length?template.levelGroups:cloneAssessmentValue(legacy?.levelGroups||[]);
+  if(!presented.levelGroups.length&&presented.showLevel&&presented.levelOptions.length)presented.levelGroups=[{id:'level',label:'Level',options:cloneAssessmentValue(presented.levelOptions)}];
+  presented.showComment=template.showComment!==undefined?template.showComment!==false:legacy?.showComment!==false;
+  presented.commentLabel=template.commentLabel!==undefined?template.commentLabel:(legacy?.commentLabel||'ข้อเสนอแนะเพิ่มเติม (Staff comment)');
+  presented.commentPlaceholder=template.commentPlaceholder!==undefined?template.commentPlaceholder:(legacy?.commentPlaceholder||'ความเห็นของอาจารย์...');
+  presented.feedbackFields=Array.isArray(template.feedbackFields)?template.feedbackFields:cloneAssessmentValue(legacy?.feedbackFields||[]);
+  if(['su','uss'].includes(presented.ratingMode)){
+    presented.defaultMaxScore=presented.ratingMode==='uss'?2:1;
+    presented.sections=(presented.sections||[]).map(section=>Object.assign({},section,{items:(section.items||[]).map(item=>Object.assign({},item,{maxScore:presented.defaultMaxScore}))}));
+  }
+  return presented;
+}
+function assessmentLegacyTabConfig(rotationId){
+  const configs={
+    pediatric:{ctxKey:'pedFormType',tabId:'ped-form-tabs',dataKey:'pf',keys:PED_FORM_KEYS,forms:PED_FORMS},
+    sports:{ctxKey:'sportsFormType',tabId:'sports-form-tabs',dataKey:'sf',keys:SPORTS_FORM_KEYS,forms:SPORTS_FORMS},
+    spine:{ctxKey:'spineFormType',tabId:'spine-form-tabs',dataKey:'sf',keys:SPINE_FORM_KEYS,forms:SPINE_FORMS},
+    footankle:{ctxKey:'footankleFormType',tabId:'fa-form-tabs',dataKey:'sf',keys:FOOT_ANKLE_FORM_KEYS,forms:FOOT_ANKLE_FORMS},
+    hand:{ctxKey:'handFormType',tabId:'hand-form-tabs',dataKey:'sf',keys:HAND_FORM_KEYS,forms:HAND_FORMS},
+    hk:{ctxKey:'hkFormType',tabId:'hk-form-tabs',dataKey:'sf',keys:HK_FORM_KEYS,forms:HK_FORMS},
+    trauma:{ctxKey:'traumaFormType',tabId:'trauma-form-tabs',dataKey:'sf',keys:TRAUMA_FORM_KEYS,forms:TRAUMA_FORMS},
+    tumor:{ctxKey:'tumorFormType',tabId:'tumor-form-tabs',dataKey:'sf',keys:TUMOR_FORM_KEYS,forms:TUMOR_FORMS}
+  };
+  return configs[rotationId]||null;
+}
+function assessmentLegacyReferenceIdForContext(ctx,formKey){
+  const rotationId=String(ctx?.selectedRotation||'');
+  if(!rotationId)return'';
+  const directReferences={elective:'legacy-elective',unit_rotation:'legacy-unit-rotation',jc:'legacy-journal-club'};
+  if(directReferences[rotationId])return directReferences[rotationId];
+  const config=assessmentLegacyTabConfig(rotationId);
+  const key=String(formKey||ctx?.[config?.ctxKey]||'');
+  if(!config||!key)return'';
+  const base='legacy-'+rotationId+'-'+key;
+  const form=config.forms?.[key];
+  if(form?.pgyForms){
+    const dataKey=rotationId==='hk'?'hkData':rotationId+'Data';
+    const selectedPgy=ctx?.[dataKey]?.[key]?.dopsPgy;
+    if(selectedPgy&&legacyTemplateReferences().some(reference=>reference.id===base+'-'+selectedPgy))return base+'-'+selectedPgy;
+  }
+  return legacyTemplateReferences().some(reference=>reference.id===base)?base:'';
+}
+function activeAssessmentTemplateForContext(ctx){
+  const legacyReferenceId=assessmentLegacyReferenceIdForContext(ctx);
+  if(legacyReferenceId)return assessmentTemplatePresentation(assessmentTemplateForLegacyReference(legacyReferenceId,true));
+  if(assessmentRotationHasLegacyForm(ctx?.selectedRotation))return null;
+  return assessmentTemplatePresentation(activeAssessmentTemplatesForRotation(ctx?.selectedRotation)[0]||null);
+}
+function renderAssessmentLegacyFormTabs(ctx){
+  const config=assessmentLegacyTabConfig(ctx?.selectedRotation);
+  if(!config)return'';
+  const selected=ctx[config.ctxKey];
+  const rotation=getAssessmentRotation(ctx.selectedRotation);
+  return '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:9px 13px;margin-bottom:13px;font-size:12px;color:var(--text2);font-weight:600">'
+    +escapeHtml((rotation?.emoji||'📋')+' '+(rotation?.label||ctx.selectedRotation))+' — เลือกแบบประเมินที่ต้องการกรอก</div>'
+    +'<div class="rota-rotation-tabs" id="'+config.tabId+'" style="margin-bottom:16px">'
+    +config.keys.map(key=>{const form=config.forms[key]||{};return '<button class="rota-rtab'+(key===selected?' active':'')+'" data-'+config.dataKey+'="'+escapeHtml(key)+'">'+escapeHtml(form.abbr||form.label||key)+'</button>';}).join('')+'</div>';
+}
+function captureCurrentLegacyAssessment(ctx){
+  const rotationId=ctx?.selectedRotation;
+  if(rotationId==='pediatric')_savePedFormData(ctx,ctx.pedFormType);
+  if(rotationId==='sports')_saveSportsFormData(ctx,ctx.sportsFormType);
+  if(rotationId==='spine')_saveSpineFormData(ctx,ctx.spineFormType);
+  if(rotationId==='footankle')_saveFootAnkleFormData(ctx,ctx.footankleFormType);
+  if(rotationId==='hand')_saveHandFormData(ctx,ctx.handFormType);
+  if(rotationId==='hk')_saveHKFormData(ctx,ctx.hkFormType);
+  if(rotationId==='trauma')_saveTraumaFormData(ctx,ctx.traumaFormType);
+  if(rotationId==='tumor')_saveTumorFormData(ctx,ctx.tumorFormType);
+}
+function bindAssessmentLegacyFormTabs(body,ctx,dynamicTemplate){
+  const config=assessmentLegacyTabConfig(ctx?.selectedRotation);
+  if(!config)return;
+  body.querySelectorAll('#'+config.tabId+' .rota-rtab').forEach(button=>button.addEventListener('click',event=>{
+    const nextKey=button.dataset[config.dataKey];
+    const nextTemplate=assessmentTemplateForLegacyReference(assessmentLegacyReferenceIdForContext(ctx,nextKey),true);
+    if(!dynamicTemplate&&!nextTemplate)return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if(dynamicTemplate)captureDynamicTemplateForm(body,ctx,dynamicTemplate);
+    else captureCurrentLegacyAssessment(ctx);
+    ctx[config.ctxKey]=nextKey;
+    ctx.templateId=nextTemplate?.id||'';
+    renderAssessModalBody();
+  },true));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  JOURNAL CLUB ASSESSMENT FORM (scale 1-5, used in all rotations)
+// ═══════════════════════════════════════════════════════════════
+const JC_SCORE_LABELS={5:'มากที่สุด',4:'มาก',3:'ปานกลาง',2:'น้อย',1:'น้อยที่สุด'};
+const JC_FORM={
+  id:'jc', label:'Journal Club', abbr:'Journal Club',
+  scale:5,
+  domains:[
+    {id:'punctual',    label:'1. การตรงต่อเวลา'},
+    {id:'present',     label:'2. นำเสนอได้อย่างถูกต้อง กระชับ เหมาะสมกับเวลา'},
+    {id:'summarize',   label:'3. สามารถสรุป วิจารณ์ นำเสนอได้ถูกต้องครบถ้วน'},
+    {id:'qa',          label:'4. ตอบคำถามเรื่องที่สงสัยก่อนอ่าน journal และประยุกต์ได้'},
+    {id:'appraisal',   label:'5. การวิเคราะห์บทความและ clinical appraisal'},
+  ]
+};
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+const EMPTY_DB={schemaVersion:2,revision:0,cats:[],residents:[],advisors:[],meetings:[],unitRotationSchedule:[],unitRotationScheduleMeta:{},modernization:{},rotaRecords:[]};
+let DB=Object.assign({},EMPTY_DB,ORTHOFOLIO_INITIAL_DATA||{});
+if(!Array.isArray(DB.cats)) DB.cats=[];
+if(!Array.isArray(DB.residents)) DB.residents=[];
+if(!Array.isArray(DB.advisors)) DB.advisors=[];
+if(!Array.isArray(DB.rotaRecords)) DB.rotaRecords=[];
+if(!Array.isArray(DB.meetings)) DB.meetings=[];
+if(!Array.isArray(DB.unitRotationSchedule)) DB.unitRotationSchedule=[];
+if(!DB.unitRotationScheduleMeta||typeof DB.unitRotationScheduleMeta!=='object') DB.unitRotationScheduleMeta={};
+ensureModernizationState();
+
+let editResId=null,editAdvId=null,permAdvId=null,_curResId=null,_curAdvId=null,_advDetailResId=null;
+let _assessContext=null; // {resId, rotation, role:'admin'|'advisor', advId}
+let _assessmentAdminView='records',_assessmentTemplateDraft=null,_assessmentTemplatePreviewOnly=false;
+let _meetingEditId=null,_meetingYearAdmin=null,_meetingYearAdvisor=null;
+let _residentYearFilter='all';
+let _dashboardYearFilter='all';
+let _workYearFilter='all',_workTypeFilter='all',_progressYearFilter='all',_progressResidentId='';
+let _calendarCursor=new Date(new Date().getFullYear(),new Date().getMonth(),1);
+let _healthSheetResult=null,_reportResidentId='';
+let _sessionToken=sessionStorage.getItem('orthofolioSessionToken')||'';
+let _sessionInfo=null;
+const SESSION_SNAPSHOT_KEY='of3';
+const RECOVERY_SNAPSHOT_KEY='of3_recovery_history';
+
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+function showPage(n){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+n).classList.add('active');}
+function hasServerSession(){return !!_sessionToken;}
+function isAdminSession(){return _sessionInfo?.role==='admin';}
+function recoverySnapshotData(data){
+  const residents=(data?.residents||[]).map(r=>({
+    id:r.id||'',
+    photo:r.photo||'',
+    os:{fm:r.os?.fm||{},rc:r.os?.rc||{}},
+    cs:r.cs||{}
+  })).filter(r=>r.id);
+  return {at:new Date().toISOString(),residents};
+}
+function recoveryValueFilled(value){return value!==undefined&&value!==null&&String(value).trim()!=='';}
+function recoverySnapshotScore(snapshot){
+  const c=recoverySnapshotCounts(snapshot);
+  return c.photos*5+c.termScores*2+c.royalScores*3+c.royalSubscores*2+c.royalStats+c.centralScores*2;
+}
+function recoverySnapshotCounts(snapshot){
+  const counts={photos:0,termScores:0,royalScores:0,royalSubscores:0,royalStats:0,centralScores:0};
+  (snapshot?.residents||[]).forEach(r=>{
+    if(r.photo)counts.photos++;
+    const rc=r.os?.rc||{};
+    Object.values(rc).forEach(ex=>{
+      if(recoveryValueFilled(ex?.score))counts.royalScores++;
+      Object.values(ex?.stats||{}).forEach(value=>{if(recoveryValueFilled(value))counts.royalStats++;});
+      Object.values(ex?.subs||{}).forEach(sub=>{
+        ['label','score','max'].forEach(field=>{if(recoveryValueFilled(sub?.[field]))counts.royalSubscores++;});
+      });
+    });
+    Object.values(r.cs||{}).forEach(value=>{if(recoveryValueFilled(value))counts.centralScores++;});
+    const fm=r.os?.fm||{};
+    Object.keys(fm).forEach(y=>['mid','final'].forEach(p=>{
+      const period=fm[y]?.[p]||{},sections=Array.isArray(period)?{mcq:period,seq:[]}:{mcq:period.mcq||[],seq:period.seq||[]};
+      ['mcq','seq'].forEach(sec=>(sections[sec]||[]).forEach(row=>{
+        if(!row)return;
+        ['s','sc','mx','max','min','mean','mpl'].forEach(field=>{if(recoveryValueFilled(row[field]))counts.termScores++;});
+      }));
+    }));
+  });
+  return counts;
+}
+function bestRecoverySnapshotCounts(){
+  const snapshots=[];
+  try{snapshots.push(recoverySnapshotData(DB));}catch(e){}
+  try{const current=JSON.parse(sessionStorage.getItem(SESSION_SNAPSHOT_KEY)||'null');if(current)snapshots.push(recoverySnapshotData(current));}catch(e){}
+  try{(JSON.parse(sessionStorage.getItem(RECOVERY_SNAPSHOT_KEY)||'[]')||[]).forEach(item=>{if(item?.data)snapshots.push(item.data);});}catch(e){}
+  return snapshots.reduce((best,snap)=>{
+    const c=recoverySnapshotCounts(snap);
+    Object.keys(best).forEach(key=>{best[key]=Math.max(best[key],c[key]||0);});
+    return best;
+  },{photos:0,termScores:0,royalScores:0,royalSubscores:0,royalStats:0,centralScores:0});
+}
+function detectRecoveryDataDrop(){
+  const current=recoverySnapshotCounts(recoverySnapshotData(DB));
+  const best=bestRecoverySnapshotCounts();
+  const lostPhotos=best.photos-current.photos;
+  const lostTermScores=best.termScores-current.termScores;
+  const lostRoyalScores=best.royalScores-current.royalScores;
+  const lostRoyalSubscores=best.royalSubscores-current.royalSubscores;
+  const lostRoyalStats=best.royalStats-current.royalStats;
+  const lostCentralScores=best.centralScores-current.centralScores;
+  const lostScoreItems=Math.max(0,lostTermScores)+Math.max(0,lostRoyalScores)+Math.max(0,lostRoyalSubscores)+Math.max(0,lostRoyalStats)+Math.max(0,lostCentralScores);
+  if(lostPhotos>=2||lostScoreItems>=3||lostTermScores>=3||lostRoyalScores>=2||lostRoyalSubscores>=3||lostRoyalStats>=3||lostCentralScores>=3){
+    return{lostPhotos,lostTermScores,lostRoyalScores,lostRoyalSubscores,lostRoyalStats,lostCentralScores,lostScoreItems,current,best};
+  }
+  return null;
+}
+function recoveryDropSummary(drop){
+  if(!drop)return'';
+  return[
+    drop.lostPhotos>0?`รูป ${drop.lostPhotos}`:'',
+    drop.lostTermScores>0?`กลาง/ปลายภาค ${drop.lostTermScores}`:'',
+    drop.lostRoyalScores>0?`ราชวิทยาลัย ${drop.lostRoyalScores}`:'',
+    drop.lostRoyalSubscores>0?`คะแนนย่อยราชวิทยาลัย ${drop.lostRoyalSubscores}`:'',
+    drop.lostRoyalStats>0?`สถิติราชวิทยาลัย ${drop.lostRoyalStats}`:'',
+    drop.lostCentralScores>0?`คะแนนส่วนกลาง ${drop.lostCentralScores}`:''
+  ].filter(Boolean).join(' · ');
+}
+function archiveRecoverySnapshot(data,reason='snapshot'){
+  try{
+    const snap=recoverySnapshotData(data);
+    const score=recoverySnapshotScore(snap);
+    if(!score)return;
+    let hist=[];
+    try{hist=JSON.parse(sessionStorage.getItem(RECOVERY_SNAPSHOT_KEY)||'[]')||[];}catch(e){hist=[];}
+    hist.unshift({at:snap.at,reason,score,data:snap});
+    const seen=new Set();
+    hist=hist.filter(item=>{
+      const counts=recoverySnapshotCounts(item.data);
+      const sig=[item.score,Object.values(counts).join(','),(item.data?.residents||[]).map(r=>`${r.id}:${r.photo?1:0}`).join('|')].join(':');
+      if(seen.has(sig))return false;
+      seen.add(sig);
+      return true;
+    }).slice(0,5);
+    try{sessionStorage.setItem(RECOVERY_SNAPSHOT_KEY,JSON.stringify(hist));}
+    catch(e){sessionStorage.setItem(RECOVERY_SNAPSHOT_KEY,JSON.stringify(hist.slice(0,1)));}
+  }catch(e){}
+}
+function collectRecoverySnapshots(){
+  const out=[recoverySnapshotData(DB)];
+  try{
+    const current=JSON.parse(sessionStorage.getItem(SESSION_SNAPSHOT_KEY)||'null');
+    if(current)out.push(recoverySnapshotData(current));
+  }catch(e){}
+  try{
+    const hist=JSON.parse(sessionStorage.getItem(RECOVERY_SNAPSHOT_KEY)||'[]')||[];
+    hist.forEach(item=>{if(item?.data)out.push(item.data);});
+  }catch(e){}
+  return JSON.stringify(out.filter(s=>s&&Array.isArray(s.residents)&&s.residents.length));
+}
+function applyServerData(data,baseline){
+  DB=Object.assign({},EMPTY_DB,data||{});
+  ['cats','residents','advisors','meetings','unitRotationSchedule','rotaRecords'].forEach(k=>{if(!Array.isArray(DB[k]))DB[k]=[];});
+  if(!DB.unitRotationScheduleMeta||typeof DB.unitRotationScheduleMeta!=='object')DB.unitRotationScheduleMeta={};
+  ensureModernizationState();
+  _saveQueue.revision=Number(DB.revision||0);
+  _saveQueue.baseline=JSON.parse(JSON.stringify(dbPayload(baseline||DB)));
+}
+function storeSessionSnapshot(){
+  try{
+    archiveRecoverySnapshot(DB,'session-save');
+    const snapshot=JSON.parse(JSON.stringify(DB));
+    (snapshot.residents||[]).forEach(r=>{delete r.newPassword;delete r.pass;delete r.passwordHash;delete r.passwordSalt;delete r.passwordVault;});
+    (snapshot.advisors||[]).forEach(a=>{delete a.newPassword;delete a.pass;delete a.passwordHash;delete a.passwordSalt;delete a.passwordVault;});
+    sessionStorage.setItem(SESSION_SNAPSHOT_KEY,JSON.stringify(snapshot));
+  }catch(e){}
+}
+function sessionExpired(message){
+  if(hasPendingSaves()){
+    notifySheetSaveFailure(message||'Session หมดอายุ ข้อมูลที่รอบันทึกยังอยู่ในหน้านี้',{popup:false});
+    return;
+  }
+  resetSaveQueue();
+  _sessionToken='';_sessionInfo=null;sessionStorage.removeItem('orthofolioSessionToken');
+  _curResId=null;_curAdvId=null;applyServerData(EMPTY_DB);showPage('login');
+  if(message)toast(message,'error');
+}
+async function logout(){
+  if(hasPendingSaves()&&!await flushPendingSaves()&&!confirm('ยังมีข้อมูลที่บันทึกไม่สำเร็จ ต้องการออกจากระบบและทิ้งข้อมูลที่ยังไม่ได้บันทึกหรือไม่?'))return;
+  const token=_sessionToken;
+  resetSaveQueue();
+  _sessionToken='';_sessionInfo=null;sessionStorage.removeItem('orthofolioSessionToken');
+  _curResId=null;_curAdvId=null;applyServerData(EMPTY_DB);showPage('login');
+  if(typeof google!=='undefined'&&token)google.script.run.logoutSession(token);
+  showSuccessPopup('ออกจากระบบสำเร็จ','คุณออกจากระบบเรียบร้อยแล้ว');
+}
+function toast(msg,t='success'){const el=document.getElementById('toast');el.textContent=msg;el.className='toast '+t+' show';setTimeout(()=>el.classList.remove('show'),t==='error'?5200:3000);}
+function uid(){return 'r'+Date.now()+'_'+Math.random().toString(36).slice(2,7);}
+function fmtDate(ts){if(!ts)return'—';const d=new Date(ts);return d.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'})+' '+d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});}
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function currentBEYear(){return new Date().getFullYear()+543;}
+function electiveMonthInfo(v){return THAI_MONTHS.find(m=>String(m.v)===String(v))||null;}
+function electivePeriodText(meta){
+  meta=meta||{};
+  if(/^\d{4}-\d{2}-\d{2}$/.test(meta.trainingStart||'')&&/^\d{4}-\d{2}-\d{2}$/.test(meta.trainingEnd||'')){
+    const date=value=>new Date(value+'T00:00:00Z').toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Bangkok'});
+    return date(meta.trainingStart)+' – '+date(meta.trainingEnd);
+  }
+  const m=electiveMonthInfo(meta.assessMonth);
+  const y=String(meta.assessBEYear||'').trim();
+  return [m?m.short:'',y?('พ.ศ. '+y):''].filter(Boolean).join(' ')||'—';
+}
+function electiveAssessDate(meta){
+  meta=meta||{};
+  const m=parseInt(meta.assessMonth,10);
+  const be=parseInt(meta.assessBEYear,10);
+  if(!m||m<1||m>12||!be)return new Date().toISOString().slice(0,10);
+  const gy=be>2400?be-543:be;
+  return gy+'-'+String(m).padStart(2,'0')+'-01';
+}
+function unitRotationPeriodInfo(v){return UNIT_ROTATION_PERIODS.find(p=>p.v===v)||UNIT_ROTATION_PERIODS[0];}
+function unitRotationDefaultPeriod(d=new Date()){
+  const m=d.getMonth()+1;
+  if(m>=7&&m<=8)return'jul_aug';
+  if(m>=9&&m<=10)return'sep_oct';
+  if(m>=11&&m<=12)return'nov_dec';
+  if(m>=1&&m<=2)return'jan_feb';
+  if(m>=3&&m<=4)return'mar_apr';
+  return'may_jun';
+}
+function unitRotationWorkLineKey(workLine){return UNIT_ROTATION_WORK_LINE_KEYS[workLine]||'';}
+function unitRotationSourceSegments(source){
+  return String(source||'')
+    .replace(/Geri\s*\/\s*Trauma/ig,'GeriTrauma')
+    .replace(/Geri\s*\+\s*Trauma/ig,'GeriTrauma')
+    .split(/[\/+]/)
+    .map(s=>s.trim())
+    .filter(Boolean);
+}
+function unitRotationIsExternalSourceSegment(segment){
+  const compact=String(segment||'').toLowerCase().replace(/\s+/g,'');
+  return /รพ|hospital|japan|italy|usa|standford|stanford|newyork|chicago|fukuoka/.test(compact);
+}
+function unitRotationAddSpecialtyKey(text,out){
+  const compact=String(text||'').toLowerCase().replace(/[\s&-]+/g,'');
+  if(!compact||compact.includes('geritrauma'))return;
+  if(compact.includes('trauma'))out.add('trauma');
+  if(compact.includes('tumor'))out.add('tumor');
+  if(compact.includes('hipknee')||compact.includes('hipandknee')||compact.includes('hip&knee')||compact.includes('hipk'))out.add('hk');
+  if(compact==='ped'||compact.includes('pediatric'))out.add('pediatric');
+  if(compact.includes('sport'))out.add('sports');
+  if(compact.includes('spine'))out.add('spine');
+  if(compact==='fa'||compact.includes('footankle')||compact.includes('foot')||compact.includes('ankle'))out.add('footankle');
+  if(compact.includes('metabolic'))out.add('metabolic');
+  if(compact.includes('hand'))out.add('hand');
+}
+function unitRotationSourceSpecialtyKeys(source){
+  const out=new Set();
+  unitRotationSourceSegments(source).forEach(seg=>{
+    const p=String(seg||'').trim();
+    const compact=p.toLowerCase().replace(/[\s&-]+/g,'');
+    const isLineSegment=/^(chief\s*)?[ab](?:$|\s|\()/i.test(p);
+    if(unitRotationIsExternalSourceSegment(p)||compact.includes('geritrauma'))return;
+    if(isLineSegment){
+      (p.match(/\(([^)]+)\)/g)||[]).forEach(group=>{
+        unitRotationAddSpecialtyKey(group.replace(/[()]/g,''),out);
+      });
+      return;
+    }
+    unitRotationAddSpecialtyKey(compact,out);
+  });
+  return [...out];
+}
+function unitRotationSourceHasStandaloneTrauma(source){
+  return unitRotationSourceSpecialtyKeys(source).includes('trauma');
+}
+function unitRotationScheduleRecordAllowed(r){
+  return !(r&&r.workLineKey==='trauma'&&!unitRotationSourceHasStandaloneTrauma(r.source));
+}
+function unitRotationNormalizeScheduleRecords(records){
+  return (Array.isArray(records)?records:[]).filter(r=>r&&r.name&&r.period&&r.beYear&&r.workLineKey).map(r=>({
+    name:String(r.name||'').trim(),
+    level:String(r.level||'').trim(),
+    period:String(r.period||'').trim(),
+    beYear:String(r.beYear||'').trim(),
+    workLineKey:String(r.workLineKey||'').trim(),
+    source:String(r.source||'').trim()
+  })).filter(unitRotationScheduleRecordAllowed);
+}
+function unitRotationExpandScheduleRecords(records){
+  const out=[];
+  const seen=new Set();
+  const add=(row,workLineKey)=>{
+    const item={
+      name:String(row?.name||'').trim(),
+      level:String(row?.level||'').trim(),
+      period:String(row?.period||'').trim(),
+      beYear:String(row?.beYear||'').trim(),
+      workLineKey:String(workLineKey||row?.workLineKey||'').trim(),
+      source:String(row?.source||'').trim()
+    };
+    if(!item.name||!item.period||!item.beYear||!item.workLineKey||!unitRotationScheduleRecordAllowed(item))return;
+    const id=[item.name,item.level,item.period,item.beYear,item.workLineKey,item.source].join('|');
+    if(seen.has(id))return;
+    seen.add(id);
+    out.push(item);
+  };
+  records.forEach(row=>add(row));
+  records.forEach(row=>unitRotationSourceSpecialtyKeys(row.source).forEach(key=>add(row,key)));
+  return out;
+}
+function unitRotationScheduleData(){
+  const uploaded=Array.isArray(DB.unitRotationSchedule)?DB.unitRotationSchedule:[];
+  const clean=unitRotationNormalizeScheduleRecords(uploaded);
+  const base=clean.length?clean:unitRotationNormalizeScheduleRecords(UNIT_ROTATION_SCHEDULE);
+  return unitRotationExpandScheduleRecords(base);
+}
+function unitRotationScheduleStatusText(){
+  const uploaded=unitRotationNormalizeScheduleRecords(Array.isArray(DB.unitRotationSchedule)?DB.unitRotationSchedule:[]);
+  if(uploaded.length){
+    const meta=DB.unitRotationScheduleMeta||{};
+    const parts=['บันทึกแล้ว'];
+    if(meta.fileName)parts.push(meta.fileName);
+    parts.push(unitRotationExpandScheduleRecords(uploaded).length+' รายการ');
+    if(meta.importedAt){
+      const importedDate=new Date(meta.importedAt);
+      if(!Number.isNaN(importedDate.getTime()))parts.push(importedDate.toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}));
+    }
+    return parts.join(' · ');
+  }
+  return 'ใช้ข้อมูลตั้งต้น '+unitRotationScheduleData().length+' รายการ';
+}
+function unitRotationScheduleYears(){
+  const ys=[...new Set(unitRotationScheduleData().map(r=>r.beYear).filter(Boolean))];
+  return ys.sort((a,b)=>parseInt(a,10)-parseInt(b,10));
+}
+function unitRotationHasSchedule(period,beYear){
+  return unitRotationScheduleData().some(r=>r.period===period&&String(r.beYear)===String(beYear));
+}
+function unitRotationDefaultSelection(d=new Date()){
+  const p=unitRotationDefaultPeriod(d);
+  const y=String(currentBEYear());
+  if(unitRotationHasSchedule(p,y))return{period:p,beYear:y};
+  const first=unitRotationScheduleData()[0];
+  return first?{period:first.period,beYear:first.beYear}:{period:p,beYear:y};
+}
+function unitRotationYearOptions(){
+  const ys=unitRotationScheduleYears();
+  if(ys.length)return ys;
+  const y=currentBEYear();
+  return [String(y),String(y-1)];
+}
+function cleanThaiPersonName(v){
+  return String(v||'')
+    .replace(/^(รศ\.|ผศ\.|อ\.|ดร\.)/,'')
+    .replace(/^(นพ\.|พญ\.|นายแพทย์|แพทย์หญิง)/,'')
+    .replace(/\s+/g,'')
+    .trim();
+}
+function residentForScheduleName(name){
+  const key=cleanThaiPersonName(name);
+  if(!key)return null;
+  const eligible=assessmentEligibleResidents();
+  return eligible.find(r=>cleanThaiPersonName(r.fn)===key)
+    ||eligible.find(r=>{
+      const n=cleanThaiPersonName(r.fn);
+      return n&&key&&(n.includes(key)||key.includes(n));
+    })||null;
+}
+function unitRotationScheduleRows(meta){
+  meta=meta||{};
+  const key=unitRotationWorkLineKey(meta.workLine||'');
+  if(!key)return [];
+  return unitRotationScheduleData().filter(r=>r.workLineKey===key&&r.period===(meta.assessPeriod||'')&&String(r.beYear)===String(meta.assessBEYear||''));
+}
+function unitRotationTraineeCandidates(ctx){
+  const fd=ensureUnitRotationData(ctx);
+  const rows=unitRotationScheduleRows(fd.meta||{});
+  const seen=new Set();
+  return rows.map(row=>{
+    const res=residentForScheduleName(row.name);
+    return {row,res,key:res?res.id:row.name};
+  }).filter(item=>{
+    if(seen.has(item.key))return false;
+    seen.add(item.key);
+    return true;
+  });
+}
+function renderUnitRotationTraineePicker(ctx){
+  const fd=ensureUnitRotationData(ctx);
+  const candidates=unitRotationTraineeCandidates(ctx);
+  const matched=candidates.filter(c=>c.res);
+  if(ctx.resId&&!matched.some(c=>c.res.id===ctx.resId))ctx.resId='';
+  if(!ctx.resId&&matched.length===1)ctx.resId=matched[0].res.id;
+  const p=unitRotationPeriodInfo(fd.meta.assessPeriod);
+  const title=fd.meta.workLine
+    ? [fd.meta.workLine,p?.label,fd.meta.assessBEYear?'พ.ศ. '+fd.meta.assessBEYear:''].filter(Boolean).join(' · ')
+    : 'กรุณาเลือกสายปฏิบัติงานก่อนเพื่อแสดงรายชื่อ';
+  const cards=candidates.map(c=>{
+    const res=c.res;
+    const selected=res&&ctx.resId===res.id;
+    const initials=res?residentInitials(res):(c.row.name||'?').slice(0,2);
+    const photo=res?.photo?`<img src="${escapeHtml(res.photo)}" alt="${escapeHtml(res.fn||c.row.name)}">`:escapeHtml(initials);
+    return `<button type="button" class="unit-trainee-card${selected?' sel':''}${res?'':' unmatched'}" ${res?`data-rid="${escapeHtml(res.id)}"`:'disabled'}>
+      <div class="unit-trainee-photo">${photo}</div>
+      <div class="unit-trainee-name">${escapeHtml(res?res.fn+' '+res.ln:c.row.name)}</div>
+      <div class="unit-trainee-meta">${escapeHtml(c.row.level||'')}</div>
+      ${res?'':`<div class="unit-trainee-meta" style="color:var(--red);font-weight:700">ไม่พบในฐานข้อมูล</div>`}
+    </button>`;
+  }).join('');
+  return `<div style="padding:13px 15px;border-bottom:1px solid var(--border);background:#fff">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div>
+        <div class="flbl" style="margin-bottom:3px">แพทย์ประจำบ้านตามตารางวนหน่วย</div>
+        <div style="font-size:12px;color:var(--text2)">${escapeHtml(title||'เลือกข้อมูลด้านบนเพื่อแสดงรายชื่อ')}</div>
+      </div>
+      <span style="padding:4px 10px;border-radius:12px;background:#f0fdfa;color:var(--teal2);font-size:11px;font-weight:800">${matched.length}/${candidates.length} พบในระบบ</span>
+    </div>
+    ${candidates.length?`<div class="unit-trainee-grid">${cards}</div>`:`<div class="empty-st" style="margin-top:10px;padding:18px">${fd.meta.workLine?'ไม่พบแพทย์ประจำบ้านในตารางวนหน่วยสำหรับตัวเลือกนี้':'กรุณาเลือกสายปฏิบัติงานก่อน'}</div>`}
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">ระบบไม่ดึงรายการที่เป็นการวน รพ. ภายนอก เช่น “Trauma รพ....” มาเป็นตัวเลือกของหน่วย</div>
+  </div>`;
+}
+function unitRotationPeriodText(meta){
+  meta=meta||{};
+  const p=unitRotationPeriodInfo(meta.assessPeriod);
+  const y=String(meta.assessBEYear||'').trim();
+  return [p?p.label:'',y?('พ.ศ. '+y):''].filter(Boolean).join(' ')||'—';
+}
+function unitRotationAssessDate(meta){
+  meta=meta||{};
+  const p=unitRotationPeriodInfo(meta.assessPeriod);
+  const be=parseInt(meta.assessBEYear,10);
+  if(!p||!be)return new Date().toISOString().slice(0,10);
+  const gy=be>2400?be-543:be;
+  return gy+'-'+String(p.startMonth).padStart(2,'0')+'-01';
+}
+function unitRotationScoreZone(n){
+  n=parseInt(n,10);
+  return UNIT_ROTATION_SCORE_ZONES.find(z=>n>=z.min&&n<=z.max)||null;
+}
+function assessmentDateDisplay(rec){
+  if(rec&&rec.type==='elective')return electivePeriodText(rec.meta);
+  if(rec&&rec.type==='unit_rotation')return unitRotationPeriodText(rec.meta);
+  return rec&&rec.assessDate
+    ?new Date(rec.assessDate).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'})
+    :(rec&&rec.createdAt?fmtDate(rec.createdAt):'—');
+}
+function yrText(yr){
+  const raw=String(yr??'').trim().toLowerCase();
+  const y=parseInt(yr,10);
+  if(y===5||raw.includes('alum')||raw.includes('ศิษย์เก่า'))return'ศิษย์เก่า';
+  if(y===6||raw.includes('fellow')||raw.includes('เฟลโล'))return'Fellow';
+  return'ปี '+(yr||'');
+}
+function yrFullText(yr){
+  if(!yr)return'';
+  const raw=String(yr).trim().toLowerCase();
+  const y=parseInt(yr,10);
+  if(y===5||raw.includes('alum')||raw.includes('ศิษย์เก่า'))return'ศิษย์เก่า';
+  if(y===6||raw.includes('fellow')||raw.includes('เฟลโล'))return'Fellow';
+  return'ปี '+yr+' ('+(YR_LABELS[yr]||'R?')+')';
+}
+function isAssessmentEligibleResident(resident){
+  if(!resident)return false;
+  const raw=String(resident.yr??'').trim().toLowerCase();
+  return parseInt(resident.yr,10)!==5&&!raw.includes('alum')&&!raw.includes('ศิษย์เก่า');
+}
+function assessmentEligibleResidents(){return(DB.residents||[]).filter(isAssessmentEligibleResident);}
+function showNoticePopup(title,msg,type='success'){
+  const popup=document.getElementById('success-popup');
+  const icon=popup.querySelector('.success-icon');
+  icon.textContent=type==='error'?'!':'✓';
+  icon.style.background=type==='error'?'#fee2e2':'#dcfce7';
+  icon.style.color=type==='error'?'var(--red)':'#15803d';
+  const ok=document.getElementById('success-popup-ok');
+  ok.style.background=type==='error'?'var(--red)':'var(--green)';
+  document.getElementById('success-popup-title').textContent=title||'สำเร็จ';
+  const msgEl=document.getElementById('success-popup-msg');
+  msgEl.textContent=msg||'';
+  msgEl.style.display=msg?'block':'none';
+  popup.classList.add('open');
+}
+function showSuccessPopup(title,msg){showNoticePopup(title||'สำเร็จ',msg||'','success');}
+function closeSuccessPopup(){document.getElementById('success-popup').classList.remove('open');}
+const SHEET_SAVE_FAILURE_KEY='of3_sheet_save_failure';
+let _lastSheetSaveFailurePopupAt=0;
+function setSheetSaveFailureAlert(detail,at=new Date()){
+  const el=document.getElementById('sheet-save-alert');
+  if(!el)return;
+  const detailText=String(detail||'ไม่ทราบสาเหตุ');
+  const iso=at instanceof Date?at.toISOString():String(at||new Date().toISOString());
+  const when=new Date(iso);
+  const detailEl=document.getElementById('sheet-save-alert-detail');
+  const metaEl=document.getElementById('sheet-save-alert-meta');
+  if(detailEl)detailEl.textContent='รายละเอียด: '+detailText;
+  if(metaEl)metaEl.textContent='แจ้งเตือนล่าสุด '+(isNaN(when.getTime())?'':when.toLocaleString('th-TH'))+(hasPendingSaves()?' · รายการที่ยังไม่บันทึกอยู่ในหน้านี้':'');
+  el.classList.add('show');
+  try{localStorage.setItem(SHEET_SAVE_FAILURE_KEY,JSON.stringify({detail:detailText,at:iso}));}catch(e){}
+}
+function clearSheetSaveFailureAlert(){
+  const el=document.getElementById('sheet-save-alert');
+  if(el)el.classList.remove('show');
+  try{localStorage.removeItem(SHEET_SAVE_FAILURE_KEY);}catch(e){}
+}
+function restoreSheetSaveFailureAlert(){
+  try{
+    const raw=localStorage.getItem(SHEET_SAVE_FAILURE_KEY);
+    if(!raw)return;
+    const data=JSON.parse(raw);
+    if(data&&data.detail)setSheetSaveFailureAlert(data.detail,data.at);
+  }catch(e){}
+}
+function notifySheetSaveFailure(detail,opts={}){
+  const detailText=String(detail||'ไม่ทราบสาเหตุ');
+  const msg='บันทึกไม่เข้า Google Sheet: '+detailText;
+  setSyncStatus('❌ '+msg,'var(--red)');
+  setScoreSaveStatus('บันทึกไม่สำเร็จ','var(--red)');
+  setSheetSaveFailureAlert(detailText);
+  toast('❌ '+msg,'error');
+  const now=Date.now();
+  const popupAllowed=opts.popup!==false;
+  if(popupAllowed && (opts.forcePopup || now-_lastSheetSaveFailurePopupAt>60000)){
+    _lastSheetSaveFailurePopupAt=now;
+    showNoticePopup('บันทึกไม่เข้า Google Sheet','ตรวจการเชื่อมต่อแล้วกดบันทึกอีกครั้ง\n\nรายละเอียด: '+detailText,'error');
+  }
+}
+function passwordCell(account,kind){
+  const ready=!!account?.passwordRevealAvailable;
+  const note=ready?'':`<div style="font-size:10px;color:var(--gold);margin-top:2px">ตั้งใหม่ก่อนจึงดูได้</div>`;
+  return `<div class="pass-cell" data-account-type="${escapeHtml(kind)}" data-account-id="${escapeHtml(account.id)}"><span class="pass-value pass-mask">••••••</span><button type="button" class="pass-toggle account-pass-reveal" title="ดูรหัสผ่าน" aria-label="ดูรหัสผ่าน">👁</button>${note}</div>`;
+}
+function revealAccountPassword(button){
+  const cell=button.closest('.pass-cell');
+  const value=cell?.querySelector('.pass-value');
+  if(!cell||!value)return;
+  if(button.dataset.revealed==='1'){
+    value.textContent='••••••';value.classList.add('pass-mask');button.textContent='👁';button.dataset.revealed='';return;
+  }
+  if(!hasServerSession()){toast('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่','error');return;}
+  const old=button.textContent;button.disabled=true;button.textContent='…';
+  google.script.run
+    .withSuccessHandler(raw=>{
+      button.disabled=false;button.textContent=old;
+      let result={ok:false};try{result=JSON.parse(raw);}catch(e){}
+      if(!result.ok){
+        if(result.code==='PASSWORD_NOT_RECOVERABLE'){value.textContent='ตั้งใหม่ก่อน';value.classList.remove('pass-mask');}
+        toast(result.message||'ไม่สามารถดูรหัสผ่านได้','error');return;
+      }
+      value.textContent=result.password;value.classList.remove('pass-mask');button.textContent='🙈';button.dataset.revealed='1';
+    })
+    .withFailureHandler(e=>{button.disabled=false;button.textContent=old;if(/session/i.test(e.message||''))sessionExpired('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');else toast('ไม่สามารถดูรหัสผ่านได้: '+e.message,'error');})
+    .revealAccountPassword(_sessionToken,cell.dataset.accountType,cell.dataset.accountId);
+}
+
+function resetPasswordEditor(inputId,buttonId){
+  const input=document.getElementById(inputId),button=document.getElementById(buttonId);
+  if(input){
+    input.type='password';
+    delete input.dataset.loadedPassword;
+    delete input.dataset.originalPassword;
+  }
+  if(button){
+    button.disabled=false;
+    button.textContent='👁';
+    button.title='ดูรหัสผ่าน';
+    button.setAttribute('aria-label','ดูรหัสผ่าน');
+    button.dataset.revealed='';
+  }
+}
+function togglePasswordEditor(button,inputId,accountType,accountId){
+  const input=document.getElementById(inputId);
+  if(!input)return;
+  if(input.type==='text'){
+    input.type='password';
+    button.textContent='👁';
+    button.title='ดูรหัสผ่าน';
+    button.setAttribute('aria-label','ดูรหัสผ่าน');
+    button.dataset.revealed='';
+    return;
+  }
+  if(input.value||!accountId){
+    input.type='text';
+    button.textContent='🙈';
+    button.title='ซ่อนรหัสผ่าน';
+    button.setAttribute('aria-label','ซ่อนรหัสผ่าน');
+    button.dataset.revealed='1';
+    input.focus();
+    return;
+  }
+  if(!hasServerSession()){toast('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่','error');return;}
+  const old=button.textContent;
+  button.disabled=true;
+  button.textContent='…';
+  google.script.run
+    .withSuccessHandler(raw=>{
+      button.disabled=false;
+      button.textContent=old;
+      let result={ok:false};
+      try{result=typeof raw==='string'?JSON.parse(raw):raw;}catch(e){}
+      if(!result?.ok){
+        if(result?.code==='PASSWORD_NOT_RECOVERABLE'){
+          toast('รหัสเดิมเป็นรูปแบบที่ดูย้อนหลังไม่ได้ กรุณาตั้งรหัสใหม่ 1 ครั้ง','error');
+        }else{
+          toast(result?.message||'ไม่สามารถดูรหัสผ่านได้','error');
+        }
+        return;
+      }
+      input.value=result.password||'';
+      input.type='text';
+      input.dataset.loadedPassword='1';
+      input.dataset.originalPassword=input.value;
+      button.textContent='🙈';
+      button.title='ซ่อนรหัสผ่าน';
+      button.setAttribute('aria-label','ซ่อนรหัสผ่าน');
+      button.dataset.revealed='1';
+      input.focus();
+    })
+    .withFailureHandler(e=>{
+      button.disabled=false;
+      button.textContent=old;
+      if(/session/i.test(e.message||''))sessionExpired('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
+      else toast('ไม่สามารถดูรหัสผ่านได้: '+(e.message||e),'error');
+    })
+    .revealAccountPassword(_sessionToken,accountType,accountId);
+}
+
+// ═══════════════════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════════════════
+function enterAuthenticatedWorkspace(session){
+  _sessionInfo=session||{};
+  if(session?.role==='admin'){
+    _curResId=null;_curAdvId=null;showPage('admin');renderAdmin();loadSheetConfig(false);
+  }else if(session?.role==='resident'){
+    const r=DB.residents.find(x=>String(x.id)===String(session.userId));
+    if(!r){sessionExpired('ไม่พบข้อมูลแพทย์ประจำบ้านใน session นี้');return;}
+    _curResId=r.id;_curAdvId=null;showPage('student');renderPortfolio(r,'port-main');document.getElementById('tb-uname').textContent=r.fn+' '+r.ln;
+  }else if(session?.role==='advisor'){
+    const a=DB.advisors.find(x=>String(x.id)===String(session.userId));
+    if(!a){sessionExpired('ไม่พบข้อมูลอาจารย์ใน session นี้');return;}
+    _curAdvId=a.id;_curResId=null;showPage('advisor');renderAdvView(a);
+  }
+  // authLogin already returned the authoritative DB/DR snapshot. Avoid a
+  // second full Google Sheet read immediately after the user signs in.
+}
+function renderActiveWorkspace(){
+  if(_sessionInfo?.role==='admin'){renderAdmin();return;}
+  if(_sessionInfo?.role==='resident'){
+    const r=DB.residents.find(x=>String(x.id)===String(_curResId||_sessionInfo.userId));
+    if(r)renderPortfolio(r,'port-main');
+    return;
+  }
+  if(_sessionInfo?.role==='advisor'){
+    const a=DB.advisors.find(x=>String(x.id)===String(_curAdvId||_sessionInfo.userId));
+    if(a)renderAdvView(a);
+  }
+}
+function performLogin(role,userId,password,errorId,passwordId){
+  const err=document.getElementById(errorId);const btn=role==='admin'?document.getElementById('btn-al'):role==='resident'?document.getElementById('btn-rl'):document.getElementById('btn-vl');
+  if(!password||(role==='admin'&&!userId)){err.textContent=role==='admin'?'กรุณากรอก Username และรหัสผ่าน':'กรุณากรอกรหัสผ่าน';err.style.display='block';return;}
+  if(typeof google==='undefined'){
+    err.textContent='โหมด local ต้องเปิดผ่าน Google Apps Script';err.style.display='block';return;
+  }
+  if(btn){btn.disabled=true;btn.textContent='กำลังเข้าสู่ระบบ...';}
+  google.script.run.withSuccessHandler(raw=>{
+    if(btn){btn.disabled=false;btn.textContent=role==='admin'?'เข้าสู่ระบบ Admin →':role==='resident'?'เข้าดู Portfolio →':'เข้าสู่ระบบอาจารย์ →';}
+    let res={};try{res=JSON.parse(raw);}catch(e){}
+    if(!res.ok){err.textContent=res.message||'ไม่สามารถเข้าสู่ระบบได้';err.style.display='block';return;}
+    resetSaveQueue();
+    _sessionToken=res.token||'';_sessionInfo=res.session||{};sessionStorage.setItem('orthofolioSessionToken',_sessionToken);
+    applyServerData(res.data);err.style.display='none';document.getElementById(passwordId).value='';
+    enterAuthenticatedWorkspace(_sessionInfo);
+    if(res.setupCompleted)setTimeout(()=>showSuccessPopup('ตั้งค่าบัญชี Administrator และเข้าสู่ระบบแล้ว'),0);
+  }).withFailureHandler(e=>{
+    if(btn){btn.disabled=false;btn.textContent=role==='admin'?'เข้าสู่ระบบ Admin →':role==='resident'?'เข้าดู Portfolio →':'เข้าสู่ระบบอาจารย์ →';}
+    err.textContent='เข้าสู่ระบบไม่สำเร็จ: '+e.message;err.style.display='block';
+  }).authLogin(role,userId,password);
+}
+function doAdminLogin(){performLogin('admin',document.getElementById('l-auser').value.trim()||'admin',document.getElementById('l-apass').value,'l-aerr','l-apass');}
+function doResLogin(){performLogin('resident','',document.getElementById('l-rpass').value,'l-rerr','l-rpass');}
+function doAdvLogin(){performLogin('advisor','',document.getElementById('l-vpass').value,'l-verr','l-vpass');}
+
+// ═══════════════════════════════════════════════════════
+//  ADMIN RENDER
+// ═══════════════════════════════════════════════════════
+function renderAdmin(){
+  renderStats();renderTable();populateSels();renderAdvTable();renderGcats();renderMeetingsAdmin();
+}
+function renderStats(){
+  const totalAssess=DB.rotaRecords.length;
+  document.getElementById('a-stats').innerHTML=`
+    <div class="stat-c green"><div class="stat-ico">👥</div><div class="stat-val">${DB.residents.length}</div><div class="stat-lbl">แพทย์ประจำบ้านทั้งหมด</div></div>
+    <div class="stat-c blue"><div class="stat-ico">📋</div><div class="stat-val">${DB.residents.filter(r=>r.os?.rc?.sum_r2?.score!=='').length}</div><div class="stat-lbl">สอบ Summative R2 แล้ว</div></div>
+    <div class="stat-c teal"><div class="stat-ico">📝</div><div class="stat-val">${totalAssess}</div><div class="stat-lbl">แบบประเมิน Rotation ทั้งหมด</div></div>
+    <div class="stat-c purple"><div class="stat-ico">👨‍🏫</div><div class="stat-val">${DB.advisors.length}</div><div class="stat-lbl">อาจารย์</div></div>`;
+}
+
+function modernHasValue(v){return String(v??'').trim()!=='';}
+function modernPct(done,total){return total?Math.round((done/total)*100):0;}
+function modernClampPct(v){const n=parseFloat(v);return Math.max(0,Math.min(100,isNaN(n)?0:n));}
+function modernScoreClass(v){v=modernClampPct(v);return v>=75?'ok':v>=50?'warn':'bad';}
+function modernBar(v,tone=''){const p=modernClampPct(v),cls=tone||modernScoreClass(p);return`<div class="modern-bar"><div class="modern-bar-fill ${cls}" style="width:${p}%"></div></div>`;}
+function modernPill(text,tone='info'){return`<span class="modern-pill ${tone}">${escapeHtml(text)}</span>`;}
+function modernKpi(label,val,sub,icon,tone='info'){
+  const bg={ok:'#dcfce7',warn:'#fef3c7',bad:'#fee2e2',info:'#dbeafe',teal:'#ccfbf1'}[tone]||'#eef2ff';
+  return`<div class="modern-kpi"><div class="modern-kpi-top"><div class="modern-kpi-label">${escapeHtml(label)}</div><div class="modern-kpi-icon" style="background:${bg}">${icon}</div></div><div class="modern-kpi-val">${escapeHtml(val)}</div><div class="modern-kpi-sub">${escapeHtml(sub)}</div></div>`;
+}
+function ensureModernizationState(){
+  if(!DB||typeof DB!=='object')DB={};
+  if(!DB.modernization||typeof DB.modernization!=='object')DB.modernization={};
+  const m=DB.modernization;
+  if(!m.version)m.version='modernization-blueprint-v1';
+  if(!m.targetArchitecture)m.targetArchitecture='Hybrid Event-Driven + API-First BFF ปัจจุบัน และ Cloud Run Microservices ในเฟสถัดไป';
+  if(!m.dataPlatform)m.dataPlatform='สำรองหลักผ่าน Google Sheets ตอนนี้; เป้าหมาย Cloud SQL/Firestore/BigQuery';
+  if(!m.aiMode)m.aiMode='พร้อมเชื่อม AI Insights, LLM และ RAG ในเฟสถัดไป';
+  if(!m.securityMode)m.securityMode='Zero Trust Lite บน Apps Script และ Zero Trust Native เมื่อย้ายขึ้น Cloud';
+  if(!m.pwaMode)m.pwaMode='Responsive shell พร้อมต่อยอดเป็น PWA/Mobile';
+  if(!m.lastReviewAt)m.lastReviewAt='';
+  if(!Array.isArray(m.auditLog))m.auditLog=[];
+  if(!Array.isArray(m.campaigns))m.campaigns=[];
+  if(!Array.isArray(m.notifications))m.notifications=[];
+  if(!Array.isArray(m.evidenceTypes))m.evidenceTypes=['Certificate','Course','Research','Case log','Presentation','Other'];
+  if(!Array.isArray(m.assessmentTemplates))m.assessmentTemplates=[];
+  if(!Array.isArray(m.rotationCatalog))m.rotationCatalog=[];
+  m.auditLog=m.auditLog.slice(-120);
+  m.campaigns=m.campaigns.slice(-240);
+  m.notifications=m.notifications.slice(-300);
+  return m;
+}
+function currentActorLabel(){
+  const r=DB.residents?.find(x=>x.id===_curResId);
+  if(r)return`แพทย์ประจำบ้าน ${r.id} ${r.fn||''} ${r.ln||''}`.trim();
+  const a=DB.advisors?.find(x=>x.id===_curAdvId);
+  if(a)return`อาจารย์ ${a.id} ${a.fn||''} ${a.ln||''}`.trim();
+  if(document.getElementById('page-admin')?.classList.contains('active'))return'ผู้ดูแลระบบ';
+  return'ระบบ';
+}
+function logAudit(action,detail='',actor='',persist=false){
+  const m=ensureModernizationState();
+  m.auditLog.push({ts:new Date().toISOString(),action:String(action||'เหตุการณ์'),actor:actor||currentActorLabel(),detail:String(detail||'')});
+  m.auditLog=m.auditLog.slice(-120);
+  if(persist&&typeof saveDB==='function')saveDB({immediate:true});
+}
+function recordChange(entity,id,title,before='',after=''){
+  const m=ensureModernizationState();
+  if(!Array.isArray(m.changeLog))m.changeLog=[];
+  m.changeLog.push({ts:new Date().toISOString(),entity:String(entity||''),id:String(id||''),title:String(title||''),before:String(before||''),after:String(after||''),actor:currentActorLabel()});
+  m.changeLog=m.changeLog.slice(-160);
+}
+function changeSummary(beforeObj,afterObj,fields){
+  return fields.map(f=>{
+    const b=beforeObj?beforeObj[f]:'',a=afterObj?afterObj[f]:'';
+    return String(b??'')===String(a??'')?null:`${f}: ${b||'—'} → ${a||'—'}`;
+  }).filter(Boolean).join('; ');
+}
+function modernMetrics(){
+  ensureModernizationState();
+  const residents=DB.residents||[],advisors=DB.advisors||[],records=DB.rotaRecords||[],cats=DB.cats||[];
+  let doneRc=0,expectedRc=residents.length*RCOST.length,doneCentral=0,expectedCentral=residents.length*cats.length,doneFb=0;
+  const expectedFb=residents.length*YEARS.length*2;
+  residents.forEach(r=>{
+    RCOST.forEach(ex=>{if(modernHasValue(r.os?.rc?.[ex.key]?.score))doneRc++;});
+    cats.forEach(c=>{if(modernHasValue(r.cs?.[c.id]))doneCentral++;});
+    YEARS.forEach(y=>(r.os?.feedback?.[y]||[]).forEach(row=>{if(modernHasValue(row?.resident)||modernHasValue(row?.advisor))doneFb++;}));
+  });
+  const signed=records.length,pending=0;
+  const assignedSet=new Set();
+  advisors.forEach(a=>advisorExplicitResidentIds(a).forEach(id=>assignedSet.add(id)));
+  const missingResidentEmail=residents.filter(r=>!modernHasValue(r.email)).length;
+  const missingAdvisorEmail=advisors.filter(a=>!modernHasValue(a.email)).length;
+  const missingPhoto=residents.filter(r=>!modernHasValue(r.photo)).length;
+  const weakResidentPass=residents.filter(r=>r.passwordChangeRequired||!r.passwordUpdatedAt).length;
+  const weakAdvisorPass=advisors.filter(a=>a.passwordChangeRequired||!a.passwordUpdatedAt).length;
+  const noResidentAdvisors=advisors.filter(a=>!advisorExplicitResidentIds(a).length).length;
+  const allRotationAdvisors=advisors.filter(a=>(a.allowedRotations||[]).length>=ROTATIONS.length).length;
+  const yearCounts={1:0,2:0,3:0,4:0,5:0,6:0};
+  residents.forEach(r=>{const y=String(r.yr||1);yearCounts[y]=(yearCounts[y]||0)+1;});
+  const rotationCounts={};
+  records.forEach(r=>{rotationCounts[r.rotation||'unknown']=(rotationCounts[r.rotation||'unknown']||0)+1;});
+  const scoreCoverage=modernPct(doneRc+doneCentral,expectedRc+expectedCentral);
+  const feedbackCoverage=modernPct(doneFb,expectedFb);
+  const assessmentCompletion=records.length?modernPct(signed,records.length):0;
+  const advisorCoverage=modernPct(assignedSet.size,residents.length);
+  const identityTotal=(residents.length*2)+advisors.length;
+  const identityDone=Math.max(identityTotal-missingResidentEmail-missingAdvisorEmail-missingPhoto,0);
+  const dataCompleteness=modernPct(identityDone,identityTotal);
+  const weakTotal=weakResidentPass+weakAdvisorPass;
+  const userTotal=residents.length+advisors.length;
+  const passwordHealth=100-modernPct(weakTotal,userTotal);
+  const auditCount=(DB.modernization.auditLog||[]).length;
+  const securityScore=Math.round((passwordHealth*.45)+(advisorCoverage*.2)+(auditCount?20:0)+(dataCompleteness*.15));
+  const readiness=Math.round((scoreCoverage*.22)+(feedbackCoverage*.13)+(assessmentCompletion*.18)+(advisorCoverage*.17)+(securityScore*.18)+(dataCompleteness*.12));
+  return{residents,advisors,records,cats,doneRc,expectedRc,doneCentral,expectedCentral,doneFb,expectedFb,signed,pending,assignedResidents:assignedSet.size,missingResidentEmail,missingAdvisorEmail,missingPhoto,weakResidentPass,weakAdvisorPass,weakTotal,userTotal,noResidentAdvisors,allRotationAdvisors,yearCounts,rotationCounts,scoreCoverage,feedbackCoverage,assessmentCompletion,advisorCoverage,dataCompleteness,passwordHealth,securityScore,readiness,auditCount};
+}
+function modernInsights(m){
+  const items=[];
+  const add=(severity,domain,title,detail,action)=>items.push({severity,domain,title,detail,action});
+  if(m.weakTotal)add('medium','บัญชีผู้ใช้','ข้อมูลบัญชียังไม่สมบูรณ์',`มีผู้ใช้ ${m.weakTotal} คนที่ยังไม่มีข้อมูลรหัสผ่านครบ`, 'กำหนดรหัสผ่านใหม่จากหน้าจัดการบัญชีเพื่อให้ใช้งานและกดดูได้');
+  if(m.scoreCoverage<75)add('medium','ข้อมูล','คะแนนยังไม่ครบสำหรับการวิเคราะห์',`ความครบถ้วนของคะแนนปัจจุบัน ${m.scoreCoverage}%`, 'กำหนดช่องข้อมูลบังคับต่อชั้นปี และแจ้งเตือนผู้ดูแลเมื่อโปรไฟล์ใดขาดคะแนนหลัก');
+  if(m.feedbackCoverage<60)add('medium','AI','Feedback สำหรับวิเคราะห์รายบุคคลยังน้อย',`ความครบถ้วนของ feedback ${m.feedbackCoverage}%`, 'ใช้ LLM ช่วยสรุป feedback รายบุคคลเมื่อข้อมูลครบ และแจ้งเตือนรอบ feedback ที่ยังว่าง');
+  if(m.noResidentAdvisors)add('medium','สิทธิ์เข้าถึง','อาจารย์บางคนยังไม่มีสิทธิ์ดูแพทย์',`พบ ${m.noResidentAdvisors} คน`, 'ตรวจสิทธิ์แบบ least privilege แล้วมอบหมายแพทย์ในความดูแลให้ชัดเจน');
+  if(m.missingResidentEmail+m.missingAdvisorEmail)add('medium','PDPA','ข้อมูลติดต่อยังไม่ครบ',`ขาดอีเมล ${m.missingResidentEmail+m.missingAdvisorEmail} รายการ`, 'เติมอีเมลเพื่อใช้การแจ้งเตือน การยืนยันความยินยอม และการผูกตัวตนผู้ใช้');
+  if(m.missingPhoto)add('low','UX','รูปโปรไฟล์ยังไม่ครบ',`แพทย์ ${m.missingPhoto} คนยังไม่มีรูป`, 'ให้แพทย์อัปโหลดรูปเพื่อให้ portfolio และการพิมพ์โปรไฟล์พร้อมใช้งาน');
+  if(!m.auditCount)add('medium','กำกับดูแล','ยังไม่มีบันทึกตรวจสอบ', 'ระบบพร้อมเก็บ audit แล้ว แต่ยังไม่มีเหตุการณ์', 'ให้ผู้ดูแลกดบันทึกการตรวจ หรือใช้งาน login/print/password change เพื่อเริ่มตรวจสอบย้อนหลัง');
+  if(m.readiness>=80)add('low','สถาปัตยกรรม','ระบบพร้อมเข้าสู่เฟสย้ายระบบ',`ความพร้อม ${m.readiness}%`, 'เริ่มแยก API contract และ data model เพื่อย้ายสู่ Cloud Run/Firestore/BigQuery แบบค่อยเป็นค่อยไปโดยไม่หยุดระบบ');
+  return items;
+}
+function modernSeverityTone(sev){return sev==='high'?'bad':sev==='medium'?'warn':sev==='low'?'info':'ok';}
+function modernSeverityThai(sev){return sev==='high'?'สูง':sev==='medium'?'กลาง':sev==='low'?'ต่ำ':'ปกติ';}
+function renderModernRows(rows){
+  return rows.length?rows.map(r=>`<div class="modern-row"><div><div class="modern-row-main">${escapeHtml(r.title||r.domain)}</div><div class="modern-row-sub">${escapeHtml(r.detail||'')}</div><div class="modern-row-sub"><strong>สิ่งที่ควรทำต่อ:</strong> ${escapeHtml(r.action||'')}</div></div>${modernPill(r.domain||r.severity,modernSeverityTone(r.severity))}</div>`).join(''):'<div class="empty-st">ยังไม่มีรายการที่ต้องดำเนินการสำคัญ</div>';
+}
+function renderModernYearBars(m){
+  const max=Math.max(1,...Object.values(m.yearCounts).map(Number));
+  return RESIDENT_YEAR_ORDER.map(y=>{
+    const n=m.yearCounts[y]||0,p=Math.round(n/max*100);
+    return`<div class="modern-row"><div style="flex:1"><div class="modern-row-main">${escapeHtml(yrFullText(y))}</div>${modernBar(p,String(y)==='5'?'teal':String(y)==='6'?'ok':'blue')}</div><strong>${n}</strong></div>`;
+  }).join('');
+}
+function renderModernRotationBars(m){
+  const entries=Object.entries(m.rotationCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const max=Math.max(1,...entries.map(x=>x[1]));
+  if(!entries.length)return'<div class="empty-st">ยังไม่มีข้อมูลแบบประเมิน Rotation</div>';
+  return entries.map(([id,n])=>{
+    const rot=getAssessmentRotation(id);
+    const label=rot?`${rot.emoji} ${rot.label}`:id;
+    return`<div class="modern-row"><div style="flex:1"><div class="modern-row-main">${escapeHtml(label)}</div>${modernBar(Math.round(n/max*100),'teal')}</div><strong>${n}</strong></div>`;
+  }).join('');
+}
+function modernStackHtml(){
+  const stacks=[
+    ['หน้าบ้าน','Next.js/React PWA, shadcn/ui หรือ Material UI, Capacitor/Flutter สำหรับ Mobile App'],
+    ['Backend / API','Cloud Run microservices, API Gateway, OpenAPI contracts, Pub/Sub event bus, Apps Script เป็น BFF ระหว่างทาง'],
+    ['Database / Storage','Firestore สำหรับข้อมูลปฏิบัติการ, Cloud SQL PostgreSQL สำหรับข้อมูลสัมพันธ์, BigQuery สำหรับ analytics, Cloud Storage สำหรับไฟล์'],
+    ['AI Tools / AI','Vertex AI หรือ OpenAI API, embeddings/RAG จากหลักฐานใน portfolio, prompt audit, workflow ให้คนอนุมัติ'],
+    ['Security / ความปลอดภัย','Google Identity/IAM, OAuth/OIDC, Secret Manager, Cloud KMS, VPC-SC, audit logs, least privilege'],
+    ['Observability / Monitoring','Cloud Logging/Monitoring, Error Reporting, SLO dashboards, alerting, data quality checks']
+  ];
+  return`<div class="modern-stack-grid">${stacks.map(s=>`<div class="modern-stack"><strong>${escapeHtml(s[0])}</strong><span>${escapeHtml(s[1])}</span></div>`).join('')}</div>`;
+}
+function modernRoadmapHtml(){
+  const steps=[
+    ['0-30 วัน','ทำให้ Apps Script ปัจจุบันเสถียรขึ้น, เติม audit trail, ตั้งนโยบายรหัสผ่าน, เปิดพิมพ์โปรไฟล์, ตรวจ backup Google Sheet และร่าง OpenAPI'],
+    ['30-90 วัน','เพิ่ม API-first BFF, event schema, automation แจ้งเตือน, งานตรวจคุณภาพข้อมูล และ dashboard ที่พร้อมส่งออกสู่ BigQuery'],
+    ['3-6 เดือน','ย้ายบางส่วนสู่ Cloud Run/Firestore แบบค่อยเป็นค่อยไป, ใช้ object storage สำหรับหลักฐาน/รูปภาพ, วาง IAM/Zero Trust, CI/CD และ automated tests'],
+    ['6-12 เดือน','เพิ่ม AI advisor assistant, ทำนายความเสี่ยงความก้าวหน้าของแพทย์, executive dashboard แบบ real-time, PWA/mobile offline workflow และชุดเอกสาร compliance ครบถ้วน']
+  ];
+  return`<div class="modern-timeline">${steps.map(s=>`<div class="modern-step"><div class="modern-step-phase">${escapeHtml(s[0])}</div><div class="modern-step-body">${escapeHtml(s[1])}</div></div>`).join('')}</div>`;
+}
+function modernAuditHtml(){
+  const logs=(ensureModernizationState().auditLog||[]).slice(-20).reverse();
+  if(!logs.length)return'<div class="empty-st">ยังไม่มีบันทึกเหตุการณ์</div>';
+  return`<div class="modern-audit">${logs.map(l=>`<div class="modern-audit-row"><div class="modern-audit-time">${fmtDate(l.ts)}</div><div><div class="modern-audit-action">${escapeHtml(modernAuditActionLabel(l.action))} · ${escapeHtml(modernAuditActorLabel(l.actor||''))}</div><div class="modern-audit-detail">${escapeHtml(modernAuditDetailLabel(l.detail||''))}</div></div></div>`).join('')}</div>`;
+}
+function modernAuditActionLabel(action){
+  const map={login:'เข้าสู่ระบบ',logout:'ออกจากระบบ',profile_print:'พิมพ์โปรไฟล์',password_change:'เปลี่ยนรหัสผ่าน',admin_password_change:'เปลี่ยนรหัสผ่านผู้ดูแล',modernization_review:'บันทึกการตรวจแผน',modernization_report_export:'ส่งออกรายงาน',modernization_report_copy:'คัดลอกรายงาน',event:'เหตุการณ์','เหตุการณ์':'เหตุการณ์'};
+  return map[action]||String(action||'เหตุการณ์');
+}
+function modernAuditActorLabel(actor){
+  return String(actor||'').replace(/^Resident\b/,'แพทย์ประจำบ้าน').replace(/^Advisor\b/,'อาจารย์').replace(/^Admin$/,'ผู้ดูแลระบบ').replace(/^System$/,'ระบบ');
+}
+function modernAuditDetailLabel(detail){
+  const d=String(detail||'');
+  if(d==='User signed out')return'ออกจากระบบ';
+  if(d==='Admin signed in')return'ผู้ดูแลระบบเข้าสู่ระบบ';
+  if(d==='Admin password updated')return'อัปเดตรหัสผ่านผู้ดูแลระบบ';
+  if(d==='Exported modernization blueprint text')return'ส่งออกรายงานแผนยกระดับระบบ';
+  if(d==='Copied modernization blueprint')return'คัดลอกรายงานแผนยกระดับระบบ';
+  if(d==='Admin reviewed Modernization Center')return'ผู้ดูแลระบบตรวจหน้าแผนยกระดับระบบ';
+  let m=d.match(/^Resident (.+) signed in$/); if(m)return`แพทย์ประจำบ้าน ${m[1]} เข้าสู่ระบบ`;
+  m=d.match(/^Advisor (.+) signed in$/); if(m)return`อาจารย์ ${m[1]} เข้าสู่ระบบ`;
+  m=d.match(/^Printed resident profile (.+) from (.+)$/); if(m)return`พิมพ์โปรไฟล์แพทย์ ${m[1]} จากหน้า ${m[2]}`;
+  m=d.match(/^(resident|advisor) (.+) changed password$/); if(m)return`${m[1]==='resident'?'แพทย์ประจำบ้าน':'อาจารย์'} ${m[2]} เปลี่ยนรหัสผ่าน`;
+  return d;
+}
+function buildModernizationReportText(){
+  const m=modernMetrics(),ins=modernInsights(m),state=ensureModernizationState();
+  const lines=[
+    'OrthoFolio Blueprint การยกระดับระบบ',
+    'สร้างเมื่อ: '+new Date().toLocaleString('th-TH'),
+    '',
+    '1. สถาปัตยกรรมยุคใหม่',
+    '- เป้าหมาย: ใช้ Hybrid Event-Driven + API-First BFF ตอนนี้ และต่อยอดสู่ Cloud Run microservices + API Gateway + Pub/Sub',
+    '- เป้าหมายข้อมูล: Firestore/Cloud SQL สำหรับงานปฏิบัติการ, BigQuery สำหรับ analytics, Cloud Storage สำหรับไฟล์',
+    '',
+    '2. AI และระบบอัตโนมัติ',
+    '- Smart Insights ตอนนี้วิเคราะห์ความครบถ้วนของคะแนน ช่องว่าง feedback และความเสี่ยงด้านความปลอดภัย',
+    '- LLM เฟสถัดไป: สรุป portfolio, ช่วยร่าง feedback, ทำนายความเสี่ยงความก้าวหน้า และ chatbot สำหรับค้นหานโยบาย/ข้อมูล',
+    '',
+    '3. ข้อมูลและวิเคราะห์เรียลไทม์',
+    `- ความพร้อม ${m.readiness}%, ความครบถ้วนคะแนน ${m.scoreCoverage}%, feedback ${m.feedbackCoverage}%, แบบประเมินบันทึกแล้ว ${m.assessmentCompletion}%.`,
+    '- Executive dashboard ควรส่ง event เข้า BigQuery/Looker Studio หลังย้ายขึ้น cloud',
+    '',
+    '4. ความปลอดภัยและกฎหมายข้อมูล',
+    `- คะแนนความปลอดภัย ${m.securityScore}%, รหัสผ่านเสี่ยง ${m.weakTotal}, บันทึกเหตุการณ์ ${m.auditCount}.`,
+    '- ใช้ Zero Trust, encryption at rest/in transit, least privilege, PDPA consent/retention/audit',
+    '',
+    '5. UX/UI และหน้าบ้าน',
+    '- ระบบปัจจุบันมีศูนย์ยกระดับระบบสำหรับผู้ดูแล และพิมพ์โปรไฟล์รายบุคคลได้แล้ว',
+    '- เป้าหมาย: PWA/offline-first web app และ mobile shell ที่ใช้ได้ข้ามแพลตฟอร์ม',
+    '',
+    '6. แผนย้ายระบบและชุดเทคโนโลยี',
+    '- หน้าบ้าน: Next.js/React PWA หรือ Flutter/Capacitor mobile.',
+    '- Backend: Cloud Run, API Gateway, Pub/Sub, Cloud Scheduler/Workflows.',
+    '- Database: Firestore, Cloud SQL PostgreSQL, BigQuery, Cloud Storage.',
+    '- AI: Vertex AI หรือ OpenAI API พร้อม RAG และ workflow ให้คนอนุมัติ',
+    '',
+    'สถานะปัจจุบัน',
+    `- แพทย์ประจำบ้าน: ${m.residents.length}, อาจารย์: ${m.advisors.length}, แบบประเมินที่บันทึก: ${m.records.length}.`,
+    `- สถานะการยกระดับ: ${state.targetArchitecture}; ${state.securityMode}.`,
+    '',
+    'รายการที่ควรดำเนินการ',
+    ...ins.map((x,i)=>`${i+1}. [${modernSeverityThai(x.severity)}] ${x.domain}: ${x.title} - ${x.action}`)
+  ];
+  return lines.join('\n');
+}
+function downloadModernizationReport(){
+  const txt=buildModernizationReportText();
+  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='orthofolio-modernization-blueprint.txt';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  logAudit('modernization_report_export','ส่งออกรายงานแผนยกระดับระบบ','ผู้ดูแลระบบ',true);
+  toast('✅ ส่งออกรายงานแล้ว');
+}
+function copyModernizationReport(){
+  const txt=buildModernizationReportText();
+  const done=()=>{logAudit('modernization_report_copy','คัดลอกรายงานแผนยกระดับระบบ','ผู้ดูแลระบบ',false);toast('✅ คัดลอกรายงานแล้ว');};
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(txt).then(done).catch(()=>prompt('คัดลอกรายงาน',txt));
+  else prompt('คัดลอกรายงาน',txt);
+}
+function renderModernizationCenter(){
+  const state=ensureModernizationState(),m=modernMetrics(),ins=modernInsights(m);
+  state.lastDashboardAt=new Date().toISOString();
+  const scoreTone=modernScoreClass(m.readiness);
+  const el=document.getElementById('modern-content');
+  if(!el)return;
+  el.innerHTML=`
+    <div class="modern-hero">
+      <div>
+        <div class="modern-kicker">ข้อ 1-6 · ระบบทันสมัยและพร้อมต่อยอด</div>
+        <div class="modern-title">ศูนย์ยกระดับระบบ OrthoFolio</div>
+        <div class="modern-sub">ศูนย์วางแผนปรับระบบจาก Apps Script เดิมสู่สถาปัตยกรรม API-first, event-driven, พร้อมใช้ AI, วิเคราะห์ข้อมูลเรียลไทม์, Zero Trust และ PWA/mobile โดยอิงจากข้อมูลจริงในระบบตอนนี้</div>
+        <div class="modern-actions">
+          <button id="btn-modern-refresh" class="abtn t" type="button">🔄 รีเฟรช</button>
+          <button id="btn-modern-export" class="abtn b" type="button">⬇️ ส่งออกรายงาน</button>
+          <button id="btn-modern-copy" class="abtn" style="background:#6d28d9" type="button">📋 คัดลอกรายงาน</button>
+          <button id="btn-modern-review" class="abtn g" type="button">✅ บันทึกการตรวจ</button>
+        </div>
+      </div>
+      <div class="modern-score">
+        <div class="modern-score-label">ความพร้อมในการยกระดับระบบ</div>
+        <div class="modern-score-val ${scoreTone==='ok'?'':scoreTone}">${m.readiness}%</div>
+        ${modernBar(m.readiness,scoreTone)}
+        <div class="modern-score-note">อัปเดตล่าสุด ${fmtDate(state.lastDashboardAt)}</div>
+      </div>
+    </div>
+    <div class="modern-kpi-grid">
+      ${modernKpi('ความครบถ้วนคะแนน',m.scoreCoverage+'%',`${m.doneRc+m.doneCentral}/${m.expectedRc+m.expectedCentral} ช่องข้อมูล`,'📊',modernScoreClass(m.scoreCoverage))}
+      ${modernKpi('แบบประเมินบันทึกแล้ว',m.assessmentCompletion+'%',`${m.records.length} รายการ`,'✅',modernScoreClass(m.assessmentCompletion))}
+      ${modernKpi('การมอบหมายอาจารย์',m.advisorCoverage+'%',`${m.assignedResidents}/${m.residents.length} คนมีผู้ดูแล`,'👨‍🏫',modernScoreClass(m.advisorCoverage))}
+      ${modernKpi('คะแนนความปลอดภัย',m.securityScore+'%',`${m.weakTotal} บัญชีรหัสผ่านเสี่ยง`,'🔐',modernScoreClass(m.securityScore))}
+      ${modernKpi('บันทึกเหตุการณ์',String(m.auditCount),'เก็บล่าสุด 120 เหตุการณ์','🧾',m.auditCount?'teal':'warn')}
+    </div>
+    <div class="modern-grid">
+      <section class="modern-card">
+        <div class="modern-card-head"><div><div class="modern-card-title">1. สถาปัตยกรรมระบบยุคใหม่</div><div class="modern-card-desc">เป้าหมาย API-first, event-driven และรองรับ cloud scale</div></div>${modernPill('ไฮบริดปัจจุบัน','teal')}</div>
+        <div class="modern-list">
+          <div class="modern-row"><div><div class="modern-row-main">ระบบกลางปัจจุบัน</div><div class="modern-row-sub">Apps Script ทำหน้าที่เป็นตัวกลางหน้าบ้าน-หลังบ้านระหว่างทาง พร้อมสำรองข้อมูลผ่าน Google Sheet</div></div>${modernPill('ใช้งานอยู่','ok')}</div>
+          <div class="modern-row"><div><div class="modern-row-main">บริการเป้าหมาย</div><div class="modern-row-sub">Cloud Run microservices, API Gateway, Pub/Sub events และ Cloud Scheduler/Workflows automation</div></div>${modernPill('แผนต่อยอด','info')}</div>
+          <div class="modern-row"><div><div class="modern-row-main">รองรับข้อมูลขนาดใหญ่</div><div class="modern-row-sub">Firestore/Cloud SQL สำหรับงานปฏิบัติการ, BigQuery สำหรับข้อมูลระดับล้านแถว, Cloud Storage สำหรับรูปและหลักฐาน</div></div>${modernPill('พร้อมอนาคต','teal')}</div>
+        </div>
+      </section>
+      <section class="modern-card">
+        <div class="modern-card-head"><div><div class="modern-card-title">2. AI และระบบอัตโนมัติ</div><div class="modern-card-desc">เครื่องมือวิเคราะห์อัจฉริยะและคิวงานอัตโนมัติ</div></div>${modernPill(ins.length+' งาน',ins.length?'warn':'ok')}</div>
+        <div class="modern-list">${renderModernRows(ins.slice(0,5))}</div>
+      </section>
+      <section class="modern-card">
+        <div class="modern-card-head"><div><div class="modern-card-title">3. ข้อมูลและวิเคราะห์เรียลไทม์</div><div class="modern-card-desc">KPI สดจากข้อมูลแพทย์ คะแนน ข้อมูลสะท้อนกลับ และแบบประเมิน</div></div>${modernPill('สด','ok')}</div>
+        <div class="modern-list">
+          <div class="modern-row"><div style="flex:1"><div class="modern-row-main">ความครบถ้วนของ Feedback</div><div class="modern-row-sub">กรอกแล้ว ${m.doneFb}/${m.expectedFb} ช่อง feedback</div>${modernBar(m.feedbackCoverage,modernScoreClass(m.feedbackCoverage))}</div><strong>${m.feedbackCoverage}%</strong></div>
+          <div class="modern-row"><div style="flex:1"><div class="modern-row-main">ความครบถ้วนของข้อมูลตัวตน</div><div class="modern-row-sub">อีเมลและรูปภาพสำหรับ PDPA และความพร้อมของระบบแจ้งเตือน</div>${modernBar(m.dataCompleteness,modernScoreClass(m.dataCompleteness))}</div><strong>${m.dataCompleteness}%</strong></div>
+        </div>
+      </section>
+      <section class="modern-card">
+        <div class="modern-card-head"><div><div class="modern-card-title">4. ความปลอดภัยและการปฏิบัติตามข้อกำหนด</div><div class="modern-card-desc">Zero Trust Lite ตอนนี้ และ Zero Trust Native หลังย้ายขึ้น cloud</div></div>${modernPill('พร้อม PDPA','info')}</div>
+        <div class="modern-list">
+          <div class="modern-row"><div><div class="modern-row-main">สิทธิ์เท่าที่จำเป็น</div><div class="modern-row-sub">มีอาจารย์ ${m.noResidentAdvisors} คนที่ยังไม่มีขอบเขตแพทย์ในความดูแล; มีอาจารย์ ${m.allRotationAdvisors} คนที่เข้าถึงแบบประเมิน rotation ได้ทั้งหมด</div></div>${modernPill(m.noResidentAdvisors?'ควรตรวจ':'ปกติ',m.noResidentAdvisors?'warn':'ok')}</div>
+          <div class="modern-row"><div><div class="modern-row-main">การเข้ารหัสข้อมูล</div><div class="modern-row-sub">ตอนนี้ใช้ Google Workspace storage และ HTTPS; สถาปัตยกรรมเป้าหมายเพิ่ม Cloud KMS/Secret Manager</div></div>${modernPill('จัดเก็บ + รับส่ง','ok')}</div>
+          <div class="modern-row"><div><div class="modern-row-main">PDPA/GDPR Controls</div><div class="modern-row-sub">มองเห็น audit trail, purpose limitation, รายงานที่ส่งออกได้ และคำเตือนเรื่อง data minimization แล้ว</div></div>${modernPill('ติดตามได้','teal')}</div>
+        </div>
+      </section>
+      <section class="modern-card">
+        <div class="modern-card-head"><div><div class="modern-card-title">5. UX/UI และหน้าบ้าน</div><div class="modern-card-desc">ระบบรองรับหลายขนาดหน้าจอ พร้อมต่อยอด PWA และขั้นตอนพิมพ์โปรไฟล์</div></div>${modernPill('ทำแล้ว','ok')}</div>
+        <div class="modern-list">
+          <div class="modern-row"><div><div class="modern-row-main">UX สำหรับผู้ดูแลระบบ</div><div class="modern-row-sub">มีแดชบอร์ดยกระดับระบบ คิวงานที่ควรทำ รายงานส่งออก และลำดับเหตุการณ์ตรวจสอบ</div></div>${modernPill('ใหม่','teal')}</div>
+          <div class="modern-row"><div><div class="modern-row-main">พิมพ์โปรไฟล์รายบุคคล</div><div class="modern-row-sub">ผู้ดูแล แพทย์ และอาจารย์สามารถพิมพ์ portfolio profile รายบุคคลได้</div></div>${modernPill('เสร็จแล้ว','ok')}</div>
+          <div class="modern-row"><div><div class="modern-row-main">เป้าหมาย PWA/Mobile</div><div class="modern-row-sub">ขั้นต่อไปคือ manifest/service worker หรือ Capacitor/Flutter shell หลังปลดข้อจำกัดของ Apps Script</div></div>${modernPill('ถัดไป','info')}</div>
+        </div>
+      </section>
+      <section class="modern-card">
+        <div class="modern-card-head"><div><div class="modern-card-title">การกระจายแพทย์ตามชั้นปี</div><div class="modern-card-desc">สรุปจำนวนแพทย์แต่ละชั้นปีแบบเรียลไทม์</div></div>${modernPill(m.residents.length+' คน','teal')}</div>
+        <div class="modern-list">${renderModernYearBars(m)}</div>
+      </section>
+      <section class="modern-card">
+        <div class="modern-card-head"><div><div class="modern-card-title">วิเคราะห์แบบประเมิน Rotation</div><div class="modern-card-desc">สายงานประเมินที่มีการใช้งานมากที่สุด</div></div>${modernPill(m.records.length+' รายการ','info')}</div>
+        <div class="modern-list">${renderModernRotationBars(m)}</div>
+      </section>
+      <section class="modern-card wide">
+        <div class="modern-card-head"><div><div class="modern-card-title">6. แผนย้ายระบบและชุดเทคโนโลยี</div><div class="modern-card-desc">แผนย้ายระบบเป็นระยะและชุดเทคโนโลยีที่แนะนำ</div></div>${modernPill('ไม่หยุดระบบ','ok')}</div>
+        ${modernRoadmapHtml()}
+        <div style="height:12px"></div>
+        ${modernStackHtml()}
+      </section>
+      <section class="modern-card wide">
+        <div class="modern-card-head"><div><div class="modern-card-title">บันทึกเหตุการณ์</div><div class="modern-card-desc">เหตุการณ์เข้าสู่ระบบ พิมพ์ เปลี่ยนรหัสผ่าน ตรวจแผน และส่งออกรายงาน เพื่อใช้เป็นหลักฐานการปฏิบัติตามข้อกำหนด</div></div>${modernPill('ล่าสุด 20','info')}</div>
+        ${modernAuditHtml()}
+      </section>
+    </div>`;
+  document.getElementById('btn-modern-refresh')?.addEventListener('click',()=>{renderModernizationCenter();toast('✅ รีเฟรชแดชบอร์ดแล้ว');});
+  document.getElementById('btn-modern-export')?.addEventListener('click',downloadModernizationReport);
+  document.getElementById('btn-modern-copy')?.addEventListener('click',copyModernizationReport);
+  document.getElementById('btn-modern-review')?.addEventListener('click',()=>{state.lastReviewAt=new Date().toISOString();logAudit('modernization_review','ผู้ดูแลระบบตรวจหน้าแผนยกระดับระบบ','ผู้ดูแลระบบ',true);renderModernizationCenter();toast('✅ บันทึกการตรวจแล้ว');});
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXECUTIVE OPS: Dashboard, Alerts, Health, Reports, AI
+// ═══════════════════════════════════════════════════════
+function opsToneBySeverity(sev){return sev==='high'?'bad':sev==='medium'?'warn':sev==='low'?'info':'ok';}
+function opsSeverityThai(sev){return sev==='high'?'สูง':sev==='medium'?'กลาง':sev==='low'?'ต่ำ':'ปกติ';}
+function opsBadge(text,tone='info'){return`<span class="ops-badge ${tone}">${escapeHtml(text)}</span>`;}
+function residentName(r){return [r?.fn,r?.ln].filter(Boolean).join(' ')||r?.id||'—';}
+function validEmail(v){const s=String(v||'').trim();return !s||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);}
+function downloadTextFile(filename,text,type='text/plain;charset=utf-8'){
+  const blob=new Blob([text],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+function csvCell(v){return`"${String(v??'').replace(/"/g,'""')}"`;}
+function downloadCsvFile(filename,rows){
+  const csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\n');
+  downloadTextFile(filename,csv,'text/csv;charset=utf-8');
+}
+function duplicateValues(items,prop){
+  const seen=new Map(),dups=[];
+  items.forEach(x=>{const v=String(x?.[prop]||'').trim();if(!v)return;if(seen.has(v)&&!dups.includes(v))dups.push(v);seen.set(v,true);});
+  return dups;
+}
+function residentScoreCounts(r){
+  const rcTotal=RCOST.length,centralTotal=(DB.cats||[]).length,fbTotal=YEARS.length*2;
+  const rcDone=RCOST.filter(ex=>modernHasValue(r.os?.rc?.[ex.key]?.score)).length;
+  const centralDone=(DB.cats||[]).filter(c=>modernHasValue(r.cs?.[c.id])).length;
+  let fbDone=0;YEARS.forEach(y=>(r.os?.feedback?.[y]||[]).forEach(row=>{if(modernHasValue(row?.resident)||modernHasValue(row?.advisor))fbDone++;}));
+  return{rcDone,rcTotal,centralDone,centralTotal,fbDone,fbTotal,overall:modernPct(rcDone+centralDone+fbDone,rcTotal+centralTotal+fbTotal)};
+}
+function residentAssessmentCounts(resId){
+  const records=(DB.rotaRecords||[]).filter(r=>r.resId===resId);
+  return{total:records.length,signed:records.length,pending:0};
+}
+function residentFeedbackCounts(r){
+  let done=0,total=0;
+  YEARS.forEach(y=>(r.os?.feedback?.[y]||[]).forEach(row=>{
+    total++;
+    if(modernHasValue(row?.resident)||modernHasValue(row?.advisor))done++;
+  }));
+  return{done,total};
+}
+function residentRiskScore(r){
+  const sc=residentScoreCounts(r),ac=residentAssessmentCounts(r.id);
+  let risk=100-sc.overall;
+  if(!modernHasValue(r.email))risk+=10;
+  if(!modernHasValue(r.photo))risk+=6;
+  if(ac.pending)risk+=Math.min(24,ac.pending*6);
+  if(!ac.total)risk+=8;
+  return Math.max(0,Math.min(100,Math.round(risk)));
+}
+function buildOperationalAlerts(){
+  const alerts=[];
+  const add=(severity,domain,title,detail,action,ref='')=>alerts.push({severity,domain,title,detail,action,ref});
+  const residents=DB.residents||[],advisors=DB.advisors||[],records=DB.rotaRecords||[];
+  const resDup=duplicateValues(residents,'id'),advDup=duplicateValues(advisors,'id');
+  if(!residents.length)add('high','ข้อมูลหลัก','ยังไม่มีแพทย์ประจำบ้าน','ระบบยังไม่มีข้อมูลแพทย์ให้ใช้งาน','เพิ่มรายชื่อแพทย์ประจำบ้านหรือซ่อมจากตารางรายงาน');
+  if(!advisors.length)add('high','ข้อมูลหลัก','ยังไม่มีอาจารย์','ระบบยังไม่มีผู้ประเมินหรืออาจารย์ที่ปรึกษา','เพิ่มรายชื่ออาจารย์และกำหนดสิทธิ์');
+  if(resDup.length)add('high','Validation','รหัสแพทย์ซ้ำ',resDup.join(', '),'แก้รหัสซ้ำก่อนบันทึกหรือ export');
+  if(advDup.length)add('high','Validation','รหัสอาจารย์ซ้ำ',advDup.join(', '),'แก้รหัสซ้ำก่อนบันทึกหรือ export');
+  const noRotation=residents.filter(r=>isAssessmentEligibleResident(r)&&residentAssessmentCounts(r.id).total===0);
+  if(noRotation.length)add('high','Rotation','แพทย์ที่ยังไม่ถูกประเมิน Rotation',`${noRotation.length} คนยังไม่มีแบบประเมิน Rotation`,'สร้าง/บันทึกแบบประเมิน Rotation ให้แพทย์กลุ่มนี้');
+  const noFeedback=residents.filter(r=>residentFeedbackCounts(r).done===0);
+  if(noFeedback.length)add('high','Feedback','แพทย์ที่ยังไม่ได้รับ Feedback',`${noFeedback.length} คนยังไม่มี Feedback ในระบบ`,'บันทึก Feedback รายรอบให้แพทย์กลุ่มนี้');
+  const weakUsers=[...residents.map(r=>({kind:'แพทย์',id:r.id,needsChange:r.passwordChangeRequired||!r.passwordUpdatedAt})),...advisors.map(a=>({kind:'อาจารย์',id:a.id,needsChange:a.passwordChangeRequired||!a.passwordUpdatedAt}))].filter(u=>u.needsChange);
+  if(weakUsers.length)add('medium','บัญชีผู้ใช้','พบบัญชีที่ยังตั้งค่าไม่ครบ',`${weakUsers.length} บัญชียังไม่มีข้อมูลรหัสผ่านครบ`,'กำหนดรหัสผ่านใหม่จากหน้าจัดการบัญชี');
+  const invalidEmails=[...residents.filter(r=>!validEmail(r.email)).map(r=>'แพทย์ '+r.id),...advisors.filter(a=>!validEmail(a.email)).map(a=>'อาจารย์ '+a.id)];
+  if(invalidEmails.length)add('medium','Validation','รูปแบบอีเมลไม่ถูกต้อง',invalidEmails.slice(0,8).join(', ')+(invalidEmails.length>8?'...':''),'ตรวจและแก้ไขอีเมลเพื่อใช้แจ้งเตือน/PDPA');
+  const missingEmail=residents.filter(r=>!modernHasValue(r.email)).length+advisors.filter(a=>!modernHasValue(a.email)).length;
+  if(missingEmail)add('medium','PDPA/Notification','ข้อมูลอีเมลยังไม่ครบ',`ขาดอีเมล ${missingEmail} รายการ`,'เติมอีเมลเพื่อรองรับการแจ้งเตือนและผูกตัวตน');
+  const missingPhoto=residents.filter(r=>!modernHasValue(r.photo));
+  if(missingPhoto.length)add('low','UX','รูปโปรไฟล์แพทย์ยังไม่ครบ',`${missingPhoto.length} คนยังไม่มีรูป`,'ให้แพทย์อัปโหลดรูปเพื่อให้รายงานและการพิมพ์โปรไฟล์สมบูรณ์');
+  const assigned=new Set();advisors.forEach(a=>advisorExplicitResidentIds(a).forEach(id=>assigned.add(id)));
+  const unassigned=residents.filter(r=>!assigned.has(String(r.id)));
+  if(unassigned.length)add('medium','สิทธิ์ดูแล','แพทย์ยังไม่มีอาจารย์ในความดูแล',`${unassigned.length} คนยังไม่ถูกมอบหมายสิทธิ์`,'กำหนดสิทธิ์ในหน้าอาจารย์');
+  const noScope=advisors.filter(a=>!advisorExplicitResidentIds(a).length);
+  if(noScope.length)add('medium','สิทธิ์ดูแล','อาจารย์บางคนยังไม่มีแพทย์ในความดูแล',`${noScope.length} คนยังไม่มี scope`,'กำหนดสิทธิ์ดูแลแพทย์แบบ least privilege');
+  const lowCoverage=residents.map(r=>({r,score:residentScoreCounts(r).overall})).filter(x=>x.score<60);
+  if(lowCoverage.length)add('medium','คะแนน/Portfolio','ข้อมูล Portfolio ยังไม่ครบ',`${lowCoverage.length} คนมีความครบถ้วนต่ำกว่า 60%`,'ไล่เติมคะแนนหลัก feedback และคะแนนส่วนกลาง');
+  const m=modernMetrics();
+  if(m.feedbackCoverage<60)add('medium','Feedback','Feedback ยังน้อย',`coverage feedback ${m.feedbackCoverage}%`,'ตั้งรอบแจ้งเตือนให้อาจารย์และแพทย์เติม feedback');
+  try{
+    const raw=localStorage.getItem(SHEET_SAVE_FAILURE_KEY);
+    if(raw){const data=JSON.parse(raw);if(data?.detail)add('high','Google Sheet','บันทึกลง Google Sheet เคยล้มเหลว',data.detail,'กดบันทึกฐานหลัก + จัดระเบียบ Sheet หรือเช็กสิทธิ์ไฟล์');}
+  }catch(e){}
+  if(!m.auditCount)add('medium','Audit','ยังไม่มีบันทึกตรวจสอบ','ยังไม่มี audit event ให้ใช้ตรวจย้อนหลัง','ให้เริ่มใช้งานระบบและตรวจสอบประวัติการแก้ไขเป็นระยะ');
+  return alerts.sort((a,b)=>({high:0,medium:1,low:2}[a.severity]??3)-({high:0,medium:1,low:2}[b.severity]??3));
+}
+function dashboardAdvisorRows(){
+  return (DB.advisors||[]).map(a=>{
+    const managed=advisorExplicitResidentIds(a),cnt=managed.length;
+    const assessments=(DB.rotaRecords||[]).filter(r=>managed.includes(String(r.resId))).length;
+    return{a,cnt,assessments};
+  }).sort((x,y)=>y.cnt-x.cnt).slice(0,8);
+}
+function dashboardYearOptions(){
+  const preferred=RESIDENT_YEAR_ORDER;
+  const present=[...new Set((DB.residents||[]).map(r=>String(r.yr||'')).filter(Boolean))];
+  const extras=present.filter(y=>!preferred.includes(y)).sort((a,b)=>parseInt(a,10)-parseInt(b,10));
+  return ['all',...preferred,...extras];
+}
+function dashboardYearFilterLabel(){
+  return _dashboardYearFilter==='all'?'ทุกชั้นปี':yrText(_dashboardYearFilter);
+}
+function dashboardYearTabs(){
+  return dashboardYearOptions().map(y=>{
+    const label=y==='all'?'ทั้งหมด':yrText(y);
+    return`<button class="score-year-tab ${String(y)===String(_dashboardYearFilter)?'active':''}" data-dash-year="${escapeHtml(y)}">${escapeHtml(label)}</button>`;
+  }).join('');
+}
+function executiveWarningData(){
+  const allResidents=DB.residents||[];
+  const residents=_dashboardYearFilter==='all'?allResidents:allResidents.filter(r=>String(r.yr)===String(_dashboardYearFilter));
+  const noRotation=residents.filter(r=>isAssessmentEligibleResident(r)&&residentAssessmentCounts(r.id).total===0);
+  const noFeedback=residents.filter(r=>residentFeedbackCounts(r).done===0);
+  const urgent=residents.filter(r=>residentAssessmentCounts(r.id).total===0&&residentFeedbackCounts(r).done===0);
+  return{residents,noRotation,noFeedback,urgent,totalAll:allResidents.length};
+}
+function dashboardResidentWarningList(rows,kind){
+  if(!rows.length)return'<div class="empty-st">ไม่มีรายการค้างในหมวดนี้</div>';
+  return rows.map(r=>{
+    const ac=residentAssessmentCounts(r.id);
+    const fc=residentFeedbackCounts(r);
+    const detail=kind==='rotation'
+      ? `แบบประเมิน Rotation ${ac.total} รายการ`
+      : `Feedback ${fc.done}/${fc.total||YEARS.length*2} รอบ`;
+    return`<div class="ops-item"><div><div class="ops-item-main">${escapeHtml(residentName(r))}</div><div class="ops-item-sub">${escapeHtml(r.id||'')} · ${escapeHtml(yrFullText(r.yr))} · ${escapeHtml(r.dept||'ไม่ระบุสังกัด')}</div><div class="ops-item-meta">${escapeHtml(detail)}</div></div>${opsBadge(kind==='rotation'?'ยังไม่ถูกประเมิน':'ยังไม่มี Feedback','bad')}</div>`;
+  }).join('');
+}
+function renderExecutiveDashboard(){
+  const el=document.getElementById('admin-dashboard-content');if(!el)return;
+  const data=executiveWarningData();
+  const total=data.residents.length;
+  const ok=Math.max(total-new Set([...data.noRotation.map(r=>r.id),...data.noFeedback.map(r=>r.id)]).size,0);
+  el.innerHTML=`
+    <div class="ops-hero">
+      <div><div class="ops-title">Dashboard ผู้บริหาร</div><div class="ops-sub">โฟกัส 2 เรื่องที่ต้องติดตามก่อน: แพทย์ที่ยังไม่ถูกประเมิน Rotation และแพทย์ที่ยังไม่ได้รับ Feedback</div></div>
+      <div class="ops-actions">
+        <button id="btn-dash-refresh" class="abtn t" type="button">🔄 รีเฟรช</button>
+        <button id="btn-dash-export" class="abtn b" type="button">⬇️ ส่งออกรายงานผู้บริหาร</button>
+        <button id="btn-dash-sheet" class="abtn" style="background:#7c3aed" type="button">💾 บันทึก + จัด Sheet</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <div>
+        <div style="font-size:12px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">กรองตามชั้นปี</div>
+        <div style="font-size:12px;color:var(--text3)">กำลังแสดง: ${escapeHtml(dashboardYearFilterLabel())}</div>
+      </div>
+      <div class="score-year-tabs" id="dash-year-tabs" style="margin-bottom:0">${dashboardYearTabs()}</div>
+    </div>
+    <div class="modern-kpi-grid">
+      ${modernKpi('แพทย์ประจำบ้าน',String(total),dashboardYearFilterLabel(),'👥','teal')}
+      ${modernKpi('ยังไม่ถูกประเมิน Rotation',String(data.noRotation.length),'ต้องสร้างแบบประเมิน','📋',data.noRotation.length?'bad':'ok')}
+      ${modernKpi('ยังไม่ได้รับ Feedback',String(data.noFeedback.length),'ต้องบันทึก Feedback','💬',data.noFeedback.length?'bad':'ok')}
+      ${modernKpi('ค้างทั้ง 2 เรื่อง',String(data.urgent.length),'ควรติดตามก่อน','⚠️',data.urgent.length?'bad':'ok')}
+      ${modernKpi('ครบทั้ง 2 เรื่อง',String(ok),'มี Rotation และ Feedback แล้ว','✅',ok===total?'ok':'warn')}
+    </div>
+    <div class="ops-grid">
+      <section class="ops-card"><div class="ops-card-title">แพทย์ที่ยังไม่ถูกประเมิน Rotation</div><div class="ops-card-sub">รายชื่อแพทย์ที่ยังไม่มี record แบบประเมิน Rotation ในระบบ</div><div class="ops-list">${dashboardResidentWarningList(data.noRotation,'rotation')}</div></section>
+      <section class="ops-card"><div class="ops-card-title">แพทย์ที่ยังไม่ได้รับ Feedback</div><div class="ops-card-sub">รายชื่อแพทย์ที่ยังไม่มี Feedback จากแพทย์หรืออาจารย์ในระบบ</div><div class="ops-list">${dashboardResidentWarningList(data.noFeedback,'feedback')}</div></section>
+    </div>`;
+  document.getElementById('btn-dash-refresh')?.addEventListener('click',()=>{renderExecutiveDashboard();toast('✅ รีเฟรช Dashboard แล้ว');});
+  document.getElementById('btn-dash-export')?.addEventListener('click',downloadExecutiveReport);
+  document.getElementById('btn-dash-sheet')?.addEventListener('click',writeToSheet);
+  document.querySelectorAll('#dash-year-tabs .score-year-tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      _dashboardYearFilter=btn.dataset.dashYear||'all';
+      renderExecutiveDashboard();
+    });
+  });
+}
+
+const CORE_COMPETENCY_ROTATIONS=['trauma','tumor','pediatric','sports','spine','hk','footankle','hand'];
+function coreRotationLabel(id){return ROTATIONS.find(r=>r.id===id)?.label||id;}
+function residentAdvisorFeedbackProgress(r){
+  let done=0,total=0;
+  YEARS.forEach(y=>{for(let i=0;i<2;i++){total++;if(modernHasValue(r.os?.feedback?.[y]?.[i]?.advisor))done++;}});
+  return{done,total,pct:total?Math.round(done/total*100):0};
+}
+function residentCompetency(r){
+  const covered=new Set((DB.rotaRecords||[]).filter(x=>x.resId===r.id).map(x=>x.rotation));
+  const rotations=CORE_COMPETENCY_ROTATIONS.map(id=>({id,done:covered.has(id)}));
+  const rotationDone=rotations.filter(x=>x.done).length;
+  const feedback=residentAdvisorFeedbackProgress(r);
+  const scoreDone=RCOST.filter(x=>modernHasValue(r.os?.rc?.[x.key]?.score)).length;
+  const evidence=(r.portfolioEvidence||[]).length;
+  const readiness=Math.round((rotationDone/CORE_COMPETENCY_ROTATIONS.length*50)+(feedback.pct*.25)+(scoreDone/RCOST.length*15)+(Math.min(evidence,3)/3*10));
+  return{rotations,rotationDone,feedback,scoreDone,evidence,readiness};
+}
+function activeCampaigns(){return (ensureModernizationState().campaigns||[]).filter(c=>c&&c.status!=='cancelled');}
+function campaignResidentIds(c){
+  const ids=Array.isArray(c.residentIds)&&c.residentIds.length
+    ?c.residentIds
+    :(DB.residents||[]).filter(r=>!c.year||c.year==='all'||String(r.yr)===String(c.year)).map(r=>r.id);
+  if(c.type!=='rotation')return ids;
+  return ids.filter(id=>isAssessmentEligibleResident((DB.residents||[]).find(r=>String(r.id)===String(id))));
+}
+function campaignSatisfied(c,r){
+  if(c.type==='rotation')return c.rotation?(DB.rotaRecords||[]).some(x=>x.resId===r.id&&x.rotation===c.rotation):residentAssessmentCounts(r.id).total>0;
+  if(c.type==='feedback')return residentAdvisorFeedbackProgress(r).done>0;
+  if(c.type==='evidence')return(r.portfolioEvidence||[]).length>0;
+  return false;
+}
+function daysUntil(dateText){
+  if(!dateText)return null;
+  const ms=new Date(dateText+'T23:59:59').getTime()-Date.now();
+  return Math.ceil(ms/86400000);
+}
+function buildWorkQueueItems(){
+  const rows=[];
+  (DB.residents||[]).forEach(r=>{
+    const ac=residentAssessmentCounts(r.id);
+    if(isAssessmentEligibleResident(r)&&ac.total===0)rows.push({id:'rotation:'+r.id,kind:'rotation',resId:r.id,year:r.yr,title:'ยังไม่ถูกประเมิน Rotation',detail:`${residentName(r)} ยังไม่มีแบบประเมิน Rotation`,severity:'high'});
+    const fp=residentAdvisorFeedbackProgress(r);
+    if(fp.done===0)rows.push({id:'feedback:'+r.id,kind:'feedback',resId:r.id,year:r.yr,title:'ยังไม่ได้รับ Feedback',detail:`${residentName(r)} ยังไม่มี Feedback จากอาจารย์`,severity:'high'});
+  });
+  activeCampaigns().forEach(c=>{
+    campaignResidentIds(c).forEach(resId=>{
+      const r=(DB.residents||[]).find(x=>x.id===resId);if(!r||campaignSatisfied(c,r))return;
+      const due=daysUntil(c.dueDate);
+      rows.push({id:`campaign:${c.id}:${r.id}`,kind:c.type||'campaign',campaignId:c.id,resId:r.id,year:r.yr,rotation:c.rotation||'',title:c.title||'แผนติดตาม',detail:`${residentName(r)}${c.dueDate?` · ครบกำหนด ${new Date(c.dueDate+'T00:00:00').toLocaleDateString('th-TH')}`:''}`,severity:due!==null&&due<0?'high':due!==null&&due<=7?'medium':'low',dueDate:c.dueDate||''});
+    });
+  });
+  return rows.sort((a,b)=>({high:0,medium:1,low:2}[a.severity]-({high:0,medium:1,low:2}[b.severity])));
+}
+function feedbackInboxItems(){
+  const rows=[];
+  (DB.residents||[]).forEach(r=>{
+    YEARS.forEach(y=>{for(let i=0;i<2;i++){
+      const fb=r.os?.feedback?.[y]?.[i]||{};
+      if(modernHasValue(fb.advisor))continue;
+      rows.push({id:`feedback:${r.id}:${y}:${i}`,resId:r.id,year:r.yr,round:`${y} / รอบ ${i+1}`,title:residentName(r),detail:modernHasValue(fb.resident)?'รออาจารย์ตอบ Feedback':'รอแพทย์และอาจารย์บันทึก Feedback',severity:modernHasValue(fb.resident)?'medium':'high'});
+    }});
+  });
+  return rows;
+}
+function activateAdminPanel(panel){
+  const button=document.querySelector(`#page-admin .anavbtn[data-ap="${panel}"]`);
+  document.querySelectorAll('#page-admin .anavbtn').forEach(x=>x.classList.remove('active'));
+  if(button)button.classList.add('active');
+  document.querySelectorAll('#page-admin .apanel').forEach(x=>x.classList.remove('active'));
+  document.getElementById('ap-'+panel)?.classList.add('active');
+}
+function openWorkItem(kind,resId,rotation){
+  if(kind==='rotation'){
+    openNewAssessModal(resId,'admin',null,rotation||undefined);
+    return;
+  }
+  if(kind==='evidence'){
+    _progressResidentId=resId;activateAdminPanel('progress');renderProgressCenter();
+    return;
+  }
+  activateAdminPanel('scores');renderScoreEntry(resId);
+}
+function createWorkflowCampaign(){
+  const type=document.getElementById('campaign-type')?.value||'rotation';
+  const year=document.getElementById('campaign-year')?.value||'all';
+  const rotation=document.getElementById('campaign-rotation')?.value||'';
+  const dueDate=document.getElementById('campaign-due')?.value||'';
+  const title=(document.getElementById('campaign-title')?.value||'').trim()||`${type==='rotation'?'ติดตามการประเมิน Rotation':type==='feedback'?'ติดตาม Feedback':'ติดตามหลักฐาน Portfolio'}`;
+  const targets=(DB.residents||[]).filter(r=>year==='all'||String(r.yr)===String(year)).map(r=>r.id);
+  if(!targets.length){toast('ไม่พบแพทย์ตามชั้นปีที่เลือก','error');return;}
+  const campaign={id:uid(),type,title,year,rotation,dueDate,residentIds:targets,status:'active',createdAt:new Date().toISOString(),createdBy:currentActorLabel()};
+  ensureModernizationState().campaigns.unshift(campaign);
+  recordChange('campaign',campaign.id,'สร้างแผนติดตาม','—',title);saveDB();renderWorkQueue();toast('สร้างแผนติดตามแล้ว');
+}
+function cancelWorkflowCampaign(id){
+  const c=activeCampaigns().find(x=>x.id===id);if(!c)return;
+  c.status='cancelled';c.cancelledAt=new Date().toISOString();recordChange('campaign',id,'ยกเลิกแผนติดตาม',c.title,'ยกเลิกแล้ว');saveDB();renderWorkQueue();
+}
+function workQueueItemHtml(item){
+  const label=item.kind==='rotation'?'ประเมิน Rotation':item.kind==='feedback'?'Feedback':item.kind==='evidence'?'Portfolio':'ติดตาม';
+  const button=item.kind==='rotation'?'ประเมิน':item.kind==='feedback'?'เปิด Feedback':'เปิด';
+  return`<div class="workbench-item"><div><div class="workbench-item-main">${escapeHtml(item.title)}</div><div class="workbench-item-sub">${escapeHtml(item.detail)}</div></div><div class="workbench-item-actions">${opsBadge(label,item.severity==='high'?'bad':item.severity==='medium'?'warn':'info')}<button class="abtn g work-open" data-kind="${escapeHtml(item.kind)}" data-rid="${escapeHtml(item.resId)}" data-rot="${escapeHtml(item.rotation||'')}" style="padding:6px 9px;font-size:11px">${button}</button></div></div>`;
+}
+function renderWorkQueue(){
+  const el=document.getElementById('admin-work-content');if(!el)return;
+  const all=buildWorkQueueItems();
+  const items=all.filter(x=>(_workYearFilter==='all'||String(x.year)===String(_workYearFilter))&&(_workTypeFilter==='all'||x.kind===_workTypeFilter));
+  const inbox=feedbackInboxItems().filter(x=>_workYearFilter==='all'||String(x.year)===String(_workYearFilter));
+  const campaigns=activeCampaigns();
+  el.innerHTML=`<div class="workbench-hero"><div><div class="workbench-title">ศูนย์งานค้าง</div><div class="workbench-sub">จัดลำดับงานประเมิน Rotation และ Feedback ตามผู้รับผิดชอบ</div></div><div class="workbench-tools"><select id="work-year" class="workbench-filter">${dashboardYearOptions().map(y=>`<option value="${y}" ${String(y)===String(_workYearFilter)?'selected':''}>${y==='all'?'ทุกชั้นปี':yrText(y)}</option>`).join('')}</select><select id="work-type" class="workbench-filter"><option value="all">ทุกประเภท</option><option value="rotation" ${_workTypeFilter==='rotation'?'selected':''}>Rotation</option><option value="feedback" ${_workTypeFilter==='feedback'?'selected':''}>Feedback</option><option value="evidence" ${_workTypeFilter==='evidence'?'selected':''}>Portfolio</option></select><button id="btn-new-campaign" class="abtn g">＋ สร้างแผนติดตาม</button></div></div>
+    <div class="modern-kpi-grid">${modernKpi('งานค้าง',String(items.length),'ตามตัวกรองปัจจุบัน','✅',items.length?'bad':'ok')}${modernKpi('Rotation',String(items.filter(x=>x.kind==='rotation').length),'ยังไม่มีแบบประเมิน','📋',items.some(x=>x.kind==='rotation')?'bad':'ok')}${modernKpi('Feedback',String(items.filter(x=>x.kind==='feedback').length),'ยังไม่ได้รับจากอาจารย์','💬',items.some(x=>x.kind==='feedback')?'bad':'ok')}${modernKpi('แผนติดตาม',String(campaigns.length),'กำลังดำเนินการ','🗓️',campaigns.length?'info':'ok')}</div>
+    <div id="campaign-composer" class="workbench-section" style="display:none;margin-bottom:14px"><div class="workbench-section-head"><div><div class="workbench-section-title">สร้างแผนติดตาม</div><div class="workbench-section-meta">ระบบจะสร้างรายการให้แพทย์ในชั้นปีที่เลือก</div></div></div><div class="evidence-form"><input id="campaign-title" class="finp" placeholder="ชื่อแผนติดตาม"><select id="campaign-type" class="finp"><option value="rotation">Rotation</option><option value="feedback">Feedback</option><option value="evidence">Portfolio</option></select><select id="campaign-year" class="finp">${dashboardYearOptions().map(y=>`<option value="${y}">${y==='all'?'ทุกชั้นปี':yrText(y)}</option>`).join('')}</select><select id="campaign-rotation" class="finp"><option value="">ทุก Rotation</option>${assessmentRotations().map(r=>`<option value="${r.id}">${escapeHtml(r.label)}</option>`).join('')}</select><input id="campaign-due" type="date" class="finp"><button id="btn-save-campaign" class="abtn g">บันทึก</button></div></div>
+    <div class="workbench-grid"><section class="workbench-section"><div class="workbench-section-head"><div><div class="workbench-section-title">รายการที่ต้องดำเนินการ</div><div class="workbench-section-meta">${items.length} รายการ</div></div></div><div class="workbench-list">${items.map(workQueueItemHtml).join('')||'<div class="empty-st">ไม่มีงานค้างตามตัวกรอง</div>'}</div></section><section class="workbench-section"><div class="workbench-section-head"><div><div class="workbench-section-title">Feedback Inbox</div><div class="workbench-section-meta">${inbox.length} รอบที่ยังไม่สมบูรณ์</div></div></div><div class="workbench-list">${inbox.slice(0,24).map(item=>`<div class="workbench-item"><div><div class="workbench-item-main">${escapeHtml(item.title)}</div><div class="workbench-item-sub">${escapeHtml(item.round)} · ${escapeHtml(item.detail)}</div></div><div class="workbench-item-actions">${opsBadge(item.severity==='high'?'รอข้อมูล':'รออาจารย์',item.severity==='high'?'bad':'warn')}<button class="abtn b inbox-open" data-rid="${escapeHtml(item.resId)}" style="padding:6px 9px;font-size:11px">เปิด</button></div></div>`).join('')||'<div class="empty-st">Feedback ครบตามตัวกรอง</div>'}</div></section></div>
+    ${campaigns.length?`<section class="workbench-section" style="margin-top:14px"><div class="workbench-section-head"><div><div class="workbench-section-title">แผนติดตามที่กำลังใช้งาน</div></div></div><div class="workbench-list">${campaigns.map(c=>`<div class="workbench-item"><div><div class="workbench-item-main">${escapeHtml(c.title)}</div><div class="workbench-item-sub">${escapeHtml(c.type)} · ${campaignResidentIds(c).length} คน${c.dueDate?` · ครบกำหนด ${escapeHtml(c.dueDate)}`:''}</div></div><div class="workbench-item-actions"><button class="abtn" data-cancel-campaign="${escapeHtml(c.id)}" style="padding:6px 9px;font-size:11px;background:#e5e7eb;color:var(--text2)">ยกเลิก</button></div></div>`).join('')}</div></section>`:''}`;
+  el.querySelector('#work-year')?.addEventListener('change',e=>{_workYearFilter=e.target.value;renderWorkQueue();});
+  el.querySelector('#work-type')?.addEventListener('change',e=>{_workTypeFilter=e.target.value;renderWorkQueue();});
+  el.querySelector('#btn-new-campaign')?.addEventListener('click',()=>{const form=el.querySelector('#campaign-composer');if(form)form.style.display=form.style.display==='none'?'block':'none';});
+  el.querySelector('#btn-save-campaign')?.addEventListener('click',createWorkflowCampaign);
+  el.querySelectorAll('.work-open').forEach(b=>b.addEventListener('click',()=>openWorkItem(b.dataset.kind,b.dataset.rid,b.dataset.rot)));
+  el.querySelectorAll('.inbox-open').forEach(b=>b.addEventListener('click',()=>openWorkItem('feedback',b.dataset.rid,'')));
+  el.querySelectorAll('[data-cancel-campaign]').forEach(b=>b.addEventListener('click',()=>cancelWorkflowCampaign(b.dataset.cancelCampaign)));
+}
+
+function evidenceOptions(selected){return(ensureModernizationState().evidenceTypes||[]).map(t=>`<option value="${escapeHtml(t)}" ${t===selected?'selected':''}>${escapeHtml(t)}</option>`).join('');}
+function selectedProgressResident(){return(DB.residents||[]).find(r=>r.id===_progressResidentId)||null;}
+function safeExternalUrl(value){
+  const input=String(value||'').trim();
+  if(!input)return'';
+  try{
+    const parsed=new URL(input);
+    return ['https:','http:'].includes(parsed.protocol)?parsed.href:'';
+  }catch(e){return'';}
+}
+function addPortfolioEvidence(){
+  const r=selectedProgressResident();if(!r){toast('กรุณาเลือกแพทย์','error');return;}
+  const title=(document.getElementById('evidence-title')?.value||'').trim();const type=document.getElementById('evidence-type')?.value||'Other';const url=(document.getElementById('evidence-url')?.value||'').trim();const date=document.getElementById('evidence-date')?.value||'';const note=(document.getElementById('evidence-note')?.value||'').trim();
+  if(!title){toast('กรุณาระบุชื่อหลักฐาน','error');return;}
+  const safeUrl=safeExternalUrl(url);
+  if(url&&!safeUrl){toast('ลิงก์หลักฐานต้องเป็น http หรือ https เท่านั้น','error');return;}
+  if(!Array.isArray(r.portfolioEvidence))r.portfolioEvidence=[];
+  r.portfolioEvidence.unshift({id:uid(),title,type,url:safeUrl,date,note,createdAt:new Date().toISOString(),createdBy:currentActorLabel()});
+  recordChange('evidence',r.id,'เพิ่มหลักฐาน Portfolio','—',title);saveDB();renderProgressCenter();toast('เพิ่มหลักฐานแล้ว');
+}
+function deletePortfolioEvidence(id){
+  const r=selectedProgressResident();if(!r||!Array.isArray(r.portfolioEvidence))return;
+  r.portfolioEvidence=r.portfolioEvidence.filter(e=>e.id!==id);recordChange('evidence',r.id,'ลบหลักฐาน Portfolio',id,'ลบแล้ว');saveDB();renderProgressCenter();
+}
+function renderProgressCenter(){
+  const el=document.getElementById('admin-progress-content');if(!el)return;
+  const residents=(DB.residents||[]).filter(r=>_progressYearFilter==='all'||String(r.yr)===String(_progressYearFilter));
+  if(!_progressResidentId||!residents.some(r=>r.id===_progressResidentId))_progressResidentId=residents[0]?.id||'';
+  const selected=selectedProgressResident();
+  el.innerHTML=`<div class="workbench-hero"><div><div class="workbench-title">Competency Matrix</div><div class="workbench-sub">ดูความครอบคลุม Rotation, Feedback, คะแนน และหลักฐานของแพทย์รายบุคคล</div></div><div class="workbench-tools"><select id="progress-year" class="workbench-filter">${dashboardYearOptions().map(y=>`<option value="${y}" ${String(y)===String(_progressYearFilter)?'selected':''}>${y==='all'?'ทุกชั้นปี':yrText(y)}</option>`).join('')}</select></div></div>
+    <div class="progress-table-wrap"><table class="progress-table"><thead><tr><th>แพทย์</th><th>ชั้นปี</th>${CORE_COMPETENCY_ROTATIONS.map(id=>`<th title="${escapeHtml(coreRotationLabel(id))}">${escapeHtml(coreRotationLabel(id))}</th>`).join('')}<th>Feedback</th><th>คะแนน</th><th>หลักฐาน</th><th>ความพร้อม</th><th></th></tr></thead><tbody>${residents.map(r=>{const c=residentCompetency(r);return`<tr><td><strong>${escapeHtml(residentName(r))}</strong><div style="font-size:10px;color:var(--text3)">${escapeHtml(r.id)}</div></td><td>${escapeHtml(yrText(r.yr))}</td>${c.rotations.map(x=>`<td title="${escapeHtml(coreRotationLabel(x.id))}"><span class="competency-dot ${x.done?'done':'none'}">${x.done?'✓':'—'}</span></td>`).join('')}<td>${c.feedback.done}/${c.feedback.total}</td><td>${c.scoreDone}/${RCOST.length}</td><td>${c.evidence}</td><td><div style="display:flex;align-items:center;gap:6px;justify-content:center"><div class="readiness-bar"><span style="width:${c.readiness}%"></span></div><strong>${c.readiness}%</strong></div></td><td><button class="abtn b progress-evidence" data-rid="${escapeHtml(r.id)}" style="padding:6px 8px;font-size:11px">หลักฐาน</button></td></tr>`;}).join('')||'<tr><td colspan="15" class="empty-st">ไม่พบข้อมูลแพทย์ในชั้นปีนี้</td></tr>'}</tbody></table></div>
+    <section class="workbench-section" style="margin-top:14px"><div class="workbench-section-head"><div><div class="workbench-section-title">Evidence Portfolio</div><div class="workbench-section-meta">${selected?escapeHtml(residentName(selected)):'ยังไม่มีแพทย์ให้เลือก'}</div></div><select id="evidence-resident" class="workbench-filter">${residents.map(r=>`<option value="${escapeHtml(r.id)}" ${r.id===_progressResidentId?'selected':''}>${escapeHtml(`${residentName(r)} (${yrText(r.yr)})`)}</option>`).join('')}</select></div>${selected?`<div class="evidence-form"><input id="evidence-title" class="finp" placeholder="ชื่อหลักฐาน"><select id="evidence-type" class="finp">${evidenceOptions('Certificate')}</select><input id="evidence-url" class="finp" placeholder="Google Drive / URL"><input id="evidence-date" type="date" class="finp"><input id="evidence-note" class="finp" placeholder="หมายเหตุ"><button id="btn-add-evidence" class="abtn g">＋ เพิ่ม</button></div><div class="evidence-list">${(selected.portfolioEvidence||[]).map(e=>{const evidenceUrl=safeExternalUrl(e.url);return`<div class="evidence-row"><strong>${escapeHtml(e.title)}</strong><span>${escapeHtml(e.type||'Other')}</span>${evidenceUrl?`<a href="${escapeHtml(evidenceUrl)}" target="_blank" rel="noopener">เปิดหลักฐาน</a>`:'<span style="color:var(--text3)">ไม่มีลิงก์</span>'}<span>${e.date?escapeHtml(new Date(e.date+'T00:00:00').toLocaleDateString('th-TH')):'—'}</span><button class="ibtn del evidence-delete" data-eid="${escapeHtml(e.id)}" title="ลบหลักฐาน">✕</button></div>`;}).join('')||'<div class="empty-st">ยังไม่มีหลักฐาน Portfolio</div>'}</div>`:'<div class="empty-st">ยังไม่มีข้อมูลแพทย์</div>'}</section>`;
+  el.querySelector('#progress-year')?.addEventListener('change',e=>{_progressYearFilter=e.target.value;renderProgressCenter();});
+  el.querySelectorAll('.progress-evidence').forEach(b=>b.addEventListener('click',()=>{_progressResidentId=b.dataset.rid;renderProgressCenter();}));
+  el.querySelector('#evidence-resident')?.addEventListener('change',e=>{_progressResidentId=e.target.value;renderProgressCenter();});
+  el.querySelector('#btn-add-evidence')?.addEventListener('click',addPortfolioEvidence);
+  el.querySelectorAll('.evidence-delete').forEach(b=>b.addEventListener('click',()=>deletePortfolioEvidence(b.dataset.eid)));
+}
+
+function calendarDateKey(d){return d.toISOString().slice(0,10);}
+function operationCalendarEvents(){
+  const events={};const add=(date,event)=>{if(!date)return;(events[date]||(events[date]=[])).push(event);};
+  (DB.meetings||[]).forEach(m=>{if(m.date)add(m.date,{kind:'meeting',title:m.title||`ประชุมครั้งที่ ${m.no||''}`});});
+  activeCampaigns().forEach(c=>{if(c.dueDate)add(c.dueDate,{kind:'deadline',title:c.title||'ครบกำหนดงานติดตาม'});});
+  const periodStart={jul_aug:7,sep_oct:9,nov_dec:11,jan_feb:1,mar_apr:3,may_jun:5};
+  const grouped={};(DB.unitRotationSchedule||[]).forEach(row=>{const month=periodStart[row.period];const be=Number(row.beYear);if(!month||!be)return;const key=`${be}-${month}`;grouped[key]=(grouped[key]||0)+1;});
+  Object.keys(grouped).forEach(key=>{const [be,month]=key.split('-').map(Number);const date=new Date(be-543,month-1,1);add(calendarDateKey(date),{kind:'rotation',title:`ตารางวนหน่วย ${grouped[key]} รายการ`});});
+  return events;
+}
+function renderOperationsCalendar(){
+  const el=document.getElementById('admin-calendar-content');if(!el)return;
+  const start=new Date(_calendarCursor.getFullYear(),_calendarCursor.getMonth(),1);const firstDay=start.getDay();const days=new Date(start.getFullYear(),start.getMonth()+1,0).getDate();const events=operationCalendarEvents();const today=calendarDateKey(new Date());
+  const cells=[];for(let i=0;i<42;i++){const day=i-firstDay+1;const d=new Date(start.getFullYear(),start.getMonth(),day);const inMonth=day>=1&&day<=days;const key=calendarDateKey(d);const dayEvents=events[key]||[];cells.push(`<div class="calendar-day ${inMonth?'':'muted'} ${key===today?'today':''}"><div class="calendar-day-no">${d.getDate()}</div>${dayEvents.slice(0,3).map(e=>`<div class="calendar-event ${e.kind}">${escapeHtml(e.title)}</div>`).join('')}${dayEvents.length>3?`<div style="font-size:9px;color:var(--text3)">+${dayEvents.length-3} รายการ</div>`:''}</div>`);}
+  el.innerHTML=`<div class="workbench-hero"><div><div class="workbench-title">ปฏิทินการดำเนินงาน</div><div class="workbench-sub">กำหนดประชุม แผนติดตาม และภาพรวมตารางวนหน่วย</div></div><div class="workbench-tools"><button id="calendar-prev" class="abtn" style="background:#e5e7eb;color:var(--text2)">←</button><button id="calendar-today" class="abtn t">วันนี้</button><button id="calendar-next" class="abtn" style="background:#e5e7eb;color:var(--text2)">→</button></div></div><section class="calendar-shell"><div class="calendar-head"><div class="calendar-label">${escapeHtml(start.toLocaleDateString('th-TH',{month:'long',year:'numeric'}))}</div><div class="workbench-section-meta">สีน้ำเงิน: ประชุม · เหลือง: กำหนดติดตาม · เขียว: ตารางวนหน่วย</div></div><div class="calendar-grid">${['อา','จ','อ','พ','พฤ','ศ','ส'].map(d=>`<div class="calendar-weekday">${d}</div>`).join('')}${cells.join('')}</div></section>`;
+  el.querySelector('#calendar-prev')?.addEventListener('click',()=>{_calendarCursor=new Date(start.getFullYear(),start.getMonth()-1,1);renderOperationsCalendar();});
+  el.querySelector('#calendar-next')?.addEventListener('click',()=>{_calendarCursor=new Date(start.getFullYear(),start.getMonth()+1,1);renderOperationsCalendar();});
+  el.querySelector('#calendar-today')?.addEventListener('click',()=>{_calendarCursor=new Date();renderOperationsCalendar();});
+}
+
+function renderAlertsCenter(){
+  const el=document.getElementById('admin-alerts-content');if(!el)return;
+  const alerts=buildOperationalAlerts();
+  el.innerHTML=`<div class="ops-hero"><div><div class="ops-title">ศูนย์แจ้งเตือน</div><div class="ops-sub">รวมงานที่ควรติดตาม เพื่อลดการเช็ก manual และทำให้ระบบพร้อมใช้งานจริง</div></div><div class="ops-actions"><button id="btn-alert-export" class="abtn b" type="button">⬇️ Export CSV</button><button id="btn-alert-copy" class="abtn t" type="button">📋 Copy แผนงาน</button></div></div>
+  <div class="modern-kpi-grid">${modernKpi('ทั้งหมด',String(alerts.length),'รายการแจ้งเตือน','🔔','info')}${modernKpi('ระดับสูง',String(alerts.filter(a=>a.severity==='high').length),'ควรทำก่อน','⚠️',alerts.some(a=>a.severity==='high')?'bad':'ok')}${modernKpi('ระดับกลาง',String(alerts.filter(a=>a.severity==='medium').length),'ควรติดตาม','🟡','warn')}${modernKpi('ระดับต่ำ',String(alerts.filter(a=>a.severity==='low').length),'ปรับปรุงคุณภาพ','🔎','teal')}</div>
+  <div class="ops-card wide"><div class="ops-list">${alerts.map((a,i)=>`<div class="ops-item"><div><div class="ops-item-main">${i+1}. ${escapeHtml(a.title)}</div><div class="ops-item-sub">${escapeHtml(a.detail)}</div><div class="ops-item-meta">${escapeHtml(a.domain)} · ควรทำ: ${escapeHtml(a.action)}</div></div>${opsBadge(opsSeverityThai(a.severity),opsToneBySeverity(a.severity))}</div>`).join('')||'<div class="empty-st">ยอดเยี่ยม ยังไม่มีแจ้งเตือนสำคัญ</div>'}</div></div>`;
+  document.getElementById('btn-alert-export')?.addEventListener('click',()=>downloadAlertsCsv(alerts));
+  document.getElementById('btn-alert-copy')?.addEventListener('click',()=>copyPlainText(alerts.map((a,i)=>`${i+1}. [${opsSeverityThai(a.severity)}] ${a.title} - ${a.action}`).join('\n'),'คัดลอกแผนงานแล้ว'));
+}
+function systemHealthChecks(){
+  const alerts=buildOperationalAlerts();
+  const st=ensureModernizationState();
+  const ids=['btn-write-sheet','btn-import-sheet','btn-sync-up','btn-sync-down','btn-read-sheet','btn-oadd','btn-oaddadv','pm-save'];
+  const missingIds=ids.filter(id=>!document.getElementById(id));
+  const checks=[
+    {name:'ข้อมูลหลัก',tone:(DB.residents||[]).length&&(DB.advisors||[]).length?'ok':'bad',detail:`แพทย์ ${(DB.residents||[]).length} · อาจารย์ ${(DB.advisors||[]).length}`},
+    {name:'Validation',tone:alerts.some(a=>a.domain==='Validation'&&a.severity==='high')?'bad':alerts.some(a=>a.domain==='Validation')?'warn':'ok',detail:'ตรวจรหัสซ้ำและรูปแบบอีเมล'},
+    {name:'Google Sheet Backup',tone:_healthSheetResult?.ok?'ok':_healthSheetResult?.ok===false?'bad':'warn',detail:_healthSheetResult?_healthSheetResult.detail:'ยังไม่ได้ตรวจแบบเปิดไฟล์จริง'},
+    {name:'Structured Sheet',tone:'ok',detail:'มีระบบจัด tab และ Data Dictionary ใน Google Sheets'},
+    {name:'Audit Trail',tone:modernMetrics().auditCount?'ok':'warn',detail:`เก็บล่าสุด ${modernMetrics().auditCount} เหตุการณ์`},
+    {name:'ปุ่มสำคัญ',tone:missingIds.length?'bad':'ok',detail:missingIds.length?'ไม่พบ '+missingIds.join(', '):'พบปุ่มหลักครบ'},
+    {name:'PWA/Mobile Ready',tone:'warn',detail:'มี viewport/theme-color/responsive shell แล้ว; Apps Script ยังจำกัด service worker จริง'},
+    {name:'Session Cache',tone:sessionStorage.getItem('of3')?'ok':'warn',detail:sessionStorage.getItem('of3')?'พบข้อมูลชั่วคราวของ session นี้':'ยังไม่พบข้อมูลชั่วคราวใน session'},
+    {name:'บันทึกล่าสุด',tone:st.lastServerSaveAt?'ok':st.lastLocalSaveAt?'warn':'warn',detail:st.lastServerSaveAt?'Server/Sheet '+fmtDate(st.lastServerSaveAt):(st.lastLocalSaveAt?'Local '+fmtDate(st.lastLocalSaveAt):'ยังไม่มีข้อมูลเวลาบันทึก')}
+  ];
+  return checks;
+}
+function renderSystemHealth(){
+  const el=document.getElementById('admin-health-content');if(!el)return;
+  const checks=systemHealthChecks();
+  const ok=checks.filter(c=>c.tone==='ok').length;
+  el.innerHTML=`<div class="ops-hero"><div><div class="ops-title">ตรวจระบบ / System Health</div><div class="ops-sub">ตรวจความพร้อมของข้อมูล ปุ่มสำคัญ Google Sheet, Data Dictionary, Audit และความพร้อมสำหรับมือถือ/PWA</div></div><div class="ops-actions"><button id="btn-health-run" class="abtn t" type="button">🧪 ตรวจ Google Sheet</button><button id="btn-health-export" class="abtn b" type="button">⬇️ Export ผลตรวจ</button></div></div>
+  <div class="modern-kpi-grid">${modernKpi('ผ่าน',String(ok),`จาก ${checks.length} checks`,'✅','ok')}${modernKpi('ต้องดู',String(checks.filter(c=>c.tone==='warn').length),'warnings','🟡','warn')}${modernKpi('ผิดพลาด',String(checks.filter(c=>c.tone==='bad').length),'ต้องแก้','⚠️',checks.some(c=>c.tone==='bad')?'bad':'ok')}${modernKpi('แจ้งเตือนระบบ',String(buildOperationalAlerts().length),'จาก data quality','🔔','info')}</div>
+  <div class="ops-grid"><section class="ops-card wide"><div class="ops-card-title">ผลตรวจ</div><div class="ops-list">${checks.map(c=>`<div class="ops-item"><div><div class="ops-item-main">${escapeHtml(c.name)}</div><div class="ops-item-sub">${escapeHtml(c.detail)}</div></div>${opsBadge(c.tone==='ok'?'ผ่าน':c.tone==='warn'?'ควรตรวจ':'ต้องแก้',c.tone)}</div>`).join('')}</div></section>
+  <section class="ops-card"><div class="ops-card-title">Mobile/PWA Checklist</div><div class="ops-mobile-check">${['Responsive viewport','Theme color','Touch-friendly buttons','Horizontal admin nav','Print profile','Offline cache: next phase'].map((x,i)=>`<div class="modern-stack"><strong>${i<5?'พร้อม':'เฟสถัดไป'}</strong><span>${escapeHtml(x)}</span></div>`).join('')}</div></section>
+  <section class="ops-card"><div class="ops-card-title">Data Dictionary</div><div class="ops-card-sub">ใช้กับ Google Sheets ที่จัดระเบียบแล้ว</div><button id="btn-health-dict" class="abtn b" type="button">⬇️ Export Dictionary</button></section></div>`;
+  document.getElementById('btn-health-run')?.addEventListener('click',checkGoogleSheetHealth);
+  document.getElementById('btn-health-export')?.addEventListener('click',downloadHealthReport);
+  document.getElementById('btn-health-dict')?.addEventListener('click',downloadDataDictionary);
+}
+function checkGoogleSheetHealth(){
+  if(typeof google==='undefined'||!hasServerSession()){_healthSheetResult={ok:false,detail:'ต้องเข้าสู่ระบบ Admin ก่อนตรวจ Google Sheet'};renderSystemHealth();toast('กรุณาเข้าสู่ระบบ Admin ก่อนตรวจ Google Sheet','error');return;}
+  const btn=document.getElementById('btn-health-run');if(btn){btn.disabled=true;btn.textContent='⏳ กำลังตรวจ...';}
+  google.script.run.withSuccessHandler(raw=>{
+    try{const cfg=JSON.parse(raw);_healthSheetResult={ok:!!cfg.ok,detail:cfg.ok?`เปิดได้: ${cfg.name||'Google Sheet'} · tabs ${(cfg.sheetTabs||[]).length}`:cfg.message||'เปิดไม่ได้'};renderSystemHealth();toast(cfg.ok?'✅ Google Sheet พร้อมใช้งาน':'❌ Google Sheet มีปัญหา',cfg.ok?'success':'error');}
+    catch(e){_healthSheetResult={ok:false,detail:'parse error: '+e.message};renderSystemHealth();}
+  }).withFailureHandler(e=>{_healthSheetResult={ok:false,detail:e.message};renderSystemHealth();toast('❌ ตรวจ Google Sheet ไม่สำเร็จ','error');}).getSheetConfig(_sessionToken,true);
+}
+function renderReportsCenter(){
+  const el=document.getElementById('admin-reports-content');if(!el)return;
+  if(!_reportResidentId&&DB.residents?.length)_reportResidentId=DB.residents[0].id;
+  const res=DB.residents.find(r=>r.id===_reportResidentId)||DB.residents[0]||null;
+  const summary=res?buildResidentAISummary(res):'ยังไม่มีข้อมูลแพทย์ประจำบ้าน';
+  const draft=res?buildFeedbackDraft(res):'';
+  el.innerHTML=`<div class="ops-hero"><div><div class="ops-title">รายงาน / AI Helper</div><div class="ops-sub">ส่งออกรายงานหลายแบบ และใช้ AI-style helper แบบ rule-based เพื่อสรุป portfolio/ช่วยร่าง feedback ได้ทันที</div></div><div class="ops-actions"><button id="btn-report-exec" class="abtn b" type="button">⬇️ รายงานผู้บริหาร</button><button id="btn-report-rescsv" class="abtn t" type="button">⬇️ CSV แพทย์</button><button id="btn-report-asscsv" class="abtn" style="background:#0369a1" type="button">⬇️ CSV แบบประเมิน</button></div></div>
+  <div class="ops-grid"><section class="ops-card"><div class="ops-card-title">เลือกแพทย์เพื่อสรุป Portfolio</div><div class="ops-card-sub">ใช้ข้อมูลคะแนน feedback และแบบประเมินในระบบ</div><select id="ai-res-select" class="finp">${(DB.residents||[]).map(r=>`<option value="${escapeHtml(r.id)}" ${res&&r.id===res.id?'selected':''}>${escapeHtml(residentName(r))} (${escapeHtml(r.id)})</option>`).join('')}</select><div class="ops-actions" style="margin-top:10px"><button id="btn-ai-copy-summary" class="abtn t" type="button">📋 Copy Summary</button><button id="btn-ai-copy-feedback" class="abtn g" type="button">📋 Copy Feedback Draft</button><button id="btn-ai-print" class="abtn b" type="button">🖨️ พิมพ์โปรไฟล์</button></div></section>
+  <section class="ops-card"><div class="ops-card-title">Export เพิ่มเติม</div><div class="ops-card-sub">สำหรับ backup/ประชุม/ตรวจคุณภาพข้อมูล</div><div class="ops-actions"><button id="btn-report-alerts" class="abtn" style="background:#d97706" type="button">⬇️ CSV แจ้งเตือน</button><button id="btn-report-dict" class="abtn" style="background:#475569" type="button">⬇️ Data Dictionary</button><button id="btn-report-audit" class="abtn" style="background:#334155" type="button">⬇️ Audit Log</button></div></section>
+  <section class="ops-card wide"><div class="ops-card-title">AI Portfolio Summary</div><div class="ops-report-box" id="ai-summary-box">${escapeHtml(summary)}</div></section>
+  <section class="ops-card wide"><div class="ops-card-title">AI Feedback Draft</div><div class="ops-report-box" id="ai-feedback-box">${escapeHtml(draft)}</div></section>
+  <section class="ops-card wide"><div class="ops-card-title">ประวัติการแก้ไขล่าสุด</div><div class="ops-card-sub">เก็บการแก้ข้อมูลหลัก สิทธิ์ และการเปลี่ยนแปลงสำคัญ</div>${changeHistoryHtml()}</section></div>`;
+  document.getElementById('ai-res-select')?.addEventListener('change',e=>{_reportResidentId=e.target.value;renderReportsCenter();});
+  document.getElementById('btn-ai-copy-summary')?.addEventListener('click',()=>copyPlainText(summary,'คัดลอก Summary แล้ว'));
+  document.getElementById('btn-ai-copy-feedback')?.addEventListener('click',()=>copyPlainText(draft,'คัดลอก Feedback Draft แล้ว'));
+  document.getElementById('btn-ai-print')?.addEventListener('click',()=>{if(res)openResidentPrintById(res.id,'admin');});
+  document.getElementById('btn-report-exec')?.addEventListener('click',downloadExecutiveReport);
+  document.getElementById('btn-report-rescsv')?.addEventListener('click',downloadResidentsCsv);
+  document.getElementById('btn-report-asscsv')?.addEventListener('click',downloadAssessmentsCsv);
+  document.getElementById('btn-report-alerts')?.addEventListener('click',()=>downloadAlertsCsv(buildOperationalAlerts()));
+  document.getElementById('btn-report-dict')?.addEventListener('click',downloadDataDictionary);
+  document.getElementById('btn-report-audit')?.addEventListener('click',downloadAuditLog);
+}
+function changeHistoryHtml(){
+  const logs=(ensureModernizationState().changeLog||[]).slice(-30).reverse();
+  if(!logs.length)return'<div class="empty-st">ยังไม่มีประวัติการแก้ไข</div>';
+  return`<div class="modern-audit">${logs.map(l=>`<div class="modern-audit-row"><div class="modern-audit-time">${fmtDate(l.ts)}</div><div><div class="modern-audit-action">${escapeHtml(l.title||l.entity)} · ${escapeHtml(l.id||'')}</div><div class="modern-audit-detail">${escapeHtml(l.before||'')} ${l.after?`→ ${escapeHtml(l.after)}`:''}</div><div class="modern-audit-detail">${escapeHtml(l.actor||'')}</div></div></div>`).join('')}</div>`;
+}
+function buildResidentAISummary(res){
+  const sc=residentScoreCounts(res),ac=residentAssessmentCounts(res.id),risk=residentRiskScore(res);
+  const records=(DB.rotaRecords||[]).filter(r=>r.resId===res.id);
+  const rotations=[...new Set(records.map(r=>getAssessmentRotation(r.rotation)?.label||r.rotationLabel||r.rotation).filter(Boolean))].slice(0,6);
+  const feedback=[];YEARS.forEach(y=>(res.os?.feedback?.[y]||[]).forEach(row=>{if(row?.advisor)feedback.push(row.advisor);if(row?.resident)feedback.push(row.resident);}));
+  const strengths=[];
+  if(sc.rcDone>=Math.ceil(sc.rcTotal*.7))strengths.push('คะแนนสอบราชวิทยาลัยมีข้อมูลค่อนข้างครบ');
+  if(ac.total>=Math.max(1,Math.ceil(ac.total*.7)))strengths.push('มีแบบประเมินบันทึกไว้ประกอบการพัฒนา');
+  if(feedback.length)strengths.push('มี feedback ใช้ประกอบการพัฒนา');
+  const gaps=[];
+  if(sc.overall<70)gaps.push('ควรเติมข้อมูลคะแนน/feedback ให้ครบขึ้น');
+  if(!res.email)gaps.push('ยังไม่มีอีเมลสำหรับการแจ้งเตือน');
+  if(!res.photo)gaps.push('ยังไม่มีรูปโปรไฟล์สำหรับรายงาน');
+  return[
+    `สรุป Portfolio: ${residentName(res)} (${res.id})`,
+    `ชั้นปี: ${yrFullText(res.yr)} · สังกัด: ${res.dept||'—'}`,
+    `ความครบถ้วนข้อมูล: ${sc.overall}% · แบบประเมิน ${ac.total} รายการ · Risk ${risk}/100`,
+    rotations.length?`Rotation ที่มีข้อมูล: ${rotations.join(', ')}`:'Rotation ที่มีข้อมูล: ยังไม่มี',
+    '',
+    'จุดแข็ง',
+    strengths.length?strengths.map(x=>'- '+x).join('\n'):'- ยังต้องเติมข้อมูลเพื่อให้สรุปจุดแข็งได้แม่นยำขึ้น',
+    '',
+    'ประเด็นที่ควรพัฒนา',
+    gaps.length?gaps.map(x=>'- '+x).join('\n'):'- ข้อมูลหลักอยู่ในเกณฑ์ดี ควรรักษาความต่อเนื่องของ feedback และการประเมิน',
+    '',
+    'ข้อเสนอแนะเชิงระบบ',
+    '- ติดตามรายการคะแนนและ feedback ที่ยังว่าง',
+    '- ทบทวนแบบประเมินล่าสุดในการประชุมรอบถัดไป',
+    '- ใช้ summary นี้เป็นร่างเบื้องต้นก่อนให้อาจารย์ตรวจทาน'
+  ].join('\n');
+}
+function buildFeedbackDraft(res){
+  const sc=residentScoreCounts(res),ac=residentAssessmentCounts(res.id),risk=residentRiskScore(res);
+  const tone=risk>70?'ควรเร่งติดตามใกล้ชิด':risk>45?'ควรติดตามเป็นระยะ':'มีความก้าวหน้าโดยรวมดี';
+  return`ร่าง Feedback สำหรับ ${residentName(res)}
+
+โดยภาพรวม ${tone} ข้อมูลในระบบมีความครบถ้วนประมาณ ${sc.overall}% มีแบบประเมินทั้งหมด ${ac.total} รายการ
+
+จุดแข็ง:
+- มีข้อมูล portfolio ให้ติดตามความก้าวหน้าอย่างเป็นระบบ
+- สามารถใช้คะแนนและแบบประเมินประกอบการวางแผนพัฒนาได้
+
+ข้อเสนอแนะ:
+- เติมข้อมูลคะแนน/feedback ที่ยังขาดให้ครบถ้วน
+- ทบทวนแบบประเมินล่าสุดและกำหนดเป้าหมายพัฒนาต่อเนื่อง
+- ตั้งเป้าหมายพัฒนาราย rotation และทบทวนกับอาจารย์ที่ปรึกษาในรอบถัดไป
+
+หมายเหตุ: ข้อความนี้เป็นร่างจากข้อมูลในระบบ ควรให้อาจารย์ตรวจทานก่อนใช้จริง`;
+}
+function copyPlainText(text,okMsg='คัดลอกแล้ว'){
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(()=>toast('✅ '+okMsg)).catch(()=>prompt(okMsg,text));
+  else prompt(okMsg,text);
+}
+function executiveReportText(){
+  const data=executiveWarningData();
+  const line=r=>`- ${residentName(r)} (${r.id||'ไม่มีรหัส'}, ${yrFullText(r.yr)})`;
+  return[
+    'OrthoFolio Executive Dashboard Report',
+    'สร้างเมื่อ: '+new Date().toLocaleString('th-TH'),
+    '',
+    `แพทย์ประจำบ้านทั้งหมด: ${data.residents.length}`,
+    `ยังไม่ถูกประเมิน Rotation: ${data.noRotation.length}`,
+    `ยังไม่ได้รับ Feedback: ${data.noFeedback.length}`,
+    `ค้างทั้ง 2 เรื่อง: ${data.urgent.length}`,
+    '',
+    'แพทย์ที่ยังไม่ถูกประเมิน Rotation',
+    ...(data.noRotation.length?data.noRotation.map(line):['- ไม่มี']),
+    '',
+    'แพทย์ที่ยังไม่ได้รับ Feedback',
+    ...(data.noFeedback.length?data.noFeedback.map(line):['- ไม่มี'])
+  ].join('\n');
+}
+function downloadExecutiveReport(){downloadTextFile('orthofolio-executive-report.txt',executiveReportText());logAudit('executive_report_export','ส่งออกรายงานผู้บริหาร','ผู้ดูแลระบบ',false);toast('✅ ส่งออกรายงานผู้บริหารแล้ว');}
+function downloadHealthReport(){downloadTextFile('orthofolio-system-health.txt',systemHealthChecks().map(c=>`${c.name}: ${c.tone} - ${c.detail}`).join('\n'));}
+function downloadResidentsCsv(){downloadCsvFile('orthofolio-residents.csv',[['id','name','year','department','email','score_coverage','assessment_total','risk'],...(DB.residents||[]).map(r=>{const sc=residentScoreCounts(r),ac=residentAssessmentCounts(r.id);return[r.id,residentName(r),yrFullText(r.yr),r.dept||'',r.email||'',sc.overall,ac.total,residentRiskScore(r)];})]);}
+function downloadAssessmentsCsv(){downloadCsvFile('orthofolio-assessments.csv',[['id','resident_id','resident_name','rotation','form_type','date','advisor','total','max'],...(DB.rotaRecords||[]).map(rec=>{const r=DB.residents.find(x=>x.id===rec.resId),a=DB.advisors.find(x=>x.id===rec.advisorId),rot=getAssessmentRotation(rec.rotation);return[rec.id,rec.resId,r?residentName(r):rec.traineeName||'',rot?.label||rec.rotationLabel||rec.rotation||'',rec.templateName||rec.formType||rec.type||'',assessmentDateDisplay(rec),a?advisorFullName(a.id):rec.meta?.evaluatorName||'',rec.totalScore??'',rec.maxScore??''];})]);}
+function downloadAlertsCsv(alerts=buildOperationalAlerts()){downloadCsvFile('orthofolio-alerts.csv',[['severity','domain','title','detail','action'],...alerts.map(a=>[opsSeverityThai(a.severity),a.domain,a.title,a.detail,a.action])]);}
+function buildDataDictionaryText(){
+  const tabs=[
+    ['00_Dashboard','สรุปภาพรวมและ KPI'],
+    ['01_Residents','รายชื่อแพทย์ ข้อมูลตัวตน ชั้นปี รูป อีเมล และ portfolio'],
+    ['02_Advisors','รายชื่ออาจารย์ สิทธิ์ดูแลแพทย์ และสิทธิ์สร้างแบบประเมิน'],
+    ['03_Scores_Royal','คะแนนสอบราชวิทยาลัยและสถิติ MAX/MIN/MEAN/SD/MPL'],
+    ['04_Scores_MidFinal','คะแนนกลางภาค/ปลายภาค แยก MCQ/SEQ'],
+    ['05_Scores_Central','คะแนนส่วนกลางตามหมวดที่กำหนด'],
+    ['06_Feedback','Feedback แพทย์และอาจารย์ตามชั้นปี'],
+    ['07_Assessments','แบบประเมิน Rotation, Elective, Unit Rotation, Journal Club'],
+    ['08_Meetings','วาระประชุมและรายงานการประชุมตามปี พ.ศ.'],
+    ['09_Audit_Modernization','Audit และเหตุการณ์ระบบ'],
+    ['10_Data_Dictionary','คำอธิบายโครงสร้างข้อมูลและกติกาการใช้งาน'],
+    ['11_Workflow_Queue','แผนติดตามงาน Rotation, Feedback และ Portfolio'],
+    ['12_Evidence_Portfolio','หลักฐาน Portfolio และลิงก์เอกสาร']
+  ];
+  return ['OrthoFolio Data Dictionary','สร้างเมื่อ: '+new Date().toLocaleString('th-TH'),'','Google Sheets tabs',...tabs.map(t=>`- ${t[0]}: ${t[1]}`),'','กติกา','- ห้ามลบหัวตาราง 3 แถวแรกใน structured tabs','- DB_Main/DB_Rota เป็นฐานข้อมูลหลัก ข้อมูลสำคัญควรแก้ผ่านระบบก่อน แล้วกดบันทึกฐานหลัก + จัดระเบียบ Sheet','- ใช้สี tab เพื่อแยกชั้นข้อมูล: dashboard, master data, scores, feedback, assessments, audit'].join('\n');
+}
+function downloadDataDictionary(){downloadTextFile('orthofolio-data-dictionary.txt',buildDataDictionaryText());toast('✅ ส่งออก Data Dictionary แล้ว');}
+function downloadAuditLog(){
+  const logs=(ensureModernizationState().auditLog||[]).slice().reverse();
+  const changes=(ensureModernizationState().changeLog||[]).slice().reverse();
+  downloadCsvFile('orthofolio-audit-log.csv',[
+    ['type','time','action_or_title','actor','detail','before','after'],
+    ...logs.map(l=>['audit',fmtDate(l.ts),modernAuditActionLabel(l.action),modernAuditActorLabel(l.actor||''),modernAuditDetailLabel(l.detail||''),'','']),
+    ...changes.map(l=>['change',fmtDate(l.ts),l.title||l.entity,l.actor||'',l.id||'',l.before||'',l.after||''])
+  ]);
+}
+
+function renderTable(){
+  const q=(document.getElementById('a-search').value||'').toLowerCase();
+  renderResidentYearTabs();
+  const rows=DB.residents.filter(r=>(_residentYearFilter==='all'||String(r.yr)===String(_residentYearFilter))&&(r.fn+' '+r.ln+' '+r.id).toLowerCase().includes(q));
+  const tbody=document.getElementById('a-tbody');
+  tbody.innerHTML=rows.map(r=>`<tr data-sid="${r.id}"><td>${residentAvatarHTML(r)}</td><td><strong>${r.fn} ${r.ln}</strong></td><td style="font-family:monospace;font-size:12px">${r.id}</td><td>${passwordCell(r,'resident')}</td><td style="color:var(--text2);font-size:12px">${r.dept}</td><td><span class="badge-yr ${YR_CLASS[r.yr]||'yr1'}">${yrFullText(r.yr)}</span></td><td><div style="display:flex;gap:5px"><button class="ibtn print res-print" title="พิมพ์โปรไฟล์" data-sid="${r.id}">🖨️</button><button class="ibtn edit" data-sid="${r.id}">✏️</button><button class="ibtn del" data-sid="${r.id}">🗑️</button></div></td></tr>`).join('')||`<tr><td colspan="7" class="empty-st">ไม่พบข้อมูล</td></tr>`;
+  tbody.querySelectorAll('tr[data-sid]').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button'))openEditRes(row.dataset.sid);});});
+  tbody.querySelectorAll('.account-pass-reveal').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();revealAccountPassword(b);}));
+  tbody.querySelectorAll('.res-print').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openResidentPrintById(b.dataset.sid,'admin');}));
+  tbody.querySelectorAll('.ibtn.edit').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openEditRes(b.dataset.sid);}));
+  tbody.querySelectorAll('.ibtn.del').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();delRes(b.dataset.sid);}));
+}
+
+function renderResidentYearTabs(){
+  const el=document.getElementById('res-year-tabs');
+  if(!el)return;
+  const tabs=[{v:'all',l:'ทั้งหมด'},...RESIDENT_YEAR_ORDER.map(v=>({v,l:yrText(v)}))];
+  el.innerHTML=tabs.map(t=>`<button type="button" class="score-year-tab ${String(t.v)===String(_residentYearFilter)?'active':''}" data-ry="${t.v}">${t.l}</button>`).join('');
+  el.querySelectorAll('.score-year-tab').forEach(btn=>btn.addEventListener('click',()=>{_residentYearFilter=btn.dataset.ry;renderTable();}));
+}
+
+function residentInitials(r){return((r.fn||'').replace(/[นพ.พญ.รศ.ผศ.ดร.]/g,'')[0]||'?')+((r.ln||'')[0]||'');}
+function residentAvatarHTML(r,style=''){const ini=residentInitials(r);return r.photo?`<div class="avatar av-green" style="${style}"><img src="${escapeHtml(r.photo)}" alt="${escapeHtml(r.fn||'')}"></div>`:`<div class="avatar av-green" style="${style}">${escapeHtml(ini)}</div>`;}
+function setProfilePhoto(containerId,initialsId,res,ini){const box=document.getElementById(containerId);if(!box)return;box.innerHTML=res.photo?`<img src="${escapeHtml(res.photo)}" alt="${escapeHtml(res.fn||'รูปแพทย์ฝึกอบรม')}">`:`<span id="${initialsId}">${escapeHtml(ini)}</span>`;}
+function printSafe(v,empty='—'){const s=String(v??'').trim();return s?escapeHtml(s):empty;}
+function printDateTime(){return new Date().toLocaleString('th-TH',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+function printPercent(score,max){const sc=parseFloat(score),mx=parseFloat(max);if(isNaN(sc)||isNaN(mx)||!mx)return'—';return Math.round(sc/mx*100)+'%';}
+function printStatus(score,mpl,examKey){const st=scoreMplStatus(score,mpl,examKey);return st==='pass'?'ผ่าน':st==='fail'?'ไม่ผ่าน':'—';}
+function printSection(title,body){return`<section class="section"><h2>${title}</h2>${body}</section>`;}
+function printEmpty(text='ยังไม่มีข้อมูล'){return`<div class="empty">${escapeHtml(text)}</div>`;}
+function residentPrintRoyalRows(res){
+  const os=res.os||makeEmptyOS();
+  return RCOST.map(exam=>{
+    const ex=os.rc?.[exam.key]||{};
+    const score=ex.score!==''&&ex.score!=null?ex.score:'';
+    const subText=exam.hasSubs&&ex.subs?scoreSubEntries(exam,ex).map(s=>s.score!==''&&s.score!=null?`${s.label}: ${s.score}/${s.max||'?'}`:'').filter(Boolean).join(', '):'';
+    return`<tr><td>${escapeHtml(exam.label)}</td><td class="num">${printSafe(score)}</td><td class="num">${exam.max}</td><td class="num">${printPercent(score,exam.max)}</td><td>${printStatus(score,ex.stats?.mpl,exam.key)}</td><td>${subText?escapeHtml(subText):'—'}</td></tr>`;
+  }).join('');
+}
+function residentPrintFmRows(res){
+  const os=res.os||makeEmptyOS();
+  const rows=[];
+  YEARS.forEach(y=>{
+    const yData=os.fm?.[y]||{};
+    ['mid','final'].forEach(period=>{
+      const raw=yData[period]||{};
+      const blocks=Array.isArray(raw)?{mcq:raw,seq:[]}:{mcq:raw.mcq||[],seq:raw.seq||[]};
+      ['mcq','seq'].forEach(sec=>{
+        blocks[sec].forEach(r=>{
+          rows.push(`<tr><td>${FM_YEAR_LABELS[y]}</td><td>${period==='mid'?'กลางภาค':'ปลายภาค'}</td><td>${sec.toUpperCase()}</td><td>${printSafe(r.s)}</td><td class="num">${printSafe(r.sc)}</td><td class="num">${printSafe(r.mx)}</td><td class="num">${printSafe(r.mpl)}</td><td>${printStatus(r.sc,r.mpl)}</td></tr>`);
+        });
+      });
+    });
+  });
+  if(!rows.length)return printEmpty('ยังไม่มีผลสอบกลางภาค/ปลายภาค');
+  return`<table><thead><tr><th>ชั้นปี</th><th>รอบ</th><th>ประเภท</th><th>วิชา/หัวข้อ</th><th>คะแนน</th><th>เต็ม</th><th>MPL</th><th>สถานะ</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+}
+function residentPrintCentralRows(res){
+  if(!DB.cats||!DB.cats.length)return printEmpty('ยังไม่มีหมวดคะแนนส่วนกลาง');
+  return`<table><thead><tr><th>หมวด</th><th>คะแนน</th><th>เต็ม</th><th>%</th></tr></thead><tbody>${DB.cats.map(c=>{const sc=(res.cs||{})[c.id];return`<tr><td>${escapeHtml(c.name)}</td><td class="num">${printSafe(sc)}</td><td class="num">${printSafe(c.max)}</td><td class="num">${printPercent(sc,c.max)}</td></tr>`;}).join('')}</tbody></table>`;
+}
+function residentPrintActivityRows(res){
+  const acts=(res.acts||[]).filter(Boolean);
+  const links=(res.links||[]).filter(Boolean);
+  if(!acts.length&&!links.length)return printEmpty('ยังไม่มีกิจกรรม/ลิงก์ Portfolio');
+  const actHtml=acts.length?`<ul>${acts.map(a=>`<li>${escapeHtml(a)}</li>`).join('')}</ul>`:'';
+  const linkHtml=links.length?`<div class="links">${links.map(u=>`<div>${escapeHtml(u)}</div>`).join('')}</div>`:'';
+  return`${actHtml}${linkHtml}`;
+}
+function residentPrintFeedbackRows(res){
+  const os=res.os||makeEmptyOS();
+  const rows=[];
+  YEARS.forEach(y=>{
+    (os.feedback?.[y]||[]).forEach((fb,idx)=>{
+      const residentText=String(fb.resident||'').trim();
+      const advisorText=String(fb.advisor||'').trim();
+      if(!residentText&&!advisorText)return;
+      rows.push(`<tr><td>${FM_YEAR_LABELS[y]}</td><td class="num">${idx+1}</td><td>${printSafe(advisorFullName(effectiveFeedbackAdvisorId(fb,res.id)),'ยังไม่ระบุ')}</td><td>${residentText?escapeHtml(residentText):'—'}</td><td>${advisorText?escapeHtml(advisorText):'—'}</td></tr>`);
+    });
+  });
+  if(!rows.length)return printEmpty('ยังไม่มี Feedback');
+  return`<table><thead><tr><th>ชั้นปี</th><th>ครั้งที่</th><th>อาจารย์</th><th>แพทย์ฝึกอบรม</th><th>อาจารย์ที่ปรึกษา</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+}
+function assessmentPrintResult(rec){
+  if(rec.totalScore!==undefined&&rec.maxScore!==undefined)return`${rec.totalScore}/${rec.maxScore}`;
+  if(rec.passFail==='pass')return'ผ่าน';
+  if(rec.passFail==='fail')return'ไม่ผ่าน';
+  const overall=(rec.domains||[]).find(d=>d.id==='overall'||d.isOverall);
+  if(overall?.passFail==='pass')return'ผ่าน';
+  if(overall?.passFail==='fail')return'ไม่ผ่าน';
+  if(overall?.score)return overall.score+'/5';
+  if(rec.level)return rec.level;
+  if(rec.passThreshold){
+    const sCount=(rec.domains||[]).filter(d=>d.su==='S').length;
+    return sCount+'/'+rec.passThreshold;
+  }
+  return 'บันทึกแล้ว';
+}
+function residentPrintAssessmentRows(res){
+  const records=(DB.rotaRecords||[]).filter(r=>r.resId===res.id).sort((a,b)=>{
+    const da=a.assessDate?new Date(a.assessDate).getTime():(a.createdAt||0);
+    const db=b.assessDate?new Date(b.assessDate).getTime():(b.createdAt||0);
+    return db-da;
+  });
+  if(!records.length)return printEmpty('ยังไม่มีแบบประเมิน Rotation');
+  return`<table><thead><tr><th>วันที่/ช่วง</th><th>Rotation</th><th>แบบประเมิน</th><th>ผู้ประเมิน</th><th>ผลสรุป</th><th>หมายเหตุ</th></tr></thead><tbody>${records.map(rec=>{
+    const rot=getAssessmentRotation(rec.rotation);
+    const adv=DB.advisors.find(a=>a.id===rec.advisorId);
+    const evaluator=rec.meta?.evaluatorName||(adv?adv.fn+' '+adv.ln:'Admin');
+    const note=rec.comment||rec.strength||rec.suggest||rec.meta?.diagnosis||rec.meta?.procedure||'';
+    return`<tr><td>${printSafe(assessmentDateDisplay(rec))}</td><td>${escapeHtml((rot?.label||rec.rotation||'—'))}</td><td>${printSafe(rec.formType||rec.type)}</td><td>${printSafe(evaluator)}</td><td>${printSafe(assessmentPrintResult(rec))}</td><td>${note?escapeHtml(String(note).slice(0,180)):'—'}</td></tr>`;
+  }).join('')}</tbody></table>`;
+}
+function buildResidentPrintHtml(res,source){
+  res.os=normalizeOS(res.os);
+  const fullName=`${res.fn||''} ${res.ln||''}`.trim();
+  const initials=residentInitials(res);
+  const assessCount=(DB.rotaRecords||[]).filter(r=>r.resId===res.id).length;
+  const docNo='OF-'+String(res.id||'PROFILE').replace(/[^A-Za-z0-9_-]/g,'')+'-'+Date.now().toString(36).toUpperCase();
+  const profilePhoto=res.photo?`<img class="photo" src="${escapeHtml(res.photo)}" alt="${escapeHtml(fullName)}">`:`<div class="photo initials">${escapeHtml(initials)}</div>`;
+  const metaRows=[
+    ['รหัส',res.id],['ชั้นปี',yrFullText(res.yr)],['สังกัด',res.dept],['อีเมล',res.email],
+    ['จำนวนแบบประเมิน',assessCount+' รายการ']
+  ].map(([k,v])=>`<div class="meta-row"><span>${escapeHtml(k)}</span><strong>${printSafe(v)}</strong></div>`).join('');
+  const sourceLabel=source==='admin'?'Admin':source==='advisor'?'อาจารย์':'แพทย์ฝึกอบรม';
+  return`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>${escapeHtml(fullName)} - OrthoFolio Profile</title>
+    <style>
+      @page{size:A4;margin:12mm}
+      *{box-sizing:border-box}body{font-family:'Sarabun','Noto Sans Thai',Arial,sans-serif;color:#172033;margin:0;background:#f3f6f8;font-size:12px;line-height:1.55}
+      .sheet{max-width:210mm;margin:0 auto;background:#fff;min-height:297mm;padding:18mm 16mm;box-shadow:0 10px 35px rgba(15,23,42,.12)}
+      .screen-actions{position:sticky;top:0;z-index:5;display:flex;gap:8px;justify-content:flex-end;margin:-10mm -8mm 10mm;padding:8px;background:#fff;border-bottom:1px solid #e5e7eb}
+      .screen-actions button{border:none;border-radius:7px;padding:8px 12px;font-weight:700;cursor:pointer}.screen-actions .primary{background:#0f766e;color:#fff}.screen-actions .ghost{background:#eef2f7;color:#334155}
+      .hero{display:grid;grid-template-columns:96px 1fr;gap:18px;align-items:center;border-bottom:3px solid #1a6b3a;padding-bottom:16px;margin-bottom:16px}
+      .photo{width:96px;height:118px;object-fit:cover;border-radius:8px;border:1px solid #d7dee8;background:#e8edf3}.photo.initials{display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#46627a}
+      h1{font-size:27px;line-height:1.2;margin:0 0 6px;color:#12351f}h2{font-size:15px;margin:0 0 10px;padding-bottom:6px;border-bottom:1.5px solid #dbe3ea;color:#174f2d}
+      .subtitle{font-size:13px;color:#475569}.docline{margin-top:8px;font-size:10.5px;color:#64748b;display:flex;gap:12px;flex-wrap:wrap}
+      .meta-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 12px;margin:14px 0 4px}.meta-row{border:1px solid #e2e8f0;border-radius:7px;padding:8px 10px;background:#f8fafc}.meta-row span{display:block;color:#64748b;font-size:10px;font-weight:700;text-transform:uppercase}.meta-row strong{font-size:12px;color:#172033}
+      .section{page-break-inside:avoid;margin-top:16px}.section table{width:100%;border-collapse:collapse}.section th{background:#edf7f2;color:#14532d;text-align:left;font-size:10.5px;padding:7px;border:1px solid #d8e7df}.section td{padding:7px;border:1px solid #e2e8f0;vertical-align:top}.section tr:nth-child(even) td{background:#fbfdff}.num{text-align:center;white-space:nowrap}.empty{border:1px dashed #cbd5e1;border-radius:8px;padding:12px;text-align:center;color:#64748b;background:#f8fafc}
+      ul{margin:0;padding-left:18px}.links{margin-top:8px;color:#0f766e;word-break:break-all}.privacy{margin-top:18px;padding:10px 12px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:10.5px}
+      .footer{margin-top:18px;padding-top:8px;border-top:1px solid #e2e8f0;color:#64748b;font-size:10px;display:flex;justify-content:space-between;gap:12px}
+      @media print{body{background:#fff}.sheet{box-shadow:none;padding:0;min-height:auto}.screen-actions{display:none}.section{break-inside:avoid}.hero{break-inside:avoid}}
+    </style></head><body><main class="sheet">
+      <div class="screen-actions"><button class="ghost" onclick="window.close()">ปิด</button><button class="primary" onclick="window.print()">พิมพ์ / Save as PDF</button></div>
+      <header class="hero">${profilePhoto}<div><h1>${escapeHtml(fullName||'โปรไฟล์แพทย์ฝึกอบรม')}</h1><div class="subtitle">OrthoFolio E-Portfolio แพทย์ประจำบ้านออร์โธปิดิกส์</div><div class="docline"><span>เลขเอกสาร: ${escapeHtml(docNo)}</span><span>สร้างโดย: ${escapeHtml(sourceLabel)}</span><span>วันที่พิมพ์: ${escapeHtml(printDateTime())}</span></div></div></header>
+      <div class="meta-grid">${metaRows}</div>
+      ${printSection('คะแนนสอบราชวิทยาลัยออร์โธปิดิกส์แห่งประเทศไทย',`<table><thead><tr><th>รายการสอบ</th><th>คะแนน</th><th>เต็ม</th><th>%</th><th>สถานะ</th><th>คะแนนย่อย</th></tr></thead><tbody>${residentPrintRoyalRows(res)}</tbody></table>`)}
+      ${printSection('ผลสอบกลางภาค-ปลายภาค',residentPrintFmRows(res))}
+      ${printSection('กิจกรรม รางวัล และ Portfolio Links',residentPrintActivityRows(res))}
+      ${printSection('Feedback อาจารย์ที่ปรึกษา',residentPrintFeedbackRows(res))}
+      ${printSection('แบบประเมิน Rotation',residentPrintAssessmentRows(res))}
+      <div class="privacy">เอกสารนี้มีข้อมูลส่วนบุคคล ใช้เพื่อการศึกษาและการประเมินภายในหลักสูตรเท่านั้น กรุณาจัดเก็บและเผยแพร่ตามสิทธิ์ที่ได้รับอนุญาต</div>
+      <div class="footer"><span>OrthoFolio Profile Export</span><span>${escapeHtml(fullName)} · ${printSafe(res.id)}</span></div>
+    </main></body></html>`;
+}
+function openResidentPrintById(resId,source='profile'){
+  const res=DB.residents.find(r=>r.id===resId);
+  if(!res){toast('ไม่พบข้อมูลแพทย์ประจำบ้าน','error');return;}
+  if(source==='advisor'&&_curAdvId&&!advisorCanAccessResident(_curAdvId,res.id)){toast('ไม่มีสิทธิ์พิมพ์โปรไฟล์นี้','error');return;}
+  const win=window.open('','_blank','width=980,height=720');
+  if(!win){toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up','error');return;}
+  win.document.open();
+  win.document.write(buildResidentPrintHtml(res,source));
+  win.document.close();
+  logAudit('profile_print',`Printed resident profile ${res.id} from ${source}`,currentActorLabel(),true);
+  setTimeout(()=>{try{win.focus();win.print();}catch(e){}},450);
+}
+function printCurrentResidentProfile(){if(!_curResId){toast('ไม่พบโปรไฟล์ที่กำลังเปิด','error');return;}openResidentPrintById(_curResId,'resident');}
+function printAdvisorResidentProfile(){if(!_advDetailResId){toast('กรุณาเปิดโปรไฟล์แพทย์ก่อน','error');return;}openResidentPrintById(_advDetailResId,'advisor');}
+function setResPhotoPreview(src,explicitClear=false){const prev=document.getElementById('m-photo-preview'),data=document.getElementById('m-photo-data');if(data){data.value=src||'';data.dataset.cleared=explicitClear?'1':'';}if(prev)prev.innerHTML=src?`<img src="${src}" alt="รูปแพทย์ฝึกอบรม">`:'<span>รูป</span>';}
+function handleResidentPhotoFile(e){
+  const file=e.target.files&&e.target.files[0];
+  if(!file)return;
+  if(!file.type.startsWith('image/')){toast('กรุณาเลือกไฟล์รูปภาพ','error');e.target.value='';return;}
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const max=420,scale=Math.min(max/img.width,max/img.height,1);
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(img.width*scale));
+      canvas.height=Math.max(1,Math.round(img.height*scale));
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      setResPhotoPreview(canvas.toDataURL('image/jpeg',0.82));
+      toast('✅ เพิ่มรูปแล้ว');
+    };
+    img.onerror=()=>toast('อ่านไฟล์รูปไม่สำเร็จ','error');
+    img.src=reader.result;
+  };
+  reader.onerror=()=>toast('อ่านไฟล์รูปไม่สำเร็จ','error');
+  reader.readAsDataURL(file);
+}
+
+function renderAdvTable(){
+  const tbody=document.getElementById('adv-tbody');
+  tbody.innerHTML=DB.advisors.map(a=>{
+    const cnt=advisorExplicitResidentIds(a).length;
+    const rotCnt=advisorAllowedRotationIds(a).length;
+    const ini=(a.fn.replace(/[รศ.ผศ.นพ.พญ.ดร.]/g,'')[0]||'?')+(a.ln[0]||'');
+    return`<tr><td><div class="avatar av-purple">${ini}</div></td><td><strong>${a.fn} ${a.ln}</strong></td><td style="font-family:monospace;font-size:12px">${a.id}</td><td>${passwordCell(a,'advisor')}</td><td style="color:var(--text2);font-size:12px">${a.title||''} ${a.dept||''}</td><td style="color:var(--text2);font-size:12px">${a.email||'—'}</td><td><div style="display:flex;gap:5px;flex-wrap:wrap"><span style="padding:3px 9px;border-radius:12px;font-size:12px;font-weight:700;background:#f5f3ff;color:var(--purple)">${cnt} คน</span><span style="padding:3px 9px;border-radius:12px;font-size:12px;font-weight:700;background:#e0f2fe;color:#0369a1">${rotCnt} แบบประเมิน</span></div></td><td><div style="display:flex;gap:5px"><button class="ibtn perm" data-aid="${a.id}">🔑</button><button class="ibtn edit adv-edit" data-aid="${a.id}">✏️</button><button class="ibtn del adv-del" data-aid="${a.id}">🗑️</button></div></td></tr>`;
+  }).join('')||`<tr><td colspan="8" class="empty-st">ยังไม่มีอาจารย์</td></tr>`;
+  tbody.querySelectorAll('.account-pass-reveal').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();revealAccountPassword(b);}));
+  tbody.querySelectorAll('.ibtn.perm').forEach(b=>b.addEventListener('click',()=>openPermModal(b.dataset.aid)));
+  tbody.querySelectorAll('.adv-edit').forEach(b=>b.addEventListener('click',()=>openEditAdv(b.dataset.aid)));
+  tbody.querySelectorAll('.adv-del').forEach(b=>b.addEventListener('click',()=>delAdv(b.dataset.aid)));
+}
+
+function populateSels(){const opts=DB.residents.map(r=>`<option value="${r.id}">${r.fn} ${r.ln} (${r.id})</option>`).join('');const ccsel=document.getElementById('cc-sel');if(ccsel)ccsel.innerHTML='<option value="">-- เลือก --</option>'+opts;}
+
+// ═══════════════════════════════════════════════════════
+//  MEETINGS
+// ═══════════════════════════════════════════════════════
+function meetingYears(){
+  const years=[...new Set((DB.meetings||[]).map(m=>parseInt(m.beYear,10)).filter(Boolean))];
+  const cur=currentBEYear();
+  if(!years.includes(cur))years.push(cur);
+  return years.sort((a,b)=>b-a);
+}
+function meetingsForYear(year){return (DB.meetings||[]).filter(m=>parseInt(m.beYear,10)===parseInt(year,10)).sort((a,b)=>(parseInt(a.no,10)||0)-(parseInt(b.no,10)||0));}
+function meetingTabs(selected,mode){return meetingYears().map(y=>`<button class="ytab ${String(y)===String(selected)?'active':''}" data-myear="${y}" data-mmode="${mode}">พ.ศ. ${y}</button>`).join('');}
+function nl(v){return escapeHtml(v||'').replace(/\n/g,'<br>');}
+function meetingDocButton(m,part,label,color){
+  const hasDoc=part==='agenda'?(m.agendaLink||m.agenda):(m.minutesLink||m.minutes);
+  return `<button type="button" class="abtn ${color||'b'} meeting-doc" data-mid="${escapeHtml(m.id)}" data-part="${part}" ${hasDoc?'':'disabled'} style="${hasDoc?'':'background:#e5e7eb;color:var(--text3);cursor:not-allowed'}">${label}</button>`;
+}
+function openMeetingDoc(id,part){
+  const m=(DB.meetings||[]).find(x=>x.id===id);if(!m)return;
+  const link=part==='agenda'?m.agendaLink:m.minutesLink;
+  const text=part==='agenda'?m.agenda:m.minutes;
+  const title=part==='agenda'?'วาระประชุม':'รายงานการประชุม';
+  if(link){window.open(link,'_blank','noopener');return;}
+  showSuccessPopup(title,text||'ยังไม่ได้แนบลิงก์หรือข้อความ');
+}
+function bindMeetingDocButtons(root){root.querySelectorAll('.meeting-doc').forEach(b=>b.addEventListener('click',()=>openMeetingDoc(b.dataset.mid,b.dataset.part)));}
+function meetingCard(m,readonly=false){
+  return `<div class="meeting-card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+      <div>
+        <div class="meeting-meta">พ.ศ. ${escapeHtml(m.beYear)} · ครั้งที่ ${escapeHtml(m.no)}</div>
+        <div class="meeting-title">${escapeHtml(m.title||('ประชุมครั้งที่ '+m.no))}</div>
+      </div>
+      ${readonly?'':`<div style="display:flex;gap:5px"><button class="ibtn edit mt-edit" data-mid="${escapeHtml(m.id)}">✏️</button><button class="ibtn del mt-del" data-mid="${escapeHtml(m.id)}">🗑️</button></div>`}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      ${meetingDocButton(m,'agenda','ดูวาระประชุม','b')}
+      ${meetingDocButton(m,'minutes','ดูรายงานการประชุม','t')}
+    </div>
+    <div class="meeting-meta" style="margin-top:10px">อัปเดตล่าสุด ${fmtDate(m.updatedAt||m.createdAt)}</div>
+  </div>`;
+}
+function renderMeetingsAdmin(){
+  const el=document.getElementById('meeting-admin-content');if(!el)return;
+  const years=meetingYears();if(!_meetingYearAdmin||!years.includes(parseInt(_meetingYearAdmin,10)))_meetingYearAdmin=years[0];
+  const rows=meetingsForYear(_meetingYearAdmin);
+  el.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div><div style="font-size:15px;font-weight:700">🗓️ ระบบประชุม</div><div style="font-size:12px;color:var(--text2);margin-top:3px">แยกวาระประชุมและรายงานการประชุมตามปี พ.ศ.</div></div>
+    <button id="btn-add-meeting" class="abtn g">＋ เพิ่มประชุม</button>
+  </div>
+  <div class="ytabs">${meetingTabs(_meetingYearAdmin,'admin')}</div>
+  ${rows.length?`<div class="meeting-grid">${rows.map(m=>meetingCard(m,false)).join('')}</div>`:`<div class="card"><div class="empty-st">ยังไม่มีข้อมูลประชุมในปี พ.ศ. ${_meetingYearAdmin}</div></div>`}`;
+  el.querySelector('#btn-add-meeting')?.addEventListener('click',()=>openMeetingModal());
+  bindMeetingDocButtons(el);
+  el.querySelectorAll('[data-mmode="admin"]').forEach(b=>b.addEventListener('click',()=>{_meetingYearAdmin=parseInt(b.dataset.myear,10);renderMeetingsAdmin();}));
+  el.querySelectorAll('.mt-edit').forEach(b=>b.addEventListener('click',()=>openMeetingModal(b.dataset.mid)));
+  el.querySelectorAll('.mt-del').forEach(b=>b.addEventListener('click',()=>deleteMeeting(b.dataset.mid)));
+}
+function renderMeetingsAdvisor(){
+  const el=document.getElementById('meeting-advisor-content');if(!el)return;
+  const years=meetingYears();if(!_meetingYearAdvisor||!years.includes(parseInt(_meetingYearAdvisor,10)))_meetingYearAdvisor=years[0];
+  const rows=meetingsForYear(_meetingYearAdvisor);
+  el.innerHTML=`<div style="margin-bottom:14px"><div style="font-size:18px;font-weight:700">🗓️ ระบบประชุม</div><div style="font-size:13px;color:var(--text2);margin-top:3px">ดูวาระประชุมและรายงานการประชุมตามปี พ.ศ.</div></div>
+  <div class="ytabs">${meetingTabs(_meetingYearAdvisor,'advisor')}</div>
+  ${rows.length?`<div class="meeting-grid">${rows.map(m=>meetingCard(m,true)).join('')}</div>`:`<div class="card"><div class="empty-st">ยังไม่มีข้อมูลประชุมในปี พ.ศ. ${_meetingYearAdvisor}</div></div>`}`;
+  bindMeetingDocButtons(el);
+  el.querySelectorAll('[data-mmode="advisor"]').forEach(b=>b.addEventListener('click',()=>{_meetingYearAdvisor=parseInt(b.dataset.myear,10);renderMeetingsAdvisor();}));
+}
+function openMeetingModal(id){
+  _meetingEditId=id||null;
+  const m=id?(DB.meetings||[]).find(x=>x.id===id):null;
+  document.getElementById('mt-ttl').textContent=m?'✏️ แก้ไขประชุม':'🗓️ เพิ่มวาระประชุม';
+  document.getElementById('mt-year').value=m?.beYear||_meetingYearAdmin||currentBEYear();
+  document.getElementById('mt-no').value=m?.no||((meetingsForYear(_meetingYearAdmin||currentBEYear()).length||0)+1);
+  document.getElementById('mt-date').value=m?.date||'';
+  document.getElementById('mt-title').value=m?.title||'';
+  document.getElementById('mt-agenda').value=m?.agenda||'';
+  document.getElementById('mt-agenda-link').value=m?.agendaLink||'';
+  document.getElementById('mt-minutes').value=m?.minutes||'';
+  document.getElementById('mt-minutes-link').value=m?.minutesLink||'';
+  document.getElementById('meeting-modal').classList.add('open');
+}
+function closeMeetingModal(){document.getElementById('meeting-modal').classList.remove('open');}
+function saveMeeting(){
+  const beYear=parseInt(document.getElementById('mt-year').value,10);
+  const no=parseInt(document.getElementById('mt-no').value,10);
+  const date=document.getElementById('mt-date').value||'';
+  const title=document.getElementById('mt-title').value.trim();
+  const agenda=document.getElementById('mt-agenda').value.trim();
+  const agendaLink=document.getElementById('mt-agenda-link').value.trim();
+  const minutes=document.getElementById('mt-minutes').value.trim();
+  const minutesLink=document.getElementById('mt-minutes-link').value.trim();
+  if(!beYear||beYear<2400){toast('กรุณากรอกปี พ.ศ. ให้ถูกต้อง','error');return;}
+  if(!no||no<1){toast('กรุณากรอกครั้งที่ประชุม','error');return;}
+  if(!agenda&&!minutes&&!agendaLink&&!minutesLink){toast('กรุณากรอกวาระ/รายงาน หรือแนบลิงก์อย่างน้อย 1 รายการ','error');return;}
+  DB.meetings=DB.meetings||[];
+  const now=Date.now();
+  if(_meetingEditId){
+    const i=DB.meetings.findIndex(x=>x.id===_meetingEditId);if(i<0)return;
+    DB.meetings[i]={...DB.meetings[i],beYear,no,date,title,agenda,agendaLink,minutes,minutesLink,updatedAt:now};
+    toast('✅ แก้ไขข้อมูลประชุมแล้ว');
+  }else{
+    DB.meetings.push({id:uid(),beYear,no,date,title,agenda,agendaLink,minutes,minutesLink,createdAt:now,updatedAt:now});
+    toast('✅ เพิ่มข้อมูลประชุมแล้ว');
+  }
+  _meetingYearAdmin=beYear;
+  saveDB();closeMeetingModal();renderMeetingsAdmin();renderMeetingsAdvisor();
+}
+function deleteMeeting(id){
+  if(!confirm('ลบข้อมูลประชุมนี้?'))return;
+  DB.meetings=(DB.meetings||[]).filter(m=>m.id!==id);
+  saveDB();renderMeetingsAdmin();renderMeetingsAdvisor();toast('🗑️ ลบข้อมูลประชุมแล้ว');
+}
+
+// ═══════════════════════════════════════════════════════
+//  ROTATION ASSESSMENT — Admin Panel
+// ═══════════════════════════════════════════════════════
+function assessmentRecordBEYear(rec){
+  if(rec&&rec.type==='elective'&&rec.meta?.assessBEYear)return String(rec.meta.assessBEYear);
+  if(rec&&rec.type==='unit_rotation'&&rec.meta?.assessBEYear)return String(rec.meta.assessBEYear);
+  const raw=rec.assessDate||rec.createdAt;
+  if(!raw)return'';
+  const d=new Date(raw);
+  if(Number.isNaN(d.getTime()))return'';
+  return String(d.getFullYear()+543);
+}
+function assessmentAdminYearOptions(){
+  const years=[...new Set(DB.rotaRecords.map(assessmentRecordBEYear).filter(Boolean))].sort((a,b)=>parseInt(b,10)-parseInt(a,10));
+  return`<option value="all">ปีที่ประเมิน: ทั้งหมด</option>${years.map(y=>`<option value="${y}">ปี พ.ศ. ${y}</option>`).join('')}`;
+}
+function assessmentAdminTraineeYearOptions(){
+  const years=assessmentYearKeys(DB.rotaRecords);
+  return`<option value="all">ชั้นปีตอนประเมิน: ทั้งหมด</option>${years.map(y=>`<option value="${y}">${assessmentYearLabel(y)}</option>`).join('')}`;
+}
+function renderAssessmentAdmin(){
+  const el=document.getElementById('assess-admin-content');
+  if(!el)return;
+  if(_assessmentAdminView==='templates'){
+    el.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px"><div><div style="font-size:15px;font-weight:700">⚙️ ตั้งค่าแบบฟอร์ม Rotation</div><div style="font-size:12px;color:var(--text3);margin-top:2px">จัดการอนุสาขา เกณฑ์คะแนน และหัวข้อประเมิน</div></div><button id="btn-assessment-records" class="abtn">← กลับไปบันทึกผล</button></div><div id="assess-template-area"></div>';
+    document.getElementById('btn-assessment-records').addEventListener('click',()=>{_assessmentAdminView='records';renderAssessmentAdmin();});
+    renderAssessmentTemplateAdmin();
+    return;
+  }
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div style="font-size:15px;font-weight:700">📋 แบบประเมิน Rotation</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="btn-assessment-templates" class="abtn">⚙️ ตั้งค่าแบบฟอร์ม</button><button id="btn-external-elective" class="abtn">🧭 ลิงก์ Elective ภายนอก</button><button id="btn-new-assess" class="abtn t">＋ สร้างแบบประเมินใหม่</button></div>
+    </div>
+    <div id="external-elective-admin"></div>
+    <!-- filter row -->
+    <div style="display:flex;gap:9px;margin-bottom:13px;flex-wrap:wrap;align-items:center">
+      <div style="position:relative;flex:1;min-width:180px">
+        <input id="assess-filter-res" class="finp" placeholder="🔍 ค้นหาชื่อแพทย์..." style="padding-right:32px">
+      </div>
+      <select id="assess-filter-year" class="finp" style="width:170px">${assessmentAdminYearOptions()}</select>
+      <select id="assess-filter-trainee-year" class="finp" style="width:190px">${assessmentAdminTraineeYearOptions()}</select>
+      <div class="rota-rotation-tabs" id="assess-rot-tabs" style="margin-bottom:0">
+        <button class="rota-rtab active" data-rot="all">ทั้งหมด</button>
+        ${assessmentRotations().map(r=>`<button class="rota-rtab" data-rot="${r.id}">${r.emoji} ${r.label}</button>`).join('')}
+      </div>
+    </div>
+    <div id="assess-list-area"></div>`;
+
+  document.getElementById('btn-new-assess').addEventListener('click',()=>openNewAssessModal('','admin',null));
+  externalElectiveAdmin.mount(document.getElementById('external-elective-admin'));
+  document.getElementById('btn-external-elective').addEventListener('click',()=>externalElectiveAdmin.open());
+  document.getElementById('btn-assessment-templates').addEventListener('click',()=>{_assessmentAdminView='templates';renderAssessmentAdmin();});
+  document.getElementById('assess-filter-res').addEventListener('input',renderAssessList_admin);
+  document.getElementById('assess-filter-year').addEventListener('change',renderAssessList_admin);
+  document.getElementById('assess-filter-trainee-year').addEventListener('change',renderAssessList_admin);
+  document.querySelectorAll('#assess-rot-tabs .rota-rtab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('#assess-rot-tabs .rota-rtab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      renderAssessList_admin();
+    });
+  });
+  renderAssessList_admin();
+}
+
+function requireAssessmentTemplateAdmin(){
+  if(isAdminSession())return true;
+  toast('เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขแบบฟอร์มประเมินได้','error');
+  return false;
+}
+function assessmentTemplateStatusHtml(template){
+  if(template.archived)return'<span style="padding:3px 8px;border-radius:10px;background:#f1f5f9;color:var(--text3);font-size:11px;font-weight:700">เก็บไว้</span>';
+  if(template.active===false)return'<span style="padding:3px 8px;border-radius:10px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:700">ร่าง</span>';
+  return'<span style="padding:3px 8px;border-radius:10px;background:#dcfce7;color:#15803d;font-size:11px;font-weight:700">ใช้งาน</span>';
+}
+function renderAssessmentTemplateAdmin(){
+  const root=document.getElementById('assess-template-area');
+  if(!root)return;
+  ensureModernizationState();
+  const templates=[...(DB.modernization.assessmentTemplates||[])].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'th'));
+  const legacy=legacyTemplateReferences();
+  const rows=templates.length?templates.map(template=>{
+    const presented=assessmentTemplatePresentation(template);
+    const rotation=getAssessmentRotation(template.rotationId);
+    const recordCount=(DB.rotaRecords||[]).filter(record=>record.templateId===template.id).length;
+    const topicCount=templateTopicCount(presented);
+    const maxScore=displayTemplateNumber(templateConfiguredMaxScore(presented));
+    const ratingLabel=presented.ratingMode==='su'?'S/U':presented.ratingMode==='uss'?'Unsatisfactory / Satisfactory / Superior':'เต็ม '+maxScore;
+    const subtitle=(template.code?escapeHtml(template.code)+' · ':'')+topicCount+' หัวข้อ · '+ratingLabel+(presented.ratingMode==='su'&&presented.passCount?' · ผ่านเมื่อ S ≥ '+presented.passCount:presented.ratingMode==='score'&&template.passPercent!==''&&template.passPercent!==undefined?' · ผ่าน '+escapeHtml(template.passPercent)+'%':'');
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      +'<div style="min-width:220px;flex:1"><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><strong style="font-size:13px">'+escapeHtml(template.name||'ไม่มีชื่อแบบฟอร์ม')+'</strong>'+assessmentTemplateStatusHtml(template)+'</div>'
+      +'<div style="font-size:12px;color:var(--text2);margin-top:4px">'+escapeHtml((rotation?.emoji||'📋')+' '+(rotation?.label||template.rotationId))+' · '+subtitle+(recordCount?' · บันทึกผลแล้ว '+recordCount+' รายการ':'')+'</div></div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="abtn t template-edit-btn" data-template-edit="'+escapeHtml(template.id)+'" style="padding:6px 9px;font-size:11px">แก้ไข</button>'
+      +'<button class="abtn template-copy-btn" data-template-copy="'+escapeHtml(template.id)+'" style="padding:6px 9px;font-size:11px">ทำสำเนา</button>'
+      +'<button class="abtn template-archive-btn" data-template-archive="'+escapeHtml(template.id)+'" style="padding:6px 9px;font-size:11px">'+(template.archived?'นำกลับมา':'เก็บแบบฟอร์ม')+'</button>'
+      +(recordCount?'':'<button class="ibtn del template-delete-btn" data-template-delete="'+escapeHtml(template.id)+'" title="ลบแบบฟอร์ม" style="width:29px;height:29px">✕</button>')+'</div></div>';
+  }).join(''):'<div class="empty-st" style="padding:26px">ยังไม่มีแบบฟอร์มที่ Admin สร้าง</div>';
+  const legacyOptions=legacy.map(reference=>'<option value="'+escapeHtml(reference.id)+'">'+escapeHtml(reference.label)+'</option>').join('');
+  root.innerHTML='<div style="display:flex;gap:9px;flex-wrap:wrap;align-items:end;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">'
+    +'<div style="flex:1;min-width:250px"><label class="flbl">แบบประเมินเดิมที่ต้องการแก้ไข</label><select id="legacy-template-select" class="finp"><option value="">เลือกแบบประเมินเดิม</option>'+legacyOptions+'</select><div style="font-size:11px;color:var(--text3);margin-top:5px">หัวข้อที่เพิ่มจะต่อเข้าแบบประเมินเดิมอัตโนมัติ</div></div>'
+    +'<button id="btn-copy-legacy-template" class="abtn" style="height:38px">แก้ไขแบบเดิม</button>'
+    +'<button id="btn-new-assessment-template" class="abtn t" style="height:38px">＋ สร้างแบบฟอร์มใหม่</button></div>'
+    +'<div style="border-top:1px solid var(--border)">'+rows+'</div>';
+  root.querySelector('#btn-new-assessment-template').addEventListener('click',()=>openAssessmentTemplateModal());
+  root.querySelector('#btn-copy-legacy-template').addEventListener('click',()=>{
+    const referenceId=root.querySelector('#legacy-template-select').value;
+    if(!referenceId){toast('กรุณาเลือกแบบประเมินเดิม','error');return;}
+    const existing=assessmentTemplateForLegacyReference(referenceId,false);
+    openAssessmentTemplateModal(existing?.id||'',referenceId);
+  });
+  root.querySelectorAll('.template-edit-btn').forEach(button=>button.addEventListener('click',()=>openAssessmentTemplateModal(button.dataset.templateEdit)));
+  root.querySelectorAll('.template-copy-btn').forEach(button=>button.addEventListener('click',()=>duplicateAssessmentTemplate(button.dataset.templateCopy)));
+  root.querySelectorAll('.template-archive-btn').forEach(button=>button.addEventListener('click',()=>toggleAssessmentTemplateArchive(button.dataset.templateArchive)));
+  root.querySelectorAll('.template-delete-btn').forEach(button=>button.addEventListener('click',()=>deleteAssessmentTemplate(button.dataset.templateDelete)));
+}
+function openAssessmentTemplateModal(templateId='',legacyReferenceId='',draftOverride=null){
+  if(!requireAssessmentTemplateAdmin())return;
+  let draft=draftOverride?cloneAssessmentValue(draftOverride):null;
+  if(!draft&&templateId){
+    const saved=assessmentTemplateById(templateId);
+    if(!saved){toast('ไม่พบแบบฟอร์มที่เลือก','error');return;}
+    draft=cloneAssessmentValue(saved);
+    if(!draft.legacyReferenceId)draft.legacyReferenceId=assessmentTemplateLegacyReferenceId(saved);
+  }
+  if(!draft&&legacyReferenceId)draft=templateDraftFromLegacyReference(legacyReferenceId);
+  if(!draft)draft=newAssessmentTemplateDraft();
+  if(legacyReferenceId)draft.legacyReferenceId=legacyReferenceId;
+  draft=assessmentTemplatePresentation(draft);
+  if(!draft.newRotation)draft.newRotation={id:'',label:'',emoji:'📋'};
+  if(!Array.isArray(draft.fields))draft.fields=[];
+  if(!Array.isArray(draft.sections)||!draft.sections.length)draft.sections=[makeAssessmentTemplateSection('หัวข้อประเมิน',draft.defaultMaxScore||5)];
+  draft.sections.forEach(section=>{if(!Array.isArray(section.items))section.items=[];});
+  _assessmentTemplateDraft=draft;
+  _assessmentTemplatePreviewOnly=false;
+  document.getElementById('assessment-template-ttl').textContent=draft.id||draft.legacyReferenceId?'✏️ แก้ไขแบบฟอร์มประเมิน':'＋ สร้างแบบฟอร์มประเมิน';
+  renderAssessmentTemplateModal();
+  document.getElementById('assessment-template-modal').classList.add('open');
+}
+function closeAssessmentTemplateModal(){
+  document.getElementById('assessment-template-modal').classList.remove('open');
+  _assessmentTemplateDraft=null;
+  _assessmentTemplatePreviewOnly=false;
+}
+function assessmentTemplateTheme(rotationId){
+  const themes={
+    tumor:{accent:'#6b287c',soft:'#f7edf9',border:'#d9b8df'},
+    trauma:{accent:'#9a4b0b',soft:'#fff5e9',border:'#f2c58f'},
+    pediatric:{accent:'#0f766e',soft:'#ecfdf8',border:'#99e4d4'},
+    sports:{accent:'#8a5a00',soft:'#fff9df',border:'#ead38a'},
+    spine:{accent:'#075985',soft:'#eef9ff',border:'#9dd8f3'},
+    footankle:{accent:'#854d0e',soft:'#fffbea',border:'#ead78d'},
+    hand:{accent:'#9d174d',soft:'#fff0f7',border:'#f1afd0'},
+    hk:{accent:'#236b3a',soft:'#eef9f0',border:'#abd5b4'}
+  };
+  return themes[rotationId]||{accent:'#0f766e',soft:'#effcf9',border:'#9ddbd2'};
+}
+function assessmentTemplateScaleMax(template){
+  const max=assessmentPositiveNumber(template?.defaultMaxScore,5);
+  return Number.isInteger(max)&&max<=10?max:0;
+}
+function assessmentTemplateScoreMin(template){
+  const max=assessmentPositiveNumber(template?.defaultMaxScore,5);
+  return Math.min(Math.max(Number(template?.scoreMin)||0,0),max);
+}
+function renderAssessmentTemplateRatingSections(template,data={},interactive=false){
+  template=assessmentTemplatePresentation(template)||template;
+  const theme=assessmentTemplateTheme(template.rotationId);
+  const ratingMode=['su','uss'].includes(template.ratingMode)?template.ratingMode:'score';
+  const scaleMax=assessmentTemplateScaleMax(template);
+  const scoreMin=assessmentTemplateScoreMin(template);
+  const scoreValues=scaleMax?Array.from({length:Math.max(0,scaleMax-scoreMin+1)},(_,index)=>scoreMin+index):[];
+  const scores=data.scores||{};
+  return (template.sections||[]).map(section=>{
+    if(ratingMode==='uss'){
+      const comments=data.itemComments||{};
+      const rows=(section.items||[]).map(item=>{
+        const selected=scores[item.id];
+        const choices=[{value:0,label:'Unsatisfactory',bg:'#fff1f2',color:'#b91c1c'},{value:1,label:'Satisfactory',bg:'#fef9c3',color:'#a16207'},{value:2,label:'Superior',bg:'#ecfdf3',color:'#15803d'}].map(choice=>'<label style="padding:6px 9px;border:1px solid '+(templateHasScore(selected)&&Number(selected)===choice.value?choice.color:'var(--border2)')+';border-radius:6px;background:'+(templateHasScore(selected)&&Number(selected)===choice.value?choice.bg:'#fff')+';color:'+(templateHasScore(selected)&&Number(selected)===choice.value?choice.color:'var(--text2)')+';font-size:11px;font-weight:700;cursor:'+(interactive?'pointer':'default')+'"><input type="radio" '+(interactive?'class="dynamic-template-rating" data-template-item-id="'+escapeHtml(item.id)+'" name="dynamic_'+escapeHtml(template.id)+'_'+escapeHtml(item.id)+'" value="'+choice.value+'"':'disabled')+' '+(templateHasScore(selected)&&Number(selected)===choice.value?'checked':'')+' style="display:none">'+choice.label+'</label>').join('');
+        return '<div class="template-uss-row"><div><div style="font-size:13px;font-weight:700">'+escapeHtml(item.label||'หัวข้อประเมิน')+'</div>'+(item.help?'<div style="font-size:11px;color:var(--text3);line-height:1.5;margin-top:3px">'+escapeHtml(item.help)+'</div>':'')+'</div><div><div style="display:flex;gap:5px;flex-wrap:wrap">'+choices+'</div>'+(template.itemComments?'<textarea '+(interactive?'class="finp dynamic-template-item-comment" data-template-item-id="'+escapeHtml(item.id)+'"':'disabled')+' rows="2" placeholder="'+escapeHtml(template.itemCommentPlaceholder||'ความเห็น...')+'" style="margin-top:7px">'+escapeHtml(comments[item.id]||'')+'</textarea>':'')+'</div></div>';
+      }).join('');
+      return '<section style="margin-top:12px;border:1px solid '+theme.border+';border-radius:8px;overflow:hidden"><div style="padding:8px 10px;background:'+theme.soft+';color:'+theme.accent+';font-size:12px;font-weight:800">'+escapeHtml(section.title||'หัวข้อประเมิน')+'</div>'+rows+'</section>';
+    }
+    const headers=ratingMode==='su'
+      ?'<th class="template-preview-choice" title="Satisfactory" style="background:#ecfdf3;color:#15803d">S</th><th class="template-preview-choice" title="Unsatisfactory" style="background:#fff1f2;color:#b91c1c">U</th>'
+      :(scaleMax?scoreValues.map(score=>'<th class="template-preview-choice">'+score+'</th>').join(''):'<th class="template-preview-choice">คะแนน</th>');
+    const naHeader='<th class="template-preview-choice" style="min-width:72px">ไม่ประเมิน</th>';
+    const rows=(section.items||[]).map(item=>{
+      const selected=scores[item.id];
+      let choices='';
+      if(ratingMode==='su'){
+        choices=[1,0].map(value=>'<td class="template-preview-choice" style="background:'+(value===1?'#f0fdf4':'#fff5f5')+'"><input type="radio" '+(interactive?'class="dynamic-template-rating" data-template-item-id="'+escapeHtml(item.id)+'" name="dynamic_'+escapeHtml(template.id)+'_'+escapeHtml(item.id)+'" value="'+value+'"':'disabled')+' '+(templateHasScore(selected)&&Number(selected)===value?'checked':'')+' aria-label="'+(value===1?'Satisfactory':'Unsatisfactory')+'"></td>').join('');
+      }else if(scaleMax){
+        choices=scoreValues.map(score=>'<td class="template-preview-choice"><input type="radio" '+(interactive?'class="dynamic-template-rating" data-template-item-id="'+escapeHtml(item.id)+'" name="dynamic_'+escapeHtml(template.id)+'_'+escapeHtml(item.id)+'" value="'+score+'"':'disabled')+' '+(Number(selected)===score&&templateHasScore(selected)?'checked':'')+' aria-label="'+score+'"></td>').join('');
+      }else{
+        choices='<td class="template-preview-choice"><input type="number" min="'+escapeHtml(scoreMin)+'" max="'+escapeHtml(templateItemMaxScore(item,template))+'" step="0.5" '+(interactive?'class="finp dynamic-template-number" data-template-item-id="'+escapeHtml(item.id)+'"':'disabled')+' value="'+(templateHasScore(selected)?escapeHtml(selected):'')+'" style="min-width:82px;text-align:center"></td>';
+      }
+      const naChecked=!!data.na?.[item.id];
+      const naChoice='<td class="template-preview-choice"><input type="checkbox" '+(interactive?'class="dynamic-template-na" data-template-item-id="'+escapeHtml(item.id)+'"':'disabled')+' '+(naChecked?'checked':'')+' aria-label="ไม่ประเมิน"></td>';
+      return '<tr><td class="topic-cell"><div style="font-weight:600">'+escapeHtml(item.label||'หัวข้อประเมิน')+'</div>'+(item.help?'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+escapeHtml(item.help)+'</div>':'')+'</td>'+choices+naChoice+'</tr>';
+    }).join('');
+    return '<section style="margin-top:12px"><div style="padding:8px 10px;background:'+theme.soft+';border:1px solid '+theme.border+';border-bottom:0;border-radius:7px 7px 0 0;color:'+theme.accent+';font-size:12px;font-weight:800">'+escapeHtml(section.title||'หัวข้อประเมิน')+'</div><div style="overflow-x:auto"><table class="template-preview-table" style="min-width:'+(ratingMode==='su'?'560px':scaleMax?'700px':'480px')+'"><thead><tr><th class="topic-cell">หัวข้อการประเมิน</th>'+headers+naHeader+'</tr></thead><tbody>'+rows+'</tbody></table></div></section>';
+  }).join('');
+}
+function renderAssessmentTemplateLevel(template,data={},interactive=false){
+  if(!template.showLevel)return'';
+  const groups=(template.levelGroups||[]).length?template.levelGroups:[{id:'level',label:'Level',options:template.levelOptions||[]}];
+  return groups.filter(group=>(group.options||[]).length).map((group,index)=>{
+    const groupId=group.id||'level_'+(index+1);
+    const selectedValue=data.levels?.[groupId]??(index===0?data.level:'');
+    return '<div class="template-level-group" data-template-level-group="'+escapeHtml(groupId)+'" style="margin-top:12px;padding:11px;background:#f8fafc;border:1px solid var(--border);border-radius:8px"><div class="flbl" style="margin-bottom:7px">'+escapeHtml(group.label||'Level')+'</div><div class="template-level-grid">'+(group.options||[]).map(level=>{
+      const value=level.value||level.l||'';
+      const label=level.label||level.desc||'';
+      const selected=String(selectedValue||'')===String(value);
+      return '<label class="template-level-card" style="'+(selected?'border-color:var(--teal);background:#effcf9':'')+'"><input type="radio" '+(interactive?'class="dynamic-template-level" data-template-level-group-id="'+escapeHtml(groupId)+'" name="dynamic-template-level-'+escapeHtml(groupId)+'" value="'+escapeHtml(value)+'"':'disabled')+' '+(selected?'checked':'')+' style="display:none"><strong>'+escapeHtml(value)+'</strong><span>'+escapeHtml(label)+'</span></label>';
+    }).join('')+'</div></div>';
+  }).join('');
+}
+function renderAssessmentTemplateFeedback(template,data={},interactive=false){
+  const values=data.feedback||{};
+  return (template.feedbackFields||[]).map(field=>'<div class="fgrp" style="margin-top:12px"><label class="flbl">'+escapeHtml(field.label||'ข้อเสนอแนะ')+(field.required?' *':'')+'</label><textarea '+(interactive?'class="finp dynamic-template-feedback" data-template-feedback-id="'+escapeHtml(field.id)+'"':'class="finp" disabled')+' rows="3" placeholder="'+escapeHtml(field.placeholder||'กรอกข้อความ...')+'">'+escapeHtml(values[field.id]||'')+'</textarea></div>').join('');
+}
+function renderAssessmentTemplatePreview(template){
+  template=assessmentTemplatePresentation(template)||template;
+  const rotation=getAssessmentRotation(template.rotationId);
+  const theme=assessmentTemplateTheme(template.rotationId);
+  const fields=(template.fields||[]).map(field=>{
+    const label='<label class="flbl">'+escapeHtml(field.label||'ข้อมูลประกอบ')+(field.required?' *':'')+'</label>';
+    if(field.type==='multiselect')return '<div style="grid-column:1/-1">'+label+'<div class="ped-cbgroup">'+(field.options||[]).map(option=>'<label class="ped-cb-opt"><input type="checkbox" disabled>'+escapeHtml(option)+'</label>').join('')+'</div></div>';
+    if(field.type==='select')return '<div>'+label+'<select class="finp" disabled><option>เลือกข้อมูล</option>'+(field.options||[]).map(option=>'<option>'+escapeHtml(option)+'</option>').join('')+'</select></div>';
+    return '<div>'+label+'<input class="finp" type="'+(field.type==='number'?'number':field.type==='date'?'date':'text')+'" disabled placeholder="กรอกข้อมูล"></div>';
+  }).join('');
+  const passText=template.ratingMode==='su'&&template.passCount?'เกณฑ์ผ่าน S ≥ '+template.passCount+' ข้อ':template.ratingMode==='score'&&template.passPercent!==''&&template.passPercent!==undefined?'เกณฑ์ผ่าน '+displayTemplateNumber(template.passPercent)+'%':'';
+  return '<div style="border:1px solid '+theme.border+';border-radius:8px;overflow:hidden;background:#fff">'
+    +'<div style="padding:13px 14px;background:'+theme.accent+';color:#fff;display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div><div style="font-size:14px;font-weight:800">'+escapeHtml((rotation?.emoji||'📋')+' '+(template.name||'แบบประเมิน'))+'</div><div style="font-size:11px;opacity:.88;margin-top:2px">'+escapeHtml(template.description||'ตัวอย่างแบบประเมินหลังบันทึก')+'</div></div>'+(passText?'<span style="padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.16);font-size:11px;font-weight:700;white-space:nowrap">'+escapeHtml(passText)+'</span>':'')+'</div>'
+    +(fields?'<div style="padding:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px;background:'+theme.soft+';border-bottom:1px solid '+theme.border+'">'+fields+'</div>':'')
+    +(template.settingText?'<div style="margin:10px 12px 0;padding:7px 9px;border-radius:6px;background:'+theme.soft+';color:'+theme.accent+';font-size:11px">Setting: '+escapeHtml(template.settingText)+'</div>':'')
+    +(template.procedureText?'<div style="padding:10px 12px 0;font-size:12px;font-weight:700;color:'+theme.accent+'">Procedure: '+escapeHtml(template.procedureText)+'</div>':'')
+    +'<div style="padding:0 12px 12px">'+renderAssessmentTemplateRatingSections(template,{},false)+renderAssessmentTemplateLevel(template,{},false)+renderAssessmentTemplateFeedback(template,{},false)+(template.showComment?'<div style="margin-top:12px"><label class="flbl">'+escapeHtml(template.commentLabel||'ข้อเสนอแนะเพิ่มเติม (Staff comment)')+'</label><textarea class="finp" rows="2" disabled placeholder="'+escapeHtml(template.commentPlaceholder||'ความเห็นของอาจารย์...')+'"></textarea></div>':'')+'</div></div>';
+}
+function renderAssessmentTemplateModal(){
+  const body=document.getElementById('assessment-template-body');
+  const draft=_assessmentTemplateDraft;
+  if(!body||!draft)return;
+  const rotations=assessmentRotations();
+  const isNewRotation=draft.rotationId==='__new_rotation__';
+  const rotationOptions=rotations.map(rotation=>'<option value="'+escapeHtml(rotation.id)+'" '+(draft.rotationId===rotation.id?'selected':'')+'>'+escapeHtml(rotation.emoji+' '+rotation.label)+'</option>').join('')
+    +'<option value="__new_rotation__" '+(isNewRotation?'selected':'')+'>＋ อนุสาขาใหม่</option>';
+  const fields=(draft.fields||[]).map((field,index)=>{
+    const options=Array.isArray(field.options)?field.options.join('\n'):String(field.options||'');
+    return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px;align-items:center;margin-bottom:7px">'
+      +'<input class="finp template-field-label" data-field-index="'+index+'" value="'+escapeHtml(field.label||'')+'" placeholder="ชื่อข้อมูลประกอบ">'
+      +'<select class="finp template-field-type" data-field-index="'+index+'"><option value="text" '+(field.type==='text'?'selected':'')+'>ข้อความ</option><option value="number" '+(field.type==='number'?'selected':'')+'>ตัวเลข</option><option value="date" '+(field.type==='date'?'selected':'')+'>วันที่</option><option value="select" '+(field.type==='select'?'selected':'')+'>ตัวเลือกเดียว</option><option value="multiselect" '+(field.type==='multiselect'?'selected':'')+'>หลายตัวเลือก (Checkbox)</option></select>'
+      +'<textarea class="finp template-field-options" data-field-index="'+index+'" rows="2" placeholder="ตัวเลือก แยกบรรทัดละ 1 ค่า">'+escapeHtml(options)+'</textarea>'
+      +'<label style="font-size:11px;white-space:nowrap"><input type="checkbox" class="template-field-required" data-field-index="'+index+'" '+(field.required?'checked':'')+'> บังคับ</label>'
+      +'<button type="button" class="ibtn del" data-template-action="delete-field" data-field-index="'+index+'" title="ลบข้อมูลประกอบ">✕</button></div>';
+  }).join('')||'<div style="font-size:12px;color:var(--text3);padding:8px 0">ไม่มีข้อมูลประกอบเพิ่มเติม</div>';
+  const sections=(draft.sections||[]).map((section,sectionIndex)=>{
+    const items=(section.items||[]).map((item,itemIndex)=>'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:7px;align-items:center;padding:7px 0;border-top:1px solid #eef2f7">'
+      +'<input class="finp template-item-label" data-section-index="'+sectionIndex+'" data-item-index="'+itemIndex+'" value="'+escapeHtml(item.label||'')+'" placeholder="หัวข้อประเมิน">'
+      +'<input class="finp template-item-help" data-section-index="'+sectionIndex+'" data-item-index="'+itemIndex+'" value="'+escapeHtml(item.help||'')+'" placeholder="คำอธิบายเพิ่มเติม">'
+      +'<input class="finp template-item-max" data-section-index="'+sectionIndex+'" data-item-index="'+itemIndex+'" type="number" min="0.5" max="100" step="0.5" value="'+escapeHtml(draft.ratingMode==='su'?1:draft.ratingMode==='uss'?2:(item.maxScore||draft.defaultMaxScore||5))+'" '+(draft.ratingMode!=='score'?'disabled':'')+' title="คะแนนเต็ม">'
+      +'<div style="display:flex;gap:4px"><button type="button" class="ibtn" data-template-action="move-item-up" data-section-index="'+sectionIndex+'" data-item-index="'+itemIndex+'" title="เลื่อนขึ้น">↑</button><button type="button" class="ibtn" data-template-action="move-item-down" data-section-index="'+sectionIndex+'" data-item-index="'+itemIndex+'" title="เลื่อนลง">↓</button><button type="button" class="ibtn del" data-template-action="delete-item" data-section-index="'+sectionIndex+'" data-item-index="'+itemIndex+'" title="ลบหัวข้อ">✕</button></div></div>').join('');
+    return '<section style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:10px;background:#fff">'
+      +'<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><input class="finp template-section-title" data-section-index="'+sectionIndex+'" value="'+escapeHtml(section.title||'')+'" placeholder="ชื่อหมวด" style="font-weight:700;flex:1;min-width:220px"><button type="button" class="ibtn" data-template-action="move-section-up" data-section-index="'+sectionIndex+'" title="เลื่อนหมวดขึ้น">↑</button><button type="button" class="ibtn" data-template-action="move-section-down" data-section-index="'+sectionIndex+'" title="เลื่อนหมวดลง">↓</button><button type="button" class="ibtn del" data-template-action="delete-section" data-section-index="'+sectionIndex+'" title="ลบหมวด">✕</button></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:7px;font-size:11px;font-weight:700;color:var(--text3);padding:9px 0 3px"><span>หัวข้อประเมิน</span><span>คำอธิบาย</span><span>เต็ม</span><span></span></div>'+items
+      +'<button type="button" class="abtn" data-template-action="add-item" data-section-index="'+sectionIndex+'" style="padding:6px 9px;font-size:11px;margin-top:8px">＋ เพิ่มหัวข้อ</button></section>';
+  }).join('');
+  if(draft.showLevel&&(!Array.isArray(draft.levelGroups)||!draft.levelGroups.length))draft.levelGroups=[{id:'level',label:'Level',options:cloneAssessmentValue(draft.levelOptions||SPINE_LEVELS.map(level=>({value:level.l,label:level.desc})))}];
+  const levelGroups=(draft.levelGroups||[]).map((group,groupIndex)=>{
+    const options=(group.options||[]).map((level,index)=>'<div style="display:grid;grid-template-columns:90px minmax(150px,1fr) auto;gap:7px;align-items:center;margin-top:7px">'
+      +'<input class="finp template-level-value" data-level-group-index="'+groupIndex+'" data-level-index="'+index+'" value="'+escapeHtml(level.value||level.l||'')+'" placeholder="เช่น L1">'
+      +'<input class="finp template-level-label" data-level-group-index="'+groupIndex+'" data-level-index="'+index+'" value="'+escapeHtml(level.label||level.desc||'')+'" placeholder="คำอธิบายระดับ">'
+      +'<div style="display:flex;gap:4px"><button type="button" class="ibtn" data-template-action="move-level-up" data-level-group-index="'+groupIndex+'" data-level-index="'+index+'" title="เลื่อนขึ้น">↑</button><button type="button" class="ibtn" data-template-action="move-level-down" data-level-group-index="'+groupIndex+'" data-level-index="'+index+'" title="เลื่อนลง">↓</button><button type="button" class="ibtn del" data-template-action="delete-level" data-level-group-index="'+groupIndex+'" data-level-index="'+index+'" title="ลบ Level">✕</button></div></div>').join('');
+    return '<div style="margin-top:10px;padding:10px;border:1px solid #e2e8f0;border-radius:7px"><div style="display:flex;gap:7px;align-items:center"><input class="finp template-level-group-label" data-level-group-index="'+groupIndex+'" value="'+escapeHtml(group.label||'Level')+'" placeholder="ชื่อชุด Level" style="font-weight:700"><button type="button" class="abtn" data-template-action="add-level" data-level-group-index="'+groupIndex+'" style="padding:5px 8px;font-size:11px">＋ Level</button>'+(draft.levelGroups.length>1?'<button type="button" class="ibtn del" data-template-action="delete-level-group" data-level-group-index="'+groupIndex+'" title="ลบชุด Level">✕</button>':'')+'</div>'+options+'</div>';
+  }).join('');
+  const levelEditor=draft.showLevel?'<div style="margin:0 0 12px;padding:11px;border:1px solid var(--border);border-radius:8px;background:#fff"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><div style="font-size:12px;font-weight:800">ปุ่ม Level</div><div style="font-size:11px;color:var(--text3)">รองรับหลายช่วง เช่น Preop และ At scene</div></div><button type="button" class="abtn" data-template-action="add-level-group" style="padding:5px 8px;font-size:11px">＋ เพิ่มชุด Level</button></div>'+levelGroups+'</div>':'';
+  const itemCommentEditor=draft.ratingMode==='uss'?'<div style="margin:0 0 12px;padding:11px;border:1px solid var(--border);border-radius:8px;background:#fff"><label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700"><input id="template-item-comments" type="checkbox" '+(draft.itemComments?'checked':'')+'> แสดงช่องความเห็นในแต่ละหัวข้อ</label>'+(draft.itemComments?'<div style="margin-top:9px"><label class="flbl">ข้อความตัวอย่างในช่อง</label><input id="template-item-comment-placeholder" class="finp" value="'+escapeHtml(draft.itemCommentPlaceholder||'ความเห็น...')+'"></div>':'')+'</div>':'';
+  const commentEditor='<div style="margin:0 0 12px;padding:11px;border:1px solid var(--border);border-radius:8px;background:#fff"><label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700"><input id="template-show-comment" type="checkbox" '+(draft.showComment!==false?'checked':'')+'> แสดงช่อง Staff comment</label>'+(draft.showComment!==false?'<div class="frow" style="margin-top:9px"><div class="fgrp" style="margin-bottom:0"><label class="flbl">ชื่อหัวข้อ</label><input id="template-comment-label" class="finp" value="'+escapeHtml(draft.commentLabel||'ข้อเสนอแนะเพิ่มเติม (Staff comment)')+'"></div><div class="fgrp" style="margin-bottom:0"><label class="flbl">ข้อความตัวอย่างในช่อง</label><input id="template-comment-placeholder" class="finp" value="'+escapeHtml(draft.commentPlaceholder||'ความเห็นของอาจารย์...')+'"></div></div>':'')+'</div>';
+  const feedbackRows=(draft.feedbackFields||[]).map((field,index)=>'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px;align-items:center;margin-top:7px"><input class="finp template-feedback-label" data-feedback-index="'+index+'" value="'+escapeHtml(field.label||'')+'" placeholder="ชื่อหัวข้อ"><input class="finp template-feedback-placeholder" data-feedback-index="'+index+'" value="'+escapeHtml(field.placeholder||'')+'" placeholder="ข้อความตัวอย่าง"><label style="font-size:11px;white-space:nowrap"><input type="checkbox" class="template-feedback-required" data-feedback-index="'+index+'" '+(field.required?'checked':'')+'> บังคับ</label><div style="display:flex;gap:4px"><button type="button" class="ibtn" data-template-action="move-feedback-up" data-feedback-index="'+index+'" title="เลื่อนขึ้น">↑</button><button type="button" class="ibtn" data-template-action="move-feedback-down" data-feedback-index="'+index+'" title="เลื่อนลง">↓</button><button type="button" class="ibtn del" data-template-action="delete-feedback" data-feedback-index="'+index+'" title="ลบช่องข้อความ">✕</button></div></div>').join('');
+  const feedbackEditor='<div style="margin:0 0 12px;padding:11px;border:1px solid var(--border);border-radius:8px;background:#fff"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><div style="font-size:12px;font-weight:800">ช่องข้อความเพิ่มเติม</div><div style="font-size:11px;color:var(--text3)">ใช้สำหรับ Reflection, จุดแข็ง หรือข้อเสนอแนะที่ต้องแยกช่อง</div></div><button type="button" class="abtn" data-template-action="add-feedback" style="padding:5px 8px;font-size:11px">＋ เพิ่มช่อง</button></div>'+feedbackRows+'</div>';
+  const newRotationFields=isNewRotation?'<div class="frow" style="margin-top:9px"><div class="fgrp"><label class="flbl">รหัสอนุสาขา <span style="color:var(--red)">*</span></label><input id="template-new-rotation-id" class="finp" value="'+escapeHtml(draft.newRotation?.id||'')+'" placeholder="เช่น metabolic"></div><div class="fgrp"><label class="flbl">ชื่ออนุสาขา <span style="color:var(--red)">*</span></label><input id="template-new-rotation-label" class="finp" value="'+escapeHtml(draft.newRotation?.label||'')+'" placeholder="เช่น Metabolic Bone"></div><div class="fgrp"><label class="flbl">สัญลักษณ์</label><input id="template-new-rotation-emoji" class="finp" value="'+escapeHtml(draft.newRotation?.emoji||'📋')+'" placeholder="📋"></div></div>':'';
+  const editorHtml='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:12px">'
+    +'<div><label class="flbl">อนุสาขา / Rotation <span style="color:var(--red)">*</span></label><select id="template-rotation" class="finp" '+(draft.legacyReferenceId?'disabled':'')+'>'+rotationOptions+'</select></div>'
+    +'<div><label class="flbl">ชื่อแบบประเมิน <span style="color:var(--red)">*</span></label><input id="template-name" class="finp" value="'+escapeHtml(draft.name||'')+'" placeholder="เช่น Mini-CEX Trauma"></div>'
+    +'<div><label class="flbl">รหัสย่อ</label><input id="template-code" class="finp" value="'+escapeHtml(draft.code||'')+'" placeholder="เช่น Mini-CEX"></div></div>'
+    +newRotationFields
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px"><div class="fgrp"><label class="flbl">รูปแบบการประเมิน</label><select id="template-rating-mode" class="finp"><option value="score" '+(draft.ratingMode==='score'?'selected':'')+'>ให้คะแนน</option><option value="su" '+(draft.ratingMode==='su'?'selected':'')+'>Satisfactory / Unsatisfactory</option><option value="uss" '+(draft.ratingMode==='uss'?'selected':'')+'>Unsatisfactory / Satisfactory / Superior</option></select></div><div class="fgrp"><label class="flbl">'+(draft.ratingMode==='su'?'เกณฑ์ผ่าน (จำนวน S)':draft.ratingMode==='uss'?'ค่าน้ำหนักภายใน':'คะแนนเต็มเริ่มต้นต่อหัวข้อ')+'</label><input id="'+(draft.ratingMode==='su'?'template-pass-count':'template-default-max')+'" type="number" min="'+(draft.ratingMode==='su'?'0':'0.5')+'" max="100" step="'+(draft.ratingMode==='su'?'1':'0.5')+'" class="finp" value="'+escapeHtml(draft.ratingMode==='su'?(draft.passCount||''):draft.ratingMode==='uss'?2:(draft.defaultMaxScore||5))+'" '+(draft.ratingMode==='uss'?'disabled':'')+'></div>'+(draft.ratingMode==='score'?'<div class="fgrp"><label class="flbl">คะแนนต่ำสุด</label><input id="template-score-min" type="number" min="0" max="'+escapeHtml(draft.defaultMaxScore||5)+'" step="1" class="finp" value="'+escapeHtml(draft.scoreMin||0)+'"></div>':'')+'<div class="fgrp"><label class="flbl">เกณฑ์ผ่าน (%)</label><input id="template-pass-percent" type="number" min="0" max="100" class="finp" value="'+escapeHtml(draft.passPercent??'')+'" placeholder="เว้นว่างได้" '+(draft.ratingMode==='uss'?'disabled':'')+'></div><div class="fgrp"><label class="flbl">สถานะ</label><label style="display:flex;align-items:center;gap:8px;padding:9px 0;font-size:13px"><input id="template-active" type="checkbox" '+(draft.active!==false?'checked':'')+'> เปิดใช้แบบฟอร์มนี้</label></div></div>'
+    +'<div class="frow" style="margin-top:2px"><div class="fgrp"><label class="flbl">Setting</label><input id="template-setting-text" class="finp" value="'+escapeHtml(draft.settingText||'')+'" placeholder="เช่น OPD / Cadaveric workshop"></div><div class="fgrp"><label class="flbl">Procedure</label><input id="template-procedure-text" class="finp" value="'+escapeHtml(draft.procedureText||'')+'" placeholder="ชื่อหัตถการ"></div></div>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:12px;margin:2px 0 10px"><input id="template-show-level" type="checkbox" '+(draft.showLevel?'checked':'')+'> แสดงปุ่มระดับสมรรถนะ Level</label>'
+    +levelEditor+itemCommentEditor+commentEditor+feedbackEditor
+    +'<div class="fgrp" style="margin-top:9px"><label class="flbl">คำอธิบาย</label><input id="template-description" class="finp" value="'+escapeHtml(draft.description||'')+'" placeholder="รายละเอียดสำหรับผู้ประเมิน"></div>'
+    +'<div class="fgrp" style="margin-top:9px"><label class="flbl">แนวทางการให้คะแนน</label><textarea id="template-score-guide" class="finp" rows="2" placeholder="เช่น 1 = ต้องพัฒนา, 5 = ดีเยี่ยม">'+escapeHtml(draft.scoreGuide||'')+'</textarea></div>'
+    +'<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap"><div><div style="font-size:14px;font-weight:700">ข้อมูลประกอบ</div><div style="font-size:12px;color:var(--text3)">เช่น การวินิจฉัย หัตถการ หรือสถานที่ประเมิน</div></div><button type="button" class="abtn" data-template-action="add-field" style="padding:6px 9px;font-size:11px">＋ เพิ่มข้อมูล</button></div><div style="margin-top:9px">'+fields+'</div></div>'
+    +'<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap"><div><div style="font-size:14px;font-weight:700">หัวข้อประเมิน</div><div style="font-size:12px;color:var(--text3)">แก้ไข เพิ่ม ลด และจัดลำดับได้</div></div><button type="button" class="abtn" data-template-action="add-section" style="padding:6px 9px;font-size:11px">＋ เพิ่มหมวด</button></div>'+sections+'</div>';
+  body.classList.toggle('template-builder-preview-only',_assessmentTemplatePreviewOnly);
+  body.innerHTML='<div class="template-builder-shell"><div class="template-builder-editor">'+editorHtml+'</div><aside class="template-builder-preview"><div class="template-builder-preview-head"><span>พรีวิวแบบประเมิน</span><span>อัปเดตตามที่แก้ไข</span></div><div class="template-builder-preview-canvas" id="template-live-preview">'+renderAssessmentTemplatePreview(draft)+'</div></aside></div>'
+    +'<div class="template-builder-footer"><button type="button" class="abtn" data-template-action="toggle-preview">'+(_assessmentTemplatePreviewOnly?'← กลับไปแก้ไข':'👁 ดูตัวอย่างเต็ม')+'</button><div class="mbtns"><button type="button" class="mbtn-cancel" data-template-action="cancel">ยกเลิก</button><button type="button" class="mbtn-save t" data-template-action="save">💾 บันทึกและใช้งาน</button></div></div>';
+  body.querySelector('#template-rotation').addEventListener('change',event=>{
+    captureAssessmentTemplateEditor();
+    draft.rotationId=event.target.value;
+    renderAssessmentTemplateModal();
+  });
+  body.querySelectorAll('[data-template-action]').forEach(button=>button.addEventListener('click',()=>handleAssessmentTemplateEditorAction(button)));
+  body.querySelector('.template-builder-editor')?.addEventListener('input',()=>refreshAssessmentTemplatePreview());
+  body.querySelector('.template-builder-editor')?.addEventListener('change',event=>{
+    if(['template-rating-mode','template-show-level','template-show-comment','template-item-comments'].includes(event.target?.id)){captureAssessmentTemplateEditor();renderAssessmentTemplateModal();return;}
+    refreshAssessmentTemplatePreview();
+  });
+}
+function captureAssessmentTemplateEditor(){
+  const body=document.getElementById('assessment-template-body');
+  const draft=_assessmentTemplateDraft;
+  if(!body||!draft)return;
+  const read=id=>body.querySelector(id);
+  const name=read('#template-name'),code=read('#template-code'),description=read('#template-description'),guide=read('#template-score-guide'),max=read('#template-default-max'),scoreMin=read('#template-score-min'),pass=read('#template-pass-percent'),active=read('#template-active'),rotation=read('#template-rotation'),ratingMode=read('#template-rating-mode'),settingText=read('#template-setting-text'),procedureText=read('#template-procedure-text'),passCount=read('#template-pass-count'),showLevel=read('#template-show-level'),showComment=read('#template-show-comment'),commentLabel=read('#template-comment-label'),commentPlaceholder=read('#template-comment-placeholder'),itemComments=read('#template-item-comments'),itemCommentPlaceholder=read('#template-item-comment-placeholder');
+  if(name)draft.name=name.value;
+  if(code)draft.code=code.value;
+  if(description)draft.description=description.value;
+  if(guide)draft.scoreGuide=guide.value;
+  if(max)draft.defaultMaxScore=max.value;
+  if(scoreMin)draft.scoreMin=scoreMin.value;
+  if(pass)draft.passPercent=pass.value;
+  if(active)draft.active=active.checked;
+  if(rotation)draft.rotationId=rotation.value;
+  if(ratingMode)draft.ratingMode=['su','uss'].includes(ratingMode.value)?ratingMode.value:'score';
+  if(itemComments)draft.itemComments=itemComments.checked;
+  if(itemCommentPlaceholder)draft.itemCommentPlaceholder=itemCommentPlaceholder.value;
+  if(settingText)draft.settingText=settingText.value;
+  if(procedureText)draft.procedureText=procedureText.value;
+  if(passCount)draft.passCount=passCount.value;
+  if(showLevel){
+    draft.showLevel=showLevel.checked;
+    if(draft.showLevel&&(!Array.isArray(draft.levelOptions)||!draft.levelOptions.length))draft.levelOptions=SPINE_LEVELS.map(level=>({value:level.l,label:level.desc}));
+    if(draft.showLevel&&(!Array.isArray(draft.levelGroups)||!draft.levelGroups.length))draft.levelGroups=[{id:'level',label:'Level',options:cloneAssessmentValue(draft.levelOptions)}];
+  }
+  if(showComment)draft.showComment=showComment.checked;
+  if(commentLabel)draft.commentLabel=commentLabel.value;
+  if(commentPlaceholder)draft.commentPlaceholder=commentPlaceholder.value;
+  if(draft.ratingMode==='su')draft.defaultMaxScore=1;
+  if(draft.ratingMode==='uss'){
+    draft.defaultMaxScore=2;
+    draft.passPercent='';
+  }
+  if(draft.rotationId==='__new_rotation__'){
+    draft.newRotation={
+      id:read('#template-new-rotation-id')?.value||'',
+      label:read('#template-new-rotation-label')?.value||'',
+      emoji:read('#template-new-rotation-emoji')?.value||'📋'
+    };
+  }
+  (draft.fields||[]).forEach((field,index)=>{
+    const label=body.querySelector('.template-field-label[data-field-index="'+index+'"]');
+    const type=body.querySelector('.template-field-type[data-field-index="'+index+'"]');
+    const options=body.querySelector('.template-field-options[data-field-index="'+index+'"]');
+    const required=body.querySelector('.template-field-required[data-field-index="'+index+'"]');
+    if(label)field.label=label.value;
+    if(type)field.type=type.value;
+    if(options)field.options=options.value.split('\n');
+    if(required)field.required=required.checked;
+  });
+  (draft.levelGroups||[]).forEach((group,groupIndex)=>{
+    const groupLabel=body.querySelector('.template-level-group-label[data-level-group-index="'+groupIndex+'"]');
+    if(groupLabel)group.label=groupLabel.value;
+    (group.options||[]).forEach((level,index)=>{
+      const value=body.querySelector('.template-level-value[data-level-group-index="'+groupIndex+'"][data-level-index="'+index+'"]');
+      const label=body.querySelector('.template-level-label[data-level-group-index="'+groupIndex+'"][data-level-index="'+index+'"]');
+      if(value)level.value=value.value;
+      if(label)level.label=label.value;
+    });
+  });
+  if(draft.levelGroups?.length)draft.levelOptions=cloneAssessmentValue(draft.levelGroups[0].options||[]);
+  (draft.feedbackFields||[]).forEach((field,index)=>{
+    const label=body.querySelector('.template-feedback-label[data-feedback-index="'+index+'"]');
+    const placeholder=body.querySelector('.template-feedback-placeholder[data-feedback-index="'+index+'"]');
+    const required=body.querySelector('.template-feedback-required[data-feedback-index="'+index+'"]');
+    if(label)field.label=label.value;
+    if(placeholder)field.placeholder=placeholder.value;
+    if(required)field.required=required.checked;
+  });
+  (draft.sections||[]).forEach((section,sectionIndex)=>{
+    const title=body.querySelector('.template-section-title[data-section-index="'+sectionIndex+'"]');
+    if(title)section.title=title.value;
+    (section.items||[]).forEach((item,itemIndex)=>{
+      const label=body.querySelector('.template-item-label[data-section-index="'+sectionIndex+'"][data-item-index="'+itemIndex+'"]');
+      const help=body.querySelector('.template-item-help[data-section-index="'+sectionIndex+'"][data-item-index="'+itemIndex+'"]');
+      const itemMax=body.querySelector('.template-item-max[data-section-index="'+sectionIndex+'"][data-item-index="'+itemIndex+'"]');
+      if(label)item.label=label.value;
+      if(help)item.help=help.value;
+      if(itemMax)item.maxScore=itemMax.value;
+      if(draft.ratingMode==='su')item.maxScore=1;
+      if(draft.ratingMode==='uss')item.maxScore=2;
+    });
+  });
+}
+function refreshAssessmentTemplatePreview(){
+  captureAssessmentTemplateEditor();
+  const preview=document.getElementById('template-live-preview');
+  if(preview&&_assessmentTemplateDraft)preview.innerHTML=renderAssessmentTemplatePreview(_assessmentTemplateDraft);
+}
+function moveAssessmentTemplateEntry(list,index,direction){
+  const next=index+direction;
+  if(!Array.isArray(list)||next<0||next>=list.length)return;
+  const current=list[index];list[index]=list[next];list[next]=current;
+}
+function handleAssessmentTemplateEditorAction(button){
+  const draft=_assessmentTemplateDraft;
+  if(!draft)return;
+  const action=button.dataset.templateAction;
+  if(action==='cancel'){closeAssessmentTemplateModal();return;}
+  if(action==='save'){saveAssessmentTemplateDraft();return;}
+  if(action==='toggle-preview'){
+    captureAssessmentTemplateEditor();
+    _assessmentTemplatePreviewOnly=!_assessmentTemplatePreviewOnly;
+    renderAssessmentTemplateModal();
+    return;
+  }
+  captureAssessmentTemplateEditor();
+  const sectionIndex=Number(button.dataset.sectionIndex);
+  const itemIndex=Number(button.dataset.itemIndex);
+  const fieldIndex=Number(button.dataset.fieldIndex);
+  const levelIndex=Number(button.dataset.levelIndex);
+  const levelGroupIndex=Number(button.dataset.levelGroupIndex);
+  const feedbackIndex=Number(button.dataset.feedbackIndex);
+  if(action==='add-field')draft.fields.push(makeAssessmentTemplateField(''));
+  if(action==='delete-field')draft.fields.splice(fieldIndex,1);
+  if(action==='add-section')draft.sections.push(makeAssessmentTemplateSection('หมวดประเมิน',draft.defaultMaxScore));
+  if(action==='add-level-group')draft.levelGroups.push({id:assessmentTemplateKey('level_group'),label:'Level',options:[makeAssessmentTemplateLevel('L1','')]});
+  if(action==='delete-level-group')draft.levelGroups.splice(levelGroupIndex,1);
+  if(action==='add-level'&&draft.levelGroups[levelGroupIndex])draft.levelGroups[levelGroupIndex].options.push(makeAssessmentTemplateLevel('L'+(draft.levelGroups[levelGroupIndex].options.length+1),''));
+  if(action==='delete-level'&&draft.levelGroups[levelGroupIndex])draft.levelGroups[levelGroupIndex].options.splice(levelIndex,1);
+  if(action==='move-level-up'&&draft.levelGroups[levelGroupIndex])moveAssessmentTemplateEntry(draft.levelGroups[levelGroupIndex].options,levelIndex,-1);
+  if(action==='move-level-down'&&draft.levelGroups[levelGroupIndex])moveAssessmentTemplateEntry(draft.levelGroups[levelGroupIndex].options,levelIndex,1);
+  if(action==='add-feedback')draft.feedbackFields.push(makeAssessmentTemplateFeedback(''));
+  if(action==='delete-feedback')draft.feedbackFields.splice(feedbackIndex,1);
+  if(action==='move-feedback-up')moveAssessmentTemplateEntry(draft.feedbackFields,feedbackIndex,-1);
+  if(action==='move-feedback-down')moveAssessmentTemplateEntry(draft.feedbackFields,feedbackIndex,1);
+  if(action==='delete-section')draft.sections.splice(sectionIndex,1);
+  if(action==='move-section-up')moveAssessmentTemplateEntry(draft.sections,sectionIndex,-1);
+  if(action==='move-section-down')moveAssessmentTemplateEntry(draft.sections,sectionIndex,1);
+  if(action==='add-item'&&draft.sections[sectionIndex])draft.sections[sectionIndex].items.push(makeAssessmentTemplateItem('',draft.defaultMaxScore));
+  if(action==='delete-item'&&draft.sections[sectionIndex])draft.sections[sectionIndex].items.splice(itemIndex,1);
+  if(action==='move-item-up'&&draft.sections[sectionIndex])moveAssessmentTemplateEntry(draft.sections[sectionIndex].items,itemIndex,-1);
+  if(action==='move-item-down'&&draft.sections[sectionIndex])moveAssessmentTemplateEntry(draft.sections[sectionIndex].items,itemIndex,1);
+  renderAssessmentTemplateModal();
+}
+function saveAssessmentTemplateDraft(){
+  if(!requireAssessmentTemplateAdmin())return;
+  captureAssessmentTemplateEditor();
+  const raw=_assessmentTemplateDraft;
+  if(!raw)return;
+  const modernization=ensureModernizationState();
+  if(raw.rotationId==='__new_rotation__'){
+    const rotationId=String(raw.newRotation?.id||'').trim().toLowerCase();
+    const rotationLabel=String(raw.newRotation?.label||'').trim();
+    const rotationEmoji=String(raw.newRotation?.emoji||'📋').trim()||'📋';
+    if(!/^[a-z][a-z0-9_-]{1,39}$/.test(rotationId)){toast('รหัสอนุสาขาต้องเป็น a-z, 0-9, _ หรือ - และขึ้นต้นด้วยตัวอักษร','error');return;}
+    if(!rotationLabel){toast('กรุณาระบุชื่ออนุสาขาใหม่','error');return;}
+    if(assessmentRotations().some(rotation=>rotation.id===rotationId)){toast('รหัสอนุสาขานี้มีอยู่แล้ว','error');return;}
+    modernization.rotationCatalog.push({id:rotationId,label:rotationLabel,emoji:rotationEmoji,createdAt:new Date().toISOString(),createdBy:currentActorLabel()});
+    raw.rotationId=rotationId;
+  }
+  if(!assessmentRotations().some(rotation=>rotation.id===raw.rotationId)){toast('กรุณาเลือกอนุสาขาสำหรับแบบฟอร์ม','error');return;}
+  const template=normalizeAssessmentTemplateDraft(raw);
+  if(!template.name){toast('กรุณาระบุชื่อแบบประเมิน','error');return;}
+  if(!templateTopicCount(template)){toast('แบบประเมินต้องมีหัวข้ออย่างน้อย 1 ข้อ','error');return;}
+  if(template.showLevel&&!(template.levelGroups||[]).some(group=>(group.options||[]).length)){toast('กรุณาเพิ่ม Level อย่างน้อย 1 ระดับ หรือปิดการแสดง Level','error');return;}
+  const templates=modernization.assessmentTemplates;
+  const index=templates.findIndex(item=>item.id===template.id||(template.legacyReferenceId&&assessmentTemplateLegacyReferenceId(item)===template.legacyReferenceId));
+  const previous=index>=0?templates[index]:null;
+  template.id=previous?.id||assessmentTemplateKey('template');
+  template.version=Number(previous?.version||0)+1;
+  template.createdAt=previous?.createdAt||new Date().toISOString();
+  template.createdBy=previous?.createdBy||currentActorLabel();
+  template.updatedAt=new Date().toISOString();
+  template.updatedBy=currentActorLabel();
+  template.archived=false;
+  if(index>=0)templates[index]=template;
+  else templates.push(template);
+  recordChange('assessment_template',template.id,template.name,previous?previous.name+' v'+(previous.version||1):'สร้างใหม่',template.name+' v'+template.version);
+  saveDB({immediate:true});
+  closeAssessmentTemplateModal();
+  _assessmentAdminView='templates';
+  renderAssessmentAdmin();
+  toast('✅ บันทึกแบบฟอร์มประเมินแล้ว');
+}
+function duplicateAssessmentTemplate(templateId){
+  if(!requireAssessmentTemplateAdmin())return;
+  const source=assessmentTemplateById(templateId);
+  if(!source){toast('ไม่พบแบบฟอร์มที่เลือก','error');return;}
+  const draft=cloneAssessmentValue(source);
+  draft.id='';
+  draft.legacyReferenceId='';
+  draft.name=(draft.name||'แบบประเมิน')+' (สำเนา)';
+  draft.code=draft.code?draft.code+' copy':'';
+  draft.active=false;
+  delete draft.version;delete draft.createdAt;delete draft.createdBy;delete draft.updatedAt;delete draft.updatedBy;
+  openAssessmentTemplateModal('','',draft);
+}
+function toggleAssessmentTemplateArchive(templateId){
+  if(!requireAssessmentTemplateAdmin())return;
+  const template=assessmentTemplateById(templateId);
+  if(!template)return;
+  template.archived=!template.archived;
+  if(template.archived)template.active=false;
+  else template.active=true;
+  template.updatedAt=new Date().toISOString();
+  template.updatedBy=currentActorLabel();
+  recordChange('assessment_template',template.id,template.name,template.archived?'ใช้งาน':'เก็บไว้',template.archived?'เก็บไว้':'นำกลับมาใช้งาน');
+  saveDB({immediate:true});
+  renderAssessmentTemplateAdmin();
+  toast(template.archived?'เก็บแบบฟอร์มแล้ว':'นำแบบฟอร์มกลับมาใช้งานแล้ว');
+}
+function deleteAssessmentTemplate(templateId){
+  if(!requireAssessmentTemplateAdmin())return;
+  const template=assessmentTemplateById(templateId);
+  if(!template)return;
+  if((DB.rotaRecords||[]).some(record=>record.templateId===templateId)){
+    toast('แบบฟอร์มนี้มีผลประเมินแล้ว จึงเก็บไว้แทนการลบ','error');
+    return;
+  }
+  if(!confirm('ลบแบบฟอร์ม "'+(template.name||'')+'"?'))return;
+  const modernization=ensureModernizationState();
+  modernization.assessmentTemplates=modernization.assessmentTemplates.filter(item=>item.id!==templateId);
+  recordChange('assessment_template',templateId,template.name,'มีแบบฟอร์ม','ลบแล้ว');
+  saveDB({immediate:true});
+  renderAssessmentTemplateAdmin();
+  toast('ลบแบบฟอร์มแล้ว');
+}
+
+function renderAssessList_admin(){
+  const area=document.getElementById('assess-list-area');
+  if(!area)return;
+  const q=(document.getElementById('assess-filter-res')?.value||'').toLowerCase();
+  const yearFilter=document.getElementById('assess-filter-year')?.value||'all';
+  const traineeYearFilter=document.getElementById('assess-filter-trainee-year')?.value||'all';
+  const activeRot=document.querySelector('#assess-rot-tabs .rota-rtab.active')?.dataset?.rot||'all';
+  let records=[...DB.rotaRecords].reverse(); // newest first
+  if(yearFilter!=='all') records=records.filter(r=>assessmentRecordBEYear(r)===yearFilter);
+  if(traineeYearFilter!=='all') records=records.filter(r=>assessmentYearKey(r)===traineeYearFilter);
+  if(activeRot!=='all') records=records.filter(r=>r.rotation===activeRot);
+  if(q) records=records.filter(r=>{
+    const res=DB.residents.find(x=>x.id===r.resId);
+    return (res?.fn+' '+res?.ln+' '+res?.id+' '+(r.traineeName||'')).toLowerCase().includes(q);
+  });
+  if(!records.length){area.innerHTML='<div class="empty-st" style="padding:32px">ยังไม่มีแบบประเมิน</div>';return;}
+  const formLabel={cbd:'CBD',minicex:'Mini-CEX',pba:'PBA',dops:'DOPS',peer:'Peer/Patient',general:'ประเมินทั่วไป',custom:'แบบกำหนดเอง',elective:'Elective',unit_rotation:'วนหน่วย'};
+  area.innerHTML=records.map(rec=>{
+    const res=DB.residents.find(x=>x.id===rec.resId);
+    const rot=getAssessmentRotation(rec.rotation);
+    const adv=DB.advisors.find(x=>x.id===rec.advisorId);
+    const name=res?res.fn+' '+res.ln:rec.traineeName||'—';
+    const yr=rec.traineeYr||(res?res.yr:'');
+    const dateDisp=assessmentDateDisplay(rec);
+    const fLabel=rec.templateName||formLabel[rec.formType]||rec.formType||'—';
+    const typeBadgeStyle=rec.type==='custom'?'background:#e0f2fe;color:#1e40af':rec.type==='elective'?'background:#ccfbf1;color:var(--teal2)':rec.type==='unit_rotation'?'background:#e0f2fe;color:#0369a1':rec.type==='pediatric'?'background:#ede9fe;color:#7c3aed':'background:#f1f5f9;color:var(--text2)';
+    return`<div class="assess-rec">
+      <div class="assess-rec-hdr">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="assess-rec-rotation">${rot?.emoji||'📋'} ${rot?.label||rec.rotation}</span>
+          ${rec.type!=='general'?`<span style="padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700;${typeBadgeStyle}">${fLabel}</span>`:''}
+          <strong style="font-size:13px">${name}</strong>
+          ${yr?`<span class="badge-yr ${YR_CLASS[yr]||'yr1'}" style="font-size:10px">${yrFullText(yr)}</span>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <button class="abtn t view-assess-btn" data-recid="${rec.id}" style="padding:5px 11px;font-size:11px">👁 ดู</button>
+          <button class="ibtn del del-assess-btn" data-recid="${rec.id}" style="width:26px;height:26px">🗑️</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-top:4px">
+        <span>📅 ${dateDisp}</span>
+        <span>👨‍🏫 ${escapeHtml(assessmentEvaluatorName(rec))}</span>
+        ${rec.meta?.diagnosis?`<span style="color:var(--text3)">Dx: ${rec.meta.diagnosis}</span>`:''}
+        ${rec.meta?.procedure?`<span style="color:var(--text3)">หัตถการ: ${rec.meta.procedure}</span>`:''}
+        ${rec.type==='elective'&&rec.meta?.trainingUnit?`<span style="color:var(--text3)">หน่วย: ${rec.meta.trainingUnit}</span>`:''}
+        ${rec.type==='elective'&&rec.meta?.institution?`<span style="color:var(--text3)">สถาบัน: ${escapeHtml(rec.meta.institution)}</span>`:''}
+        ${rec.type==='unit_rotation'&&rec.meta?.workLine?`<span style="color:var(--text3)">สาย: ${rec.meta.workLine}</span>`:''}
+        ${rec.type==='unit_rotation'&&rec.meta?.scheduleSource?`<span style="color:var(--text3)">ตาราง: ${rec.meta.scheduleSource}</span>`:''}
+        ${rec.type==='unit_rotation'&&rec.meta?.evaluatorName?`<span style="color:var(--text3)">ผู้ประเมิน: ${rec.meta.evaluatorName}</span>`:''}
+        ${rec.comment?`<span style="color:var(--text3)">"${escapeHtml(rec.comment.slice(0,40))}${rec.comment.length>40?'...':''}"</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  area.querySelectorAll('.view-assess-btn').forEach(b=>b.addEventListener('click',()=>openViewAssessModal(b.dataset.recid)));
+  area.querySelectorAll('.del-assess-btn').forEach(b=>b.addEventListener('click',()=>{
+    if(!confirm('ลบแบบประเมินนี้?'))return;
+    DB.rotaRecords=DB.rotaRecords.filter(r=>r.id!==b.dataset.recid);
+    saveDB();renderAssessmentAdmin();renderStats();toast('🗑️ ลบแล้ว');
+  }));
+}
+
+// ═══════════════════════════════════════════════════════
+//  ROTATION ASSESSMENT — New Assessment Modal
+// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+//  PEDIATRIC ASSESSMENT MODAL — open
+// ═══════════════════════════════════════════════════════
+function openNewAssessModal(resId, role, advId, preferredRotationId){
+  const today=new Date().toISOString().slice(0,10);
+  const now=new Date();
+  const electiveMonth=String(now.getMonth()+1);
+  const electiveYear=String(now.getFullYear()+543);
+  const unitDefault=unitRotationDefaultSelection(now);
+  const availableCatalog=assessmentRotations();
+  const allowedRotIds=role==='advisor'?advisorAllowedRotationIds(advId):availableCatalog.map(r=>r.id);
+  const defaultRotationId=(availableCatalog.find(r=>allowedRotIds.includes(r.id))||availableCatalog[0]||ROTATIONS[0]).id;
+  const initialRotationId=preferredRotationId&&allowedRotIds.includes(preferredRotationId)?preferredRotationId:defaultRotationId;
+  if(role==='advisor'){
+    if(!allowedRotIds.length){toast('ยังไม่มีแบบประเมิน Rotation ที่ admin กำหนดสิทธิ์ให้','error');return;}
+  }
+  const makeEmptyFormData=(keys)=>{
+    const d={};
+    keys.forEach(k=>{d[k]={meta:{assessDate:today},domains:{},scores9:{},level:'',reflection:'',strength:'',suggest:''};});
+    d.peer={meta:{assessDate:today,raterType:''},scores:{},praise:'',suggest:''};
+    return d;
+  };
+  const ctx={
+    resId:resId||'', role, advId,
+    selectedRotation:initialRotationId,
+    templateId:'',
+    templateData:{},
+    pedFormType:'cbd',
+    sportsFormType:'minicex',
+    spineFormType:'minicex',
+    footankleFormType:'cbd',
+    handFormType:'minicex',
+    hkFormType:'minicex',
+    traumaFormType:'minicex',
+    tumorFormType:'minicex',
+    jcData:{meta:{assessDate:today},scores5:{},advisorId2:'',comment:''},
+    assessDate:today,
+    pedData:makeEmptyFormData(PED_FORM_KEYS),
+    sportsData:{
+      minicex:{meta:{assessDate:today},scores9:{},strength:'',suggest:'',passFail:''},
+      cbd:    {meta:{assessDate:today},scores9:{},strength:'',suggest:'',passFail:''},
+      dops:   {meta:{assessDate:today},scores9:{},strength:'',suggest:'',passFail:''},
+      pba:    {meta:{assessDate:today},scores9:{},strength:'',suggest:'',passFail:''},
+    },
+    spineData:{
+      minicex:{meta:{assessDate:today},scores4:{},level:'',acuity:'',comment:''},
+      cbd:    {meta:{assessDate:today},scores4:{},level:'',acuity:'',comment:''},
+      pba:    {meta:{assessDate:today},scores4:{},level:'',acuity:'',comment:''},
+      dops:   {meta:{assessDate:today},scoresSU:{},level:'',comment:''},
+    },
+    footankleData:{
+      cbd:         {meta:{assessDate:today},scores4:{},level:'',comment:''},
+      dops_arthro: {meta:{assessDate:today},scoresSU:{},level:'',comment:''},
+      dops_orif:   {meta:{assessDate:today},scoresSU:{},level:'',comment:''},
+    },
+    handData:{
+      minicex:       {meta:{assessDate:today},scores4:{},level:'',acuity:'',comment:''},
+      cbd:           {meta:{assessDate:today},scores4:{},level:'',comment:''},
+      pba:           {meta:{assessDate:today},scores4:{},level:'',acuity:'',comment:''},
+      dops_cts:      {meta:{assessDate:today},scoresSU:{},level:'',comment:''},
+      dops_injection:{meta:{assessDate:today},scoresSU:{},level:'',comment:''},
+    },
+    hkData:{
+      minicex:    {meta:{assessDate:today},scores4:{},level:'',comment:''},
+      cbd:        {meta:{assessDate:today},scores4:{},pgy:'',level:'',comment:''},
+      pba:        {meta:{assessDate:today},scores4:{},pgy:'',level:'',comment:''},
+      dops:       {meta:{assessDate:today},scoresSU:{},dopsPgy:'PGY-2',comment:''},
+    },
+    traumaData:{
+      minicex:       {meta:{assessDate:today},scores4:{},level:'',acuity:'',comment:''},
+      cbd:           {meta:{assessDate:today},scores4:{},level:'',comment:''},
+      pba:           {meta:{assessDate:today},scores4:{},level:'',acuity:'',comment:''},
+      dops_trauma:   {meta:{assessDate:today},scoresSU:{},level:'',comment:''},
+      dops_approach: {meta:{assessDate:today},scoresSU:{},level:'',comment:''},
+    },
+    tumorData:{
+      minicex:      {meta:{assessDate:today},scores4:{},level:'',acuity:'',comment:''},
+      cbd:          {meta:{assessDate:today},scores4:{},level:'',comment:''},
+      pba:          {meta:{assessDate:today},scores4:{},level:'',acuity:'',comment:''},
+      dops_biopsy:  {meta:{assessDate:today},scoresSU:{},level:'',comment:''},
+      dops_approach:{meta:{assessDate:today},scoresSU:{},level:'',comment:''},
+    },
+    electiveData:{
+      meta:{
+        assessMonth:electiveMonth,
+        assessBEYear:electiveYear,
+        trainingUnit:ELECTIVE_UNITS[0],
+        institution:'',
+        evaluatorName:''
+      },
+      scores5:{},
+      comment:''
+    },
+    unitRotationData:{
+      meta:{
+        assessPeriod:unitDefault.period,
+        assessBEYear:unitDefault.beYear,
+        workLine:'',
+        evaluatorName:''
+      },
+      scores9:{},
+      comment:''
+    },
+    domainData:{}, comment:''
+  };
+  _assessContext=ctx;
+  document.getElementById('assess-modal-ttl').textContent='📋 สร้างแบบประเมิน';
+  renderAssessModalBody();
+  document.getElementById('assess-modal').classList.add('open');
+}
+
+// ─── helpers for rating buttons ───────────────────────
+function _ratingBtns(domId,cur){
+  return`<div class="ped-rating-group" data-domain="${domId}">
+    <button type="button" class="ped-rbtn${cur==='unsatisfactory'?' unsat':''}" data-v="unsatisfactory">Unsatisfactory</button>
+    <button type="button" class="ped-rbtn${cur==='satisfactory'?' sat':''}" data-v="satisfactory">Satisfactory</button>
+    <button type="button" class="ped-rbtn${cur==='superior'?' sup':''}" data-v="superior">Superior</button>
+  </div>`;}
+
+function _levelGrid(levels,selected,gridId,cols){
+  const gc=cols||4;
+  return`<div class="ped-level-grid" id="${gridId}" style="grid-template-columns:repeat(${gc},1fr)">
+    ${levels.map(lv=>`<div class="ped-lv-card${selected===lv.l?' sel':''}" data-lv="${lv.l}"><div class="ped-lv-num">${lv.l}</div><div class="ped-lv-desc">${lv.desc}</div></div>`).join('')}
+  </div>`;}
+
+
+function _feedbackBlock(strength,suggest){
+  return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:11px">
+    <div><label class="flbl" style="color:var(--green)">✅ จุดแข็ง</label><textarea class="finp ped-fb-strength" rows="3" placeholder="ระบุจุดแข็งที่สังเกตได้">${strength||''}</textarea></div>
+    <div><label class="flbl" style="color:var(--gold)">💡 ข้อเสนอแนะ / พัฒนาสู่ Superior</label><textarea class="finp ped-fb-suggest" rows="3" placeholder="ประเด็นที่ประเมิน Unsatisfactory หรือเพื่อการพัฒนา">${suggest||''}</textarea></div>
+  </div>`;}
+
+// ─── Main modal renderer ───────────────────────────────
+function renderAssessModalBody(){
+  const body=document.getElementById('assess-modal-body');
+  const ctx=_assessContext;
+  const availableRotations=rotationsForAssessmentContext(ctx);
+  if(!availableRotations.length){
+    body.innerHTML='<div class="empty-st" style="padding:40px">ยังไม่มีแบบประเมิน Rotation ที่ admin กำหนดสิทธิ์ให้</div><div class="mbtns"><button class="mbtn-cancel" id="assess-cancel-btn">ปิด</button></div>';
+    body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+    return;
+  }
+  if(!availableRotations.some(r=>r.id===ctx.selectedRotation))ctx.selectedRotation=availableRotations[0].id;
+  const selectableResidents=residentsForAssessmentContext(ctx);
+  if(ctx.resId&&!selectableResidents.some(r=>String(r.id)===String(ctx.resId)))ctx.resId='';
+  const rotType=getRotationFormType(ctx.selectedRotation);
+  const dynamicTemplate=activeAssessmentTemplateForContext(ctx);
+  ctx.templateId=dynamicTemplate?.id||'';
+  const usingDynamicTemplate=!!dynamicTemplate;
+  const isElective=rotType==='elective';
+  const isUnitRotation=rotType==='unit_rotation';
+  const res=selectableResidents.find(x=>x.id===ctx.resId);
+  if(!ctx.electiveData)ctx.electiveData={meta:{assessMonth:String(new Date().getMonth()+1),assessBEYear:String(currentBEYear()),trainingUnit:ELECTIVE_UNITS[0],institution:'',evaluatorName:''},scores5:{},comment:''};
+  if(!ctx.unitRotationData){const d=unitRotationDefaultSelection();ctx.unitRotationData={meta:{assessPeriod:d.period,assessBEYear:d.beYear,workLine:'',evaluatorName:''},scores9:{},comment:''};}
+  const electiveMeta=ctx.electiveData.meta||{};
+  const unitMeta=ctx.unitRotationData.meta||{};
+  const periodControls=isElective&&!usingDynamicTemplate
+    ? `<div>
+          <label class="flbl">เดือนที่ประเมิน <span style="color:var(--red)">*</span></label>
+          <select id="elective-month-inp" class="finp">
+            ${THAI_MONTHS.map(m=>`<option value="${m.v}" ${String(electiveMeta.assessMonth||'')===String(m.v)?'selected':''}>${m.label}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="flbl">ปี พ.ศ. <span style="color:var(--red)">*</span></label>
+          <input id="elective-year-inp" type="number" class="finp" min="2500" max="2700" value="${escapeHtml(electiveMeta.assessBEYear||currentBEYear())}">
+        </div>`
+    : `<div style="min-width:150px">
+          <label class="flbl">วันที่ประเมิน <span style="color:var(--red)">*</span></label>
+          <input id="assess-date-inp" type="date" class="finp" value="${ctx.assessDate||new Date().toISOString().slice(0,10)}">
+        </div>`;
+  const assessmentTargetControls=isUnitRotation&&!usingDynamicTemplate?'':`
+    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:13px 15px;margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:10px;align-items:flex-end">
+        <div>
+          <label class="flbl">ผู้ถูกประเมิน <span style="color:var(--red)">*</span></label>
+          <div style="position:relative">
+            <input id="res-search-inp" class="finp" placeholder="🔍 พิมพ์ค้นหาชื่อหรือรหัส..."
+              value="${res?res.fn+' '+res.ln+' ('+res.id+')':''}"
+              autocomplete="off" style="padding-right:32px">
+            <div id="res-search-drop" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:#fff;border:1.5px solid var(--teal);border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12)"></div>
+          </div>
+          <div id="res-selected-info" style="margin-top:5px;min-height:18px">
+            ${res?`<span style="font-size:12px;color:var(--teal2);font-weight:600">✅ ${res.fn} ${res.ln} — ${yrFullText(res.yr)} · ${res.dept}</span>`:'<span style="font-size:12px;color:var(--text3)">ยังไม่ได้เลือกแพทย์</span>'}
+          </div>
+        </div>
+        ${periodControls}
+        ${ctx.role==='admin'&&rotType==='hk'?`<div>
+          <label class="flbl" for="assess-evaluator-id">อาจารย์ผู้ประเมิน <span style="color:var(--red)">*</span></label>
+          <select id="assess-evaluator-id" class="finp">
+            <option value="">เลือกอาจารย์ผู้ประเมิน</option>
+            ${DB.advisors.map(advisor=>`<option value="${escapeHtml(advisor.id)}" ${String(ctx.advId||'')===String(advisor.id)?'selected':''}>${escapeHtml([advisor.title,advisor.fn,advisor.ln].filter(Boolean).join(' '))}</option>`).join('')}
+          </select>
+        </div>`:''}
+      </div>
+    </div>`;
+
+  body.innerHTML=`
+    ${assessmentTargetControls}
+
+    <!-- ─── Rotation tabs ─── -->
+    <div style="margin-bottom:14px">
+      <div class="flbl" style="margin-bottom:7px">เลือก Rotation</div>
+      <div class="rota-rotation-tabs" id="modal-rot-tabs">
+        ${availableRotations.map(r=>`<button class="rota-rtab${r.id===ctx.selectedRotation?' active':''}" data-rot="${r.id}">${r.emoji} ${r.label}</button>`).join('')}
+      </div>
+    </div>
+    ${dynamicTemplate ? renderAssessmentLegacyFormTabs(ctx)+renderDynamicTemplateForm(ctx,dynamicTemplate)
+    : !assessmentRotationHasLegacyForm(ctx.selectedRotation) ? '<div class="empty-st" style="padding:34px">ยังไม่มีแบบฟอร์มที่เปิดใช้งานสำหรับ Rotation นี้</div>'
+    : rotType==='pediatric'  ? renderPedForms(ctx)
+    : rotType==='sports'     ? renderSportsForms(ctx)
+    : rotType==='spine'      ? renderSpineForms(ctx)
+    : rotType==='footankle'  ? renderFootAnkleForms(ctx)
+    : rotType==='hand'       ? renderHandForms(ctx)
+    : rotType==='hk'         ? renderHKForms(ctx)
+    : rotType==='trauma'     ? renderTraumaForms(ctx)
+    : rotType==='tumor'      ? renderTumorForms(ctx)
+    : rotType==='elective'   ? renderElectiveForm(ctx)
+    : rotType==='unit_rotation' ? renderUnitRotationForm(ctx)
+    : rotType==='jc'         ? renderJCForm(ctx)
+    : renderGeneralForm(ctx)}`;
+
+  // ─── Resident search logic ───
+  const searchInp=body.querySelector('#res-search-inp');
+  const drop=body.querySelector('#res-search-drop');
+  const infoEl=body.querySelector('#res-selected-info');
+
+  if(searchInp&&drop&&infoEl){
+  function showDrop(q){
+    const qText=(q||'').toLowerCase();
+    const filtered=qText.length<1
+      ? selectableResidents.slice(0,5)
+      : selectableResidents.filter(r=>(r.fn+' '+r.ln+' '+r.id).toLowerCase().includes(qText)).slice(0,6);
+    if(!filtered.length){drop.style.display='none';return;}
+    drop.innerHTML=filtered.map(r=>{
+      const yr=YR_LABELS[r.yr]||'';
+      return`<div class="res-drop-item" data-rid="${r.id}" style="padding:9px 13px;cursor:pointer;border-bottom:0.5px solid var(--border);font-size:13px;display:flex;gap:10px;align-items:center">
+        <div style="width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--green),#14a84e);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${(r.fn[0]||'?')}${(r.ln[0]||'')}</div>
+        <div><div style="font-weight:600">${r.fn} ${r.ln}</div><div style="font-size:11px;color:var(--text3)">${r.id} · ${yrFullText(r.yr)} · ${r.dept}</div></div>
+      </div>`;
+    }).join('');
+    drop.style.display='block';
+    drop.querySelectorAll('.res-drop-item').forEach(item=>{
+      item.addEventListener('mouseenter',()=>item.style.background='#f0fdfa');
+      item.addEventListener('mouseleave',()=>item.style.background='');
+      item.addEventListener('mousedown',e=>{
+        e.preventDefault();
+        const r=selectableResidents.find(x=>x.id===item.dataset.rid);
+        if(!r)return;
+        ctx.resId=r.id;
+        const yr=YR_LABELS[r.yr]||'';
+        searchInp.value=`${r.fn} ${r.ln} (${r.id})`;
+        drop.style.display='none';
+        infoEl.innerHTML=`<span style="font-size:12px;color:var(--teal2);font-weight:600">✅ ${r.fn} ${r.ln} — ${yrFullText(r.yr)} · ${r.dept}</span>`;
+        document.getElementById('assess-modal-ttl').textContent=`📋 แบบประเมิน — ${r.fn} ${r.ln}`;
+        PED_FORM_KEYS.forEach(k=>{if(ctx.pedData[k]?.meta){ctx.pedData[k].meta.trainee=r.fn+' '+r.ln;ctx.pedData[k].meta.yr=yr;}});
+      });
+    });
+  }
+  searchInp.addEventListener('focus',()=>showDrop(searchInp.value));
+  searchInp.addEventListener('input',()=>showDrop(searchInp.value));
+  searchInp.addEventListener('blur',()=>setTimeout(()=>drop.style.display='none',150));
+  }
+
+  // ─── Date / period sync ───
+  body.querySelector('#assess-evaluator-id')?.addEventListener('change',event=>{ctx.advId=event.target.value||null;});
+  const dateInp=body.querySelector('#assess-date-inp');
+  if(dateInp){
+    dateInp.addEventListener('change',e=>{
+      ctx.assessDate=e.target.value;
+      PED_FORM_KEYS.forEach(k=>{if(ctx.pedData[k].meta)ctx.pedData[k].meta.assessDate=e.target.value;});
+    });
+  }
+  const electiveMonthInp=body.querySelector('#elective-month-inp');
+  const electiveYearInp=body.querySelector('#elective-year-inp');
+  if(electiveMonthInp)electiveMonthInp.addEventListener('change',e=>{ctx.electiveData.meta.assessMonth=e.target.value;});
+  if(electiveYearInp)electiveYearInp.addEventListener('input',e=>{ctx.electiveData.meta.assessBEYear=e.target.value;});
+  const unitPeriodInp=body.querySelector('#unit-period-inp');
+  const unitYearInp=body.querySelector('#unit-year-inp');
+  if(unitPeriodInp)unitPeriodInp.addEventListener('change',e=>{ctx.unitRotationData.meta.assessPeriod=e.target.value;});
+  if(unitYearInp)unitYearInp.addEventListener('change',e=>{ctx.unitRotationData.meta.assessBEYear=e.target.value;});
+  // ─── Rotation tab switch ───
+  body.querySelectorAll('#modal-rot-tabs .rota-rtab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      ctx.assessDate=body.querySelector('#assess-date-inp')?.value||ctx.assessDate;
+      if(dynamicTemplate)captureDynamicTemplateForm(body,ctx,dynamicTemplate);
+      const prevType=getRotationFormType(ctx.selectedRotation);
+      if(prevType==='general') _saveGeneralCtx(ctx);
+      if(prevType==='elective') _saveElectiveFormData(ctx);
+      if(prevType==='unit_rotation') _saveUnitRotationFormData(ctx);
+      ctx.selectedRotation=btn.dataset.rot;
+      ctx.templateId='';
+      renderAssessModalBody();
+    });
+  });
+
+  bindAssessmentLegacyFormTabs(body,ctx,dynamicTemplate);
+  if(dynamicTemplate) bindDynamicTemplateFormEvents(body,ctx,dynamicTemplate);
+  else if(rotType==='pediatric')  bindPedFormEvents(body,ctx);
+  else if(rotType==='sports')     bindSportsFormEvents(body,ctx);
+  else if(rotType==='spine')      bindSpineFormEvents(body,ctx);
+  else if(rotType==='footankle')  bindFootAnkleFormEvents(body,ctx);
+  else if(rotType==='hand')       bindHandFormEvents(body,ctx);
+  else if(rotType==='hk')         bindHKFormEvents(body,ctx);
+  else if(rotType==='trauma')     bindTraumaFormEvents(body,ctx);
+  else if(rotType==='tumor')      bindTumorFormEvents(body,ctx);
+  else if(rotType==='elective')   bindElectiveFormEvents(body,ctx);
+  else if(rotType==='unit_rotation') bindUnitRotationFormEvents(body,ctx);
+  else if(rotType==='jc')         bindJCFormEvents(body,ctx);
+  else bindGeneralFormEvents(body,ctx);
+}
+
+// ─── GENERAL FORM (non-pediatric rotations) ───────────
+function renderGeneralForm(ctx){
+  const rot=getAssessmentRotation(ctx.selectedRotation);
+  const domains=getDomainsForRotation(ctx.selectedRotation);
+  if(!ctx.domainData) ctx.domainData={};
+  return`
+    <div class="rota-card">
+      <div class="rota-card-hdr"><div><div class="rota-card-ttl">${rot?.emoji} ${rot?.label}</div><div class="rota-card-sub">ประเมินในแต่ละด้าน (1=ต่ำสุด, 5=สูงสุด)</div></div></div>
+      ${domains.map(d=>{const dv=ctx.domainData[d.id]||{score:0,passFail:''};return`<div class="domain-row"><div style="flex:1"><div class="domain-label">${d.label}</div><span class="domain-sublabel">${d.sublabel}</span></div><div class="domain-score"><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><div class="star-group" data-domain="${d.id}">${[1,2,3,4,5].map(n=>`<button class="star-btn${dv.score>=n?' filled':''}" data-val="${n}" type="button">★</button>`).join('')}</div><div class="pf-group" data-domain="${d.id}"><button type="button" class="pf-btn${dv.passFail==='pass'?' pass':''}" data-pf="pass">ผ่าน</button><button type="button" class="pf-btn${dv.passFail==='fail'?' fail':''}" data-pf="fail">ไม่ผ่าน</button></div></div></div></div>`;}).join('')}
+    </div>
+    <div class="fgrp" style="margin-top:13px"><label class="flbl">💬 ความเห็น / ข้อเสนอแนะ</label><textarea id="assess-comment" class="finp" rows="3" placeholder="กรอกความเห็น...">${ctx.comment||''}</textarea></div>
+    <div class="mbtns"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button><button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน</button></div>`;}
+
+function templateHasScore(value){
+  return value!==''&&value!==null&&value!==undefined&&Number.isFinite(Number(value));
+}
+function getDynamicTemplateData(ctx,template){
+  if(!ctx.templateData)ctx.templateData={};
+  if(!ctx.templateData[template.id])ctx.templateData[template.id]={scores:{},na:{},meta:{},itemComments:{},levels:{},feedback:{},level:'',comment:''};
+  const data=ctx.templateData[template.id];
+  if(!data.scores)data.scores={};
+  if(!data.na)data.na={};
+  if(!data.meta)data.meta={};
+  if(!data.itemComments)data.itemComments={};
+  if(!data.levels)data.levels={};
+  if(!data.feedback)data.feedback={};
+  return data;
+}
+function dynamicTemplateItemMap(template){
+  const map={};
+  (template.sections||[]).forEach(section=>(section.items||[]).forEach(item=>{map[item.id]=item;}));
+  return map;
+}
+function dynamicTemplateTotals(template,data){
+  let total=0,maxScore=0,configuredMax=0,rated=0,naCount=0,blank=0;
+  (template.sections||[]).forEach(section=>(section.items||[]).forEach(item=>{
+    const max=templateItemMaxScore(item,template);
+    configuredMax+=max;
+    if(data.na?.[item.id]){naCount++;return;}
+    if(!templateHasScore(data.scores?.[item.id])){blank++;return;}
+    const score=Math.min(Math.max(Number(data.scores[item.id]),assessmentTemplateScoreMin(template)),max);
+    total+=score;maxScore+=max;rated++;
+  }));
+  return{total,maxScore,configuredMax,rated,naCount,blank,percent:maxScore?Math.round(total/maxScore*1000)/10:null};
+}
+function dynamicTemplateSummaryHtml(template,data){
+  template=assessmentTemplatePresentation(template)||template;
+  const totals=dynamicTemplateTotals(template,data);
+  if(template.ratingMode==='uss'){
+    return '<span style="font-size:16px;font-weight:800;color:#0f766e">ประเมินแล้ว '+totals.rated+'</span><span style="font-size:12px;color:var(--text3)"> / '+(totals.rated+totals.blank)+' หัวข้อ</span><span style="font-size:11px;color:var(--text3);margin-left:8px">รอ '+totals.blank+'</span>';
+  }
+  if(template.ratingMode==='su'){
+    const passCount=Number(template.passCount||0);
+    const passed=passCount?totals.total>=passCount:null;
+    return '<span style="font-size:19px;font-weight:800;color:'+(passed===true?'#15803d':passed===false?'#b91c1c':'#0369a1')+'">S '+displayTemplateNumber(totals.total)+'</span>'
+      +'<span style="font-size:12px;color:var(--text3)"> / '+displayTemplateNumber(totals.configuredMax)+(passCount?' · เกณฑ์ผ่าน '+passCount+' S':'')+(passed===true?' · ผ่าน':passed===false?' · ยังไม่ผ่าน':'')+'</span>'
+      +'<span style="font-size:11px;color:var(--text3);margin-left:8px">ประเมินแล้ว '+totals.rated+' · รอ '+totals.blank+'</span>';
+  }
+  const pass=template.passPercent!==''&&template.passPercent!==undefined&&template.passPercent!==null?Number(template.passPercent):null;
+  const passed=pass!==null&&totals.percent!==null?totals.percent>=pass:null;
+  const color=passed===true?'#15803d':passed===false?'#b91c1c':'#0369a1';
+  const passText=pass===null?'':(passed===null?' · เกณฑ์ผ่าน '+displayTemplateNumber(pass)+'%':(passed?' · ผ่าน':' · ยังไม่ผ่าน'));
+  return '<span style="font-size:19px;font-weight:800;color:'+color+'">'+displayTemplateNumber(totals.total)+'</span>'
+    +'<span style="font-size:12px;color:var(--text3)"> / '+displayTemplateNumber(totals.maxScore||totals.configuredMax)+(totals.percent!==null?' ('+displayTemplateNumber(totals.percent)+'%)':'')+passText+'</span>'
+    +'<span style="font-size:11px;color:var(--text3);margin-left:8px">ประเมินแล้ว '+totals.rated+' · ไม่ประเมิน '+totals.naCount+' · รอ '+totals.blank+'</span>';
+}
+function renderDynamicTemplateField(field,data){
+  const value=data.meta?.[field.id]??'';
+  const required=field.required?'<span style="color:var(--red)"> *</span>':'';
+  const label='<label class="flbl">'+escapeHtml(field.label)+required+'</label>';
+  if(field.type==='select'){
+    const options=(field.options||[]).map(option=>'<option value="'+escapeHtml(option)+'" '+(String(value)===String(option)?'selected':'')+'>'+escapeHtml(option)+'</option>').join('');
+    return '<div class="fgrp">'+label+'<select class="finp dynamic-template-meta" data-template-field-id="'+escapeHtml(field.id)+'"><option value="">เลือก</option>'+options+'</select></div>';
+  }
+  if(field.type==='multiselect'){
+    const selected=Array.isArray(value)?value:[];
+    return '<div class="fgrp" style="grid-column:1/-1">'+label+'<div class="ped-cbgroup">'+(field.options||[]).map(option=>'<label class="ped-cb-opt"><input type="checkbox" class="dynamic-template-multi" data-template-field-id="'+escapeHtml(field.id)+'" value="'+escapeHtml(option)+'" '+(selected.includes(option)?'checked':'')+'>'+escapeHtml(option)+'</label>').join('')+'</div></div>';
+  }
+  const type=field.type==='number'?'number':field.type==='date'?'date':'text';
+  return '<div class="fgrp">'+label+'<input type="'+type+'" class="finp dynamic-template-meta" data-template-field-id="'+escapeHtml(field.id)+'" value="'+escapeHtml(value)+'"></div>';
+}
+function renderDynamicTemplateForm(ctx,template){
+  template=assessmentTemplatePresentation(template)||template;
+  const data=getDynamicTemplateData(ctx,template);
+  const rotation=getAssessmentRotation(template.rotationId);
+  const theme=assessmentTemplateTheme(template.rotationId);
+  const fields=(template.fields||[]).map(field=>renderDynamicTemplateField(field,data)).join('');
+  return '<div class="rota-card" style="border-color:'+theme.border+'"><div class="rota-card-hdr" style="background:'+theme.accent+';color:#fff"><div><div class="rota-card-ttl" style="color:#fff">'+escapeHtml((rotation?.emoji||'📋')+' '+(template.name||'แบบประเมิน'))+'</div><div class="rota-card-sub" style="color:rgba(255,255,255,.86)">'+escapeHtml(template.description||'แบบฟอร์มที่กำหนดโดยผู้ดูแลระบบ')+'</div></div><div id="dynamic-template-total" style="padding:7px 10px;background:#fff;border:1px solid rgba(255,255,255,.7);border-radius:7px;display:flex;align-items:baseline;gap:4px;flex-wrap:wrap">'+dynamicTemplateSummaryHtml(template,data)+'</div></div>'
+    +(template.scoreGuide?'<div style="margin:11px 12px 0;padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;font-size:12px;color:#92400e">'+escapeHtml(template.scoreGuide)+'</div>':'')
+    +(fields?'<div style="padding:12px;border-bottom:1px solid '+theme.border+';display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;background:'+theme.soft+'">'+fields+'</div>':'')
+    +(template.settingText?'<div style="margin:11px 12px 0;padding:7px 10px;background:'+theme.soft+';color:'+theme.accent+';border-radius:6px;font-size:11px">Setting: '+escapeHtml(template.settingText)+'</div>':'')
+    +(template.procedureText?'<div style="padding:11px 12px 0;font-size:12px;font-weight:800;color:'+theme.accent+'">Procedure: '+escapeHtml(template.procedureText)+'</div>':'')
+    +'<div style="padding:0 12px 12px">'+renderAssessmentTemplateRatingSections(template,data,true)+renderAssessmentTemplateLevel(template,data,true)+'</div></div>'
+    +renderAssessmentTemplateFeedback(template,data,true)
+    +(template.showComment?'<div class="fgrp" style="margin-top:13px"><label class="flbl">'+escapeHtml(template.commentLabel||'ข้อเสนอแนะเพิ่มเติม (Staff comment)')+'</label><textarea id="dynamic-template-comment" class="finp" rows="3" placeholder="'+escapeHtml(template.commentPlaceholder||'ความเห็นของอาจารย์...')+'">'+escapeHtml(data.comment||'')+'</textarea></div>':'')
+    +'<div class="mbtns"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button><button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน</button></div>';
+}
+function captureDynamicTemplateForm(body,ctx,template){
+  const data=getDynamicTemplateData(ctx,template);
+  const itemMap=dynamicTemplateItemMap(template);
+  Object.keys(itemMap).forEach(itemId=>{data.scores[itemId]='';data.na[itemId]=false;});
+  body.querySelectorAll('.dynamic-template-rating:checked,.dynamic-template-number').forEach(input=>{
+    const item=itemMap[input.dataset.templateItemId];
+    if(!item)return;
+    const raw=String(input.value||'').trim();
+    if(raw===''){data.scores[item.id]='';return;}
+    const max=templateItemMaxScore(item,template);
+    const score=Math.min(Math.max(Number(raw)||0,assessmentTemplateScoreMin(template)),max);
+    data.scores[item.id]=score;
+    if(input.classList.contains('dynamic-template-number')&&String(input.value)!==String(score))input.value=displayTemplateNumber(score);
+  });
+  body.querySelectorAll('.dynamic-template-na:checked').forEach(input=>{
+    const item=itemMap[input.dataset.templateItemId];
+    if(!item)return;
+    data.na[item.id]=true;
+    data.scores[item.id]='';
+  });
+  body.querySelectorAll('.dynamic-template-meta').forEach(input=>{data.meta[input.dataset.templateFieldId]=input.value;});
+  body.querySelectorAll('.dynamic-template-item-comment').forEach(input=>{data.itemComments[input.dataset.templateItemId]=input.value;});
+  body.querySelectorAll('.dynamic-template-multi').forEach(input=>{
+    const fieldId=input.dataset.templateFieldId;
+    if(!Array.isArray(data.meta[fieldId]))data.meta[fieldId]=[];
+  });
+  [...new Set([...body.querySelectorAll('.dynamic-template-multi')].map(input=>input.dataset.templateFieldId))].forEach(fieldId=>{
+    data.meta[fieldId]=[...body.querySelectorAll('.dynamic-template-multi[data-template-field-id="'+fieldId+'"]:checked')].map(input=>input.value);
+  });
+  body.querySelectorAll('.dynamic-template-level:checked').forEach(level=>{
+    const groupId=level.dataset.templateLevelGroupId||'level';
+    data.levels[groupId]=level.value;
+  });
+  const firstLevel=body.querySelector('.dynamic-template-level:checked');
+  if(firstLevel)data.level=firstLevel.value;
+  body.querySelectorAll('.dynamic-template-feedback').forEach(input=>{data.feedback[input.dataset.templateFeedbackId]=input.value;});
+  const comment=body.querySelector('#dynamic-template-comment');
+  if(comment)data.comment=comment.value;
+}
+function refreshDynamicTemplateTotal(body,ctx,template){
+  captureDynamicTemplateForm(body,ctx,template);
+  const total=body.querySelector('#dynamic-template-total');
+  if(total)total.innerHTML=dynamicTemplateSummaryHtml(template,getDynamicTemplateData(ctx,template));
+}
+function bindDynamicTemplateFormEvents(body,ctx,template){
+  body.querySelectorAll('.dynamic-template-rating,.dynamic-template-number,.dynamic-template-na').forEach(input=>{
+    const sync=()=>{
+      const itemId=input.dataset.templateItemId;
+      if(input.classList.contains('dynamic-template-na')&&input.checked){
+        body.querySelectorAll('.dynamic-template-rating[data-template-item-id="'+itemId+'"]').forEach(score=>{score.checked=false;});
+        const number=body.querySelector('.dynamic-template-number[data-template-item-id="'+itemId+'"]');
+        if(number)number.value='';
+      }else if(!input.classList.contains('dynamic-template-na')){
+        const na=body.querySelector('.dynamic-template-na[data-template-item-id="'+itemId+'"]');
+        if(na)na.checked=false;
+      }
+      refreshDynamicTemplateTotal(body,ctx,template);
+    };
+    input.addEventListener('input',sync);
+    input.addEventListener('change',sync);
+  });
+  body.querySelectorAll('.dynamic-template-level').forEach(input=>input.addEventListener('change',()=>{
+    input.closest('.template-level-group')?.querySelectorAll('.template-level-card').forEach(card=>{const selected=card.querySelector('.dynamic-template-level')?.checked;card.style.borderColor=selected?'var(--teal)':'';card.style.background=selected?'#effcf9':'';});
+    captureDynamicTemplateForm(body,ctx,template);
+  }));
+  body.querySelectorAll('.dynamic-template-meta').forEach(input=>{
+    input.addEventListener('input',()=>captureDynamicTemplateForm(body,ctx,template));
+    input.addEventListener('change',()=>captureDynamicTemplateForm(body,ctx,template));
+  });
+  body.querySelectorAll('.dynamic-template-item-comment').forEach(input=>input.addEventListener('input',()=>captureDynamicTemplateForm(body,ctx,template)));
+  body.querySelectorAll('.dynamic-template-feedback').forEach(input=>input.addEventListener('input',()=>captureDynamicTemplateForm(body,ctx,template)));
+  body.querySelectorAll('.dynamic-template-multi').forEach(input=>input.addEventListener('change',()=>captureDynamicTemplateForm(body,ctx,template)));
+  body.querySelector('#dynamic-template-comment')?.addEventListener('input',()=>captureDynamicTemplateForm(body,ctx,template));
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',()=>saveDynamicTemplateAssessment(ctx,template,body));
+}
+function saveDynamicTemplateAssessment(ctx,template,body){
+  const savedTemplate=activeAssessmentTemplateById(template.id);
+  if(!savedTemplate){toast('แบบฟอร์มนี้ถูกปิดใช้งาน กรุณาเลือกแบบฟอร์มใหม่','error');return;}
+  const active=assessmentTemplatePresentation(savedTemplate);
+  captureDynamicTemplateForm(body,ctx,active);
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  if(ctx.selectedRotation==='hk'&&!requireHipKneeEvaluator(ctx))return;
+  if(!ctx.assessDate){toast('กรุณาระบุวันที่ประเมิน','error');return;}
+  const resident=DB.residents.find(item=>item.id===ctx.resId);
+  const data=getDynamicTemplateData(ctx,active);
+  const missingField=(active.fields||[]).find(field=>field.required&&String(data.meta?.[field.id]??'').trim()==='');
+  if(missingField){toast('กรุณากรอก '+missingField.label,'error');return;}
+  const missingFeedback=(active.feedbackFields||[]).find(field=>field.required&&String(data.feedback?.[field.id]??'').trim()==='');
+  if(missingFeedback){toast('กรุณากรอก '+missingFeedback.label,'error');return;}
+  const domains=[];
+  let totalScore=0,maxScore=0,configuredMaxScore=0,scoredCount=0,naCount=0,blankCount=0;
+  (active.sections||[]).forEach(section=>(section.items||[]).forEach(item=>{
+    const itemMax=templateItemMaxScore(item,active);
+    const na=!!data.na[item.id];
+    const hasScore=!na&&templateHasScore(data.scores[item.id]);
+    const score=hasScore?Math.min(Math.max(Number(data.scores[item.id]),assessmentTemplateScoreMin(active)),itemMax):null;
+    configuredMaxScore+=itemMax;
+    if(na)naCount++;
+    else if(hasScore){totalScore+=score;maxScore+=itemMax;scoredCount++;}
+    else blankCount++;
+    domains.push({id:item.id,label:item.label,help:item.help||'',sectionId:section.id,sectionLabel:section.title,score,maxScore:itemMax,na,comment:data.itemComments?.[item.id]||''});
+  }));
+  const scorePercent=maxScore?Math.round(totalScore/maxScore*1000)/10:null;
+  const passPercent=active.passPercent!==''&&active.passPercent!==undefined&&active.passPercent!==null?Number(active.passPercent):null;
+  const passCount=active.ratingMode==='su'?Number(active.passCount||0):0;
+  let passFail=passCount?(totalScore>=passCount?'pass':'fail'):(passPercent!==null&&scorePercent!==null?(scorePercent>=passPercent?'pass':'fail'):'');
+  if(data.meta?.overallResult==='ผ่าน')passFail='pass';
+  if(data.meta?.overallResult==='ไม่ผ่าน')passFail='fail';
+  const rotation=getAssessmentRotation(active.rotationId);
+  const record={
+    id:uid(),type:'custom',formType:'custom',
+    templateId:active.id,templateVersion:active.version||1,templateName:active.name||'',templateCode:active.code||'',templateSnapshot:cloneAssessmentValue(active),ratingMode:active.ratingMode||'score',passCount,
+    resId:ctx.resId,rotation:active.rotationId,rotationLabel:rotation?.label||active.rotationId,
+    advisorId:ctx.advId||null,role:ctx.role,assessDate:ctx.assessDate,
+    traineeName:resident?resident.fn+' '+resident.ln:'',traineeYr:resident?resident.yr:'',
+    meta:cloneAssessmentValue(data.meta),domains,totalScore,maxScore,configuredMaxScore,scorePercent,scoredCount,naCount,blankCount,passPercent,passFail,level:data.level||'',levels:cloneAssessmentValue(data.levels),feedback:cloneAssessmentValue(data.feedback),
+    comment:active.showComment?(data.comment||''):'',signed:true,sigData:null,createdAt:Date.now()
+  };
+  DB.rotaRecords.push(record);
+  saveAndConfirm('✅ บันทึกแบบประเมินแล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin')renderAssessmentAdmin();
+  if(ctx.role==='advisor')renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+function bindGeneralFormEvents(body,ctx){
+  body.querySelectorAll('.star-group').forEach(grp=>{const domId=grp.dataset.domain;grp.querySelectorAll('.star-btn').forEach(star=>{star.addEventListener('click',()=>{const val=+star.dataset.val;if(!ctx.domainData[domId])ctx.domainData[domId]={score:0,passFail:''};ctx.domainData[domId].score=val;grp.querySelectorAll('.star-btn').forEach(s=>s.classList.toggle('filled',+s.dataset.val<=val));});});});
+  body.querySelectorAll('.pf-group').forEach(grp=>{const domId=grp.dataset.domain;grp.querySelectorAll('.pf-btn').forEach(btn=>{btn.addEventListener('click',()=>{const pf=btn.dataset.pf;if(!ctx.domainData[domId])ctx.domainData[domId]={score:0,passFail:''};const cur=ctx.domainData[domId].passFail;ctx.domainData[domId].passFail=cur===pf?'':pf;grp.querySelectorAll('.pf-btn').forEach(b=>{b.classList.remove('pass','fail');if(b.dataset.pf===ctx.domainData[domId].passFail)b.classList.add(pf);});});});});
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',saveAssessment);
+}
+function _saveGeneralCtx(ctx){ctx.comment=document.getElementById('assess-comment')?.value||ctx.comment;}
+
+// ─── ELECTIVE FORM ───────────────────────────────────
+function ensureElectiveData(ctx){
+  if(!ctx.electiveData)ctx.electiveData={meta:{},scores5:{},comment:''};
+  if(!ctx.electiveData.meta)ctx.electiveData.meta={};
+  if(!ctx.electiveData.scores5)ctx.electiveData.scores5={};
+  const m=ctx.electiveData.meta;
+  if(!m.assessMonth)m.assessMonth=String(new Date().getMonth()+1);
+  if(!m.assessBEYear)m.assessBEYear=String(currentBEYear());
+  if(!m.trainingUnit)m.trainingUnit=ELECTIVE_UNITS[0];
+  if(!m.evaluatorName&&ctx.advId){
+    const adv=DB.advisors.find(a=>a.id===ctx.advId);
+    if(adv)m.evaluatorName=adv.fn+' '+adv.ln;
+  }
+  return ctx.electiveData;
+}
+
+function renderElectiveForm(ctx){
+  const fd=ensureElectiveData(ctx);
+  const m=fd.meta||{};
+  const totalItems=ELECTIVE_FORM.sections.reduce((sum,s)=>sum+s.items.length,0);
+  let rows='';
+  ELECTIVE_FORM.sections.forEach(sec=>{
+    rows+=`<tr style="background:#f0fdfa"><td colspan="6" style="padding:8px 10px;border:1px solid #99f6e4;font-size:12px;font-weight:800;color:var(--teal2)">${sec.label}</td></tr>`;
+    sec.items.forEach(item=>{
+      const cur=parseInt(fd.scores5[item.id]||0,10);
+      rows+=`<tr>
+        <td style="padding:9px 10px;border:1px solid var(--border);font-size:12px;line-height:1.55;color:var(--text2)">${item.label}</td>
+        ${[1,2,3,4,5].map(n=>{
+          const bg=n===1?'#fee2e2':n===2?'#ffedd5':n===3?'#fef9c3':n===4?'#dbeafe':'#dcfce7';
+          const col=n===1?'#b91c1c':n===2?'#c2410c':n===3?'#b45309':n===4?'#1e40af':'#15803d';
+          return `<td style="padding:4px 3px;text-align:center;border:1px solid var(--border);width:48px">
+            <label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:30px;border-radius:5px;${cur===n?'background:'+bg:''}">
+              <input type="radio" name="elective5_${item.id}" value="${n}" class="elective5-radio" data-domain="${item.id}" ${cur===n?'checked':''} style="cursor:pointer;accent-color:${col}">
+            </label>
+          </td>`;
+        }).join('')}
+      </tr>`;
+    });
+  });
+
+  return`
+    <div class="rota-card">
+      <div class="rota-card-hdr">
+        <div><div class="rota-card-ttl">🧭 ${ELECTIVE_FORM.label}</div><div class="rota-card-sub">คะแนน 1=ปรับปรุง, 5=ดีเยี่ยม (${totalItems} รายการ)</div></div>
+      </div>
+      <div style="padding:13px 15px;border-bottom:1px solid var(--border);background:#f8fafc">
+        <div class="frow">
+          <div class="fgrp">
+            <label class="flbl">หน่วยฝึกอบรม <span style="color:var(--red)">*</span></label>
+            <select id="elective-unit" class="finp">
+              ${ELECTIVE_UNITS.map(u=>`<option value="${u}" ${m.trainingUnit===u?'selected':''}>${u}</option>`).join('')}
+            </select>
+          </div>
+          <div class="fgrp">
+            <label class="flbl">สถาบันที่ประเมิน</label>
+            <input id="elective-institution" class="finp" value="${escapeHtml(m.institution||'')}" placeholder="พิมพ์ชื่อสถาบัน">
+          </div>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:560px">
+          <thead>
+            <tr style="background:#f8fafc">
+              <th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid var(--border);width:58%">รายละเอียดการประเมิน</th>
+              ${[1,2,3,4,5].map(n=>`<th style="padding:6px 3px;text-align:center;font-size:12px;border:1px solid var(--border);min-width:48px">${n}</th>`).join('')}
+            </tr>
+            <tr style="background:#fff">
+              <th style="padding:5px 10px;text-align:left;font-size:11px;border:1px solid var(--border);color:var(--text3)"></th>
+              <th colspan="2" style="padding:5px;text-align:left;font-size:11px;border:1px solid var(--border);color:#b91c1c">ปรับปรุง</th>
+              <th style="padding:5px;text-align:center;font-size:11px;border:1px solid var(--border);color:#b45309">ปานกลาง</th>
+              <th colspan="2" style="padding:5px;text-align:right;font-size:11px;border:1px solid var(--border);color:#15803d">ดีเยี่ยม</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="fgrp"><label class="flbl">ข้อเสนอแนะเพิ่มเติม</label><textarea id="elective-comment" class="finp" rows="3" placeholder="ข้อเสนอแนะเพิ่มเติม...">${escapeHtml(fd.comment||'')}</textarea></div>
+    <div class="fgrp"><label class="flbl">ชื่อผู้ประเมิน</label><input id="elective-evaluator" class="finp" value="${escapeHtml(m.evaluatorName||'')}" placeholder="ระบุชื่อผู้ประเมิน"></div>
+    <div class="mbtns"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button>${ctx.role==='admin'?'<button type="button" class="abtn" id="elective-create-external">สร้างลิงก์ให้ผู้ประเมินภายนอก</button>':''}<button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน Elective</button></div>`;
+}
+
+function bindElectiveFormEvents(body,ctx){
+  const fd=ensureElectiveData(ctx);
+  body.querySelector('#elective-create-external')?.addEventListener('click',()=>{
+    _saveElectiveFormData(ctx);
+    closeAssessModal();
+    document.querySelector('#page-admin .anavbtn[data-ap="assessment"]')?.click();
+    externalElectiveAdmin.open({residentId:ctx.resId,...fd.meta});
+  });
+  body.querySelectorAll('.elective5-radio').forEach(r=>{
+    r.addEventListener('change',()=>{
+      const domId=r.dataset.domain;
+      fd.scores5[domId]=parseInt(r.value,10);
+      body.querySelectorAll('input[name="elective5_'+domId+'"]').forEach(ri=>{
+        const lbl=ri.closest('label');
+        if(!lbl)return;
+        const n=parseInt(ri.value,10);
+        const bg=n===1?'#fee2e2':n===2?'#ffedd5':n===3?'#fef9c3':n===4?'#dbeafe':'#dcfce7';
+        lbl.style.background=ri.checked?bg:'';
+      });
+    });
+  });
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',()=>{
+    _saveElectiveFormData(ctx);
+    saveElectiveAssessment(ctx);
+  });
+}
+
+function _saveElectiveFormData(ctx){
+  const fd=ensureElectiveData(ctx);
+  const m=fd.meta;
+  const g=id=>document.getElementById(id);
+  if(g('elective-month-inp'))m.assessMonth=g('elective-month-inp').value;
+  if(g('elective-year-inp'))m.assessBEYear=g('elective-year-inp').value.trim();
+  if(g('elective-unit'))m.trainingUnit=g('elective-unit').value;
+  if(g('elective-institution'))m.institution=g('elective-institution').value.trim();
+  if(g('elective-evaluator'))m.evaluatorName=g('elective-evaluator').value.trim();
+  if(g('elective-comment'))fd.comment=g('elective-comment').value.trim();
+  const res=DB.residents.find(x=>x.id===ctx.resId);
+  if(res){m.trainee=res.fn+' '+res.ln;m.yr=YR_LABELS[res.yr]||res.yr;}
+  m.assessDate=electiveAssessDate(m);
+}
+
+function saveElectiveAssessment(ctx){
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  const fd=ensureElectiveData(ctx);
+  const m=fd.meta||{};
+  if(!m.assessMonth){toast('กรุณาเลือกเดือนที่ประเมิน','error');return;}
+  if(!String(m.assessBEYear||'').trim()){toast('กรุณาระบุปี พ.ศ.','error');return;}
+  if(!m.trainingUnit){toast('กรุณาเลือกหน่วยฝึกอบรม','error');return;}
+  const res=DB.residents.find(x=>x.id===ctx.resId);
+  const domains=[];
+  ELECTIVE_FORM.sections.forEach(sec=>{
+    sec.items.forEach(item=>{
+      domains.push({
+        id:item.id,
+        category:sec.label,
+        label:item.label,
+        score5:fd.scores5[item.id]||0
+      });
+    });
+  });
+  const total=domains.reduce((sum,d)=>sum+(d.score5||0),0);
+  const rec={
+    id:uid(), type:'elective', formType:'elective',
+    resId:ctx.resId, rotation:'elective',
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:electiveAssessDate(m),
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    meta:{...m}, domains,
+    totalScore:total,
+    maxScore:domains.length*5,
+    comment:fd.comment||'',
+    signed:true, sigData:null,
+    createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมิน Elective แล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+// ─── UNIT ROTATION FORM ──────────────────────────────
+function ensureUnitRotationData(ctx){
+  if(!ctx.unitRotationData)ctx.unitRotationData={meta:{},scores9:{},comment:''};
+  if(!ctx.unitRotationData.meta)ctx.unitRotationData.meta={};
+  if(!ctx.unitRotationData.scores9)ctx.unitRotationData.scores9={};
+  const m=ctx.unitRotationData.meta;
+  const d=unitRotationDefaultSelection();
+  if(!m.assessPeriod)m.assessPeriod=d.period;
+  if(!m.assessBEYear)m.assessBEYear=d.beYear;
+  if(!m.evaluatorName&&ctx.advId){
+    const adv=DB.advisors.find(a=>a.id===ctx.advId);
+    if(adv)m.evaluatorName=adv.fn+' '+adv.ln;
+  }
+  return ctx.unitRotationData;
+}
+
+function renderUnitScoreHeader(){
+  return `<tr style="background:#f8fafc">
+    <th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid var(--border);width:320px">รายละเอียดการประเมิน</th>
+    <th colspan="3" style="padding:6px;text-align:center;font-size:11px;border:1px solid var(--border);background:#fee2e2;color:#b91c1c">ต่ำกว่าความคาดหวัง<br><span style="font-weight:500">ระดับคะแนน 1-3</span></th>
+    <th colspan="3" style="padding:6px;text-align:center;font-size:11px;border:1px solid var(--border);background:#fef9c3;color:#b45309">บรรลุความคาดหวัง<br><span style="font-weight:500">ระดับคะแนน 4-6</span></th>
+    <th colspan="3" style="padding:6px;text-align:center;font-size:11px;border:1px solid var(--border);background:#dcfce7;color:#15803d">สูงกว่าความคาดหวัง<br><span style="font-weight:500">ระดับคะแนน 7-9</span></th>
+    <th style="padding:6px;text-align:center;font-size:10px;border:1px solid var(--border);color:var(--text3);width:88px">ประเมิน<br>ไม่ได้</th>
+  </tr>
+  <tr style="background:#fff">
+    <th style="border:1px solid var(--border)"></th>
+    ${[1,2,3,4,5,6,7,8,9].map(n=>{
+      const z=unitRotationScoreZone(n);
+      return `<th style="padding:5px 2px;text-align:center;font-size:13px;font-weight:800;border:1px solid var(--border);background:${z.bg};color:${z.color};width:54px;min-width:54px">${n}</th>`;
+    }).join('')}
+    <th style="border:1px solid var(--border)"></th>
+  </tr>`;
+}
+
+function renderUnitRotationForm(ctx){
+  const fd=ensureUnitRotationData(ctx);
+  const m=fd.meta||{};
+  const scheduleUploadTools=ctx.role==='admin'?`
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <input id="unit-schedule-upload" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
+          <button type="button" id="unit-schedule-upload-btn" style="padding:7px 12px;border:1.5px solid #99f6e4;background:#fff;color:var(--teal2);border-radius:7px;font-size:12px;font-weight:800;cursor:pointer">📤 อัปโหลด Excel ตารางวนหน่วย</button>
+          <span id="unit-schedule-upload-status" style="font-size:11px;color:var(--text2);font-weight:700">${escapeHtml(unitRotationScheduleStatusText())}</span>
+        </div>`:'';
+  let rows='';
+  UNIT_ROTATION_FORM.sections.forEach(sec=>{
+    rows+=`<tr style="background:${sec.id==='overall'?'#eff6ff':'#f0fdfa'}"><td colspan="11" style="padding:8px 10px;border:1px solid ${sec.id==='overall'?'#bfdbfe':'#99f6e4'};font-size:12px;font-weight:800;color:${sec.id==='overall'?'#1e40af':'var(--teal2)'}">${sec.label}</td></tr>`;
+    sec.items.forEach(item=>{
+      const cur=parseInt(fd.scores9[item.id]||0,10);
+      const isNA=!!fd.scores9[item.id+'_na'];
+      rows+=`<tr style="${item.isOverall?'background:#eff6ff':''}">
+        <td style="padding:9px 10px;border:1px solid var(--border);font-size:12px;line-height:1.55;color:var(--text2);font-weight:${item.isOverall?'800':'500'};width:320px">${item.label}</td>
+        ${[1,2,3,4,5,6,7,8,9].map(n=>{
+          const z=unitRotationScoreZone(n);
+          return `<td style="padding:4px 2px;text-align:center;border:1px solid var(--border);width:54px;min-width:54px">
+            <label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:30px;border-radius:5px;${cur===n&&!isNA?'background:'+z.bg:''}">
+              <input type="radio" name="unit9_${item.id}" value="${n}" class="unit9-radio" data-domain="${item.id}" ${cur===n&&!isNA?'checked':''} style="cursor:pointer;accent-color:${z.color}">
+            </label>
+          </td>`;
+        }).join('')}
+        <td style="padding:4px 6px;text-align:center;border:1px solid var(--border);background:#f8fafc;width:88px;min-width:88px">
+          <input type="checkbox" class="unit9-na" data-domain="${item.id}" ${isNA?'checked':''} style="cursor:pointer;width:16px;height:16px;accent-color:var(--text3)">
+        </td>
+      </tr>`;
+    });
+  });
+
+  return`
+    <div class="rota-card">
+      <div class="rota-card-hdr">
+        <div><div class="rota-card-ttl">🔄 ${UNIT_ROTATION_FORM.label}</div><div class="rota-card-sub">คะแนนแนวนอน 1-9 และเลือก “ประเมินไม่ได้” ได้ตามรายการ</div></div>
+      </div>
+      <div style="padding:13px 15px;border-bottom:1px solid var(--border);background:#f8fafc">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));gap:11px">
+          <div class="fgrp">
+            <label class="flbl">สายปฏิบัติงาน <span style="color:var(--red)">*</span></label>
+            <select id="unit-work-line" class="finp">
+              <option value="">เลือกสายปฏิบัติงาน</option>
+              ${UNIT_ROTATION_WORK_LINES.map(u=>`<option value="${u}" ${m.workLine===u?'selected':''}>${u}</option>`).join('')}
+            </select>
+          </div>
+          <div class="fgrp">
+            <label class="flbl">ช่วงเดือนที่ประเมิน <span style="color:var(--red)">*</span></label>
+            <select id="unit-period-inp" class="finp">
+              ${UNIT_ROTATION_PERIODS.map(p=>`<option value="${p.v}" ${String(m.assessPeriod||'')===String(p.v)?'selected':''}>${p.label}</option>`).join('')}
+            </select>
+          </div>
+          <div class="fgrp">
+            <label class="flbl">ปี พ.ศ. <span style="color:var(--red)">*</span></label>
+            <select id="unit-year-inp" class="finp">
+              ${unitRotationYearOptions().map(y=>`<option value="${y}" ${String(m.assessBEYear||'')===String(y)?'selected':''}>${y}</option>`).join('')}
+            </select>
+          </div>
+          <div class="fgrp">
+            <label class="flbl">อาจารย์ผู้ประเมิน</label>
+            <select id="unit-evaluator" class="finp">
+              <option value="">เลือกอาจารย์ผู้ประเมิน</option>
+              ${DB.advisors.map(a=>{const nm=a.fn+' '+a.ln;return`<option value="${escapeHtml(nm)}" ${m.evaluatorName===nm?'selected':''}>${escapeHtml(nm)}</option>`;}).join('')}
+              ${m.evaluatorName&&!DB.advisors.some(a=>m.evaluatorName===a.fn+' '+a.ln)?`<option value="${escapeHtml(m.evaluatorName)}" selected>${escapeHtml(m.evaluatorName)}</option>`:''}
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+          ${UNIT_ROTATION_SCORE_ZONES.map(z=>`<span style="padding:4px 9px;border-radius:12px;font-size:11px;font-weight:700;background:${z.bg};color:${z.color}">${z.label} (${z.range})</span>`).join('')}
+        </div>
+        ${scheduleUploadTools}
+      </div>
+      ${renderUnitRotationTraineePicker(ctx)}
+      <div class="unit-score-scroll">
+        <table class="unit-score-table">
+          <thead>${renderUnitScoreHeader()}</thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+    <div style="padding:10px 13px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;margin-bottom:12px">
+      <div class="flbl" style="margin-bottom:5px">หมายเหตุความสามารถโดยรวม</div>
+      ${UNIT_ROTATION_OVERALL_NOTES.map(t=>`<div style="font-size:11px;color:var(--text2);line-height:1.55">• ${t}</div>`).join('')}
+    </div>
+    <div class="fgrp"><label class="flbl">ข้อเสนอแนะ</label><textarea id="unit-comment" class="finp" rows="3" placeholder="ข้อเสนอแนะ...">${escapeHtml(fd.comment||'')}</textarea></div>
+    <div class="mbtns"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button><button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมินวนหน่วย</button></div>`;
+}
+
+function bindUnitRotationScheduleUpload(body,ctx){
+  const btn=body.querySelector('#unit-schedule-upload-btn');
+  const inp=body.querySelector('#unit-schedule-upload');
+  const status=body.querySelector('#unit-schedule-upload-status');
+  if(!btn||!inp)return;
+  btn.addEventListener('click',()=>inp.click());
+  inp.addEventListener('change',()=>{
+    const file=inp.files&&inp.files[0];
+    if(!file)return;
+    if(!/\.xlsx$/i.test(file.name||'')){
+      inp.value='';
+      toast('กรุณาเลือกไฟล์ Excel .xlsx','error');
+      return;
+    }
+    if(typeof google==='undefined'){
+      inp.value='';
+      toast('อัปโหลด Excel ใช้ได้เมื่อเปิดผ่าน Apps Script เท่านั้น','error');
+      return;
+    }
+    const oldText=btn.textContent;
+    btn.disabled=true;
+    btn.textContent='⏳ กำลังอัปโหลด...';
+    if(status)status.textContent='กำลังอ่านไฟล์ '+file.name;
+    const reader=new FileReader();
+    reader.onerror=()=>{
+      btn.disabled=false;
+      btn.textContent=oldText;
+      if(status)status.textContent=unitRotationScheduleStatusText();
+      toast('อ่านไฟล์ Excel ไม่สำเร็จ','error');
+    };
+    reader.onload=()=>{
+      google.script.run
+        .withSuccessHandler(raw=>{
+          btn.disabled=false;
+          btn.textContent=oldText;
+          inp.value='';
+          try{
+            const res=typeof raw==='string'?JSON.parse(raw):raw;
+            if(!res||!res.ok)throw new Error((res&&res.message)||'นำเข้าตารางไม่สำเร็จ');
+            DB.unitRotationSchedule=Array.isArray(res.records)?res.records:[];
+            DB.unitRotationScheduleMeta=res.meta&&typeof res.meta==='object'
+              ?res.meta
+              :{fileName:file.name,importedAt:res.importedAt||new Date().toISOString(),count:DB.unitRotationSchedule.length,years:res.years||[]};
+            if(res.revision!==undefined)DB.revision=res.revision;
+            const fd=ensureUnitRotationData(ctx);
+            const m=fd.meta||{};
+            if(!unitRotationHasSchedule(m.assessPeriod,m.assessBEYear)){
+              const d=unitRotationDefaultSelection();
+              m.assessPeriod=d.period;
+              m.assessBEYear=d.beYear;
+              ctx.resId='';
+            }
+            storeSessionSnapshot();
+            setSyncStatus('✅ อัปโหลดและบันทึกตารางวนหน่วยลง DB แล้ว '+(res.count||DB.unitRotationSchedule.length)+' รายการ','var(--green)');
+            toast('✅ อัปโหลดและบันทึกตารางวนหน่วยแล้ว '+(res.count||DB.unitRotationSchedule.length)+' รายการ');
+            renderAssessModalBody();
+          }catch(e){
+            if(status)status.textContent=unitRotationScheduleStatusText();
+            toast('❌ '+e.message,'error');
+          }
+        })
+        .withFailureHandler(e=>{
+          btn.disabled=false;
+          btn.textContent=oldText;
+          inp.value='';
+          if(status)status.textContent=unitRotationScheduleStatusText();
+          toast('❌ อัปโหลดไม่สำเร็จ: '+e.message,'error');
+        })
+        .importUnitRotationExcel(_sessionToken,reader.result,file.name);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function bindUnitRotationFormEvents(body,ctx){
+  const fd=ensureUnitRotationData(ctx);
+  bindUnitRotationScheduleUpload(body,ctx);
+  ['unit-work-line','unit-period-inp','unit-year-inp'].forEach(id=>{
+    body.querySelector('#'+id)?.addEventListener('change',()=>{
+      _saveUnitRotationFormData(ctx);
+      const ids=unitRotationTraineeCandidates(ctx).filter(c=>c.res).map(c=>c.res.id);
+      if(ctx.resId&&!ids.includes(ctx.resId))ctx.resId='';
+      renderAssessModalBody();
+    });
+  });
+  body.querySelector('#unit-evaluator')?.addEventListener('change',()=>_saveUnitRotationFormData(ctx));
+  body.querySelectorAll('.unit-trainee-card[data-rid]').forEach(card=>{
+    card.addEventListener('click',()=>{
+      _saveUnitRotationFormData(ctx);
+      ctx.resId=card.dataset.rid;
+      const res=DB.residents.find(x=>x.id===ctx.resId);
+      if(res){
+        fd.meta.trainee=res.fn+' '+res.ln;
+        fd.meta.yr=YR_LABELS[res.yr]||res.yr;
+      }
+      renderAssessModalBody();
+    });
+  });
+  body.querySelectorAll('.unit9-radio').forEach(r=>{
+    r.addEventListener('change',()=>{
+      const domId=r.dataset.domain;
+      fd.scores9[domId]=parseInt(r.value,10);
+      fd.scores9[domId+'_na']=false;
+      const na=body.querySelector('.unit9-na[data-domain="'+domId+'"]');
+      if(na)na.checked=false;
+      body.querySelectorAll('input[name="unit9_'+domId+'"]').forEach(ri=>{
+        const lbl=ri.closest('label');
+        if(!lbl)return;
+        const z=unitRotationScoreZone(ri.value);
+        lbl.style.background=ri.checked?z.bg:'';
+      });
+    });
+  });
+  body.querySelectorAll('.unit9-na').forEach(cb=>{
+    cb.addEventListener('change',()=>{
+      const domId=cb.dataset.domain;
+      fd.scores9[domId+'_na']=cb.checked;
+      if(cb.checked){
+        fd.scores9[domId]=0;
+        body.querySelectorAll('input[name="unit9_'+domId+'"]').forEach(ri=>{
+          ri.checked=false;
+          const lbl=ri.closest('label');
+          if(lbl)lbl.style.background='';
+        });
+      }
+    });
+  });
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',()=>{
+    _saveUnitRotationFormData(ctx);
+    saveUnitRotationAssessment(ctx);
+  });
+}
+
+function _saveUnitRotationFormData(ctx){
+  const fd=ensureUnitRotationData(ctx);
+  const m=fd.meta;
+  const g=id=>document.getElementById(id);
+  if(g('unit-period-inp'))m.assessPeriod=g('unit-period-inp').value;
+  if(g('unit-year-inp'))m.assessBEYear=g('unit-year-inp').value;
+  if(g('unit-work-line'))m.workLine=g('unit-work-line').value;
+  if(g('unit-evaluator'))m.evaluatorName=g('unit-evaluator').value;
+  if(g('unit-comment'))fd.comment=g('unit-comment').value.trim();
+  const res=DB.residents.find(x=>x.id===ctx.resId);
+  if(res){m.trainee=res.fn+' '+res.ln;m.yr=YR_LABELS[res.yr]||res.yr;}
+  const sched=unitRotationTraineeCandidates(ctx).find(c=>c.res&&c.res.id===ctx.resId);
+  if(sched){
+    m.scheduleName=sched.row.name;
+    m.scheduleLevel=sched.row.level;
+    m.scheduleSource=sched.row.source;
+  }
+  m.assessDate=unitRotationAssessDate(m);
+}
+
+function saveUnitRotationAssessment(ctx){
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านจากตารางวนหน่วยก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  const fd=ensureUnitRotationData(ctx);
+  const m=fd.meta||{};
+  if(!m.assessPeriod){toast('กรุณาเลือกช่วงเดือนที่ประเมิน','error');return;}
+  if(!String(m.assessBEYear||'').trim()){toast('กรุณาเลือกปี พ.ศ.','error');return;}
+  if(!m.workLine){toast('กรุณาเลือกสายปฏิบัติงาน','error');return;}
+  const sched=unitRotationTraineeCandidates(ctx).find(c=>c.res&&c.res.id===ctx.resId);
+  if(!sched){toast('แพทย์ที่เลือกไม่อยู่ในตารางวนหน่วยของช่วงนี้','error');return;}
+  const res=DB.residents.find(x=>x.id===ctx.resId);
+  const domains=[];
+  UNIT_ROTATION_FORM.sections.forEach(sec=>{
+    sec.items.forEach(item=>{
+      domains.push({
+        id:item.id,
+        category:sec.label,
+        label:item.label,
+        score9:fd.scores9[item.id]||0,
+        na:!!fd.scores9[item.id+'_na'],
+        isOverall:!!item.isOverall
+      });
+    });
+  });
+  const scored=domains.filter(d=>!d.na&&d.score9>0);
+  const naCount=domains.filter(d=>d.na).length;
+  const blankCount=domains.length-scored.length-naCount;
+  const total=scored.reduce((sum,d)=>sum+d.score9,0);
+  const rec={
+    id:uid(), type:'unit_rotation', formType:'unit_rotation',
+    resId:ctx.resId, rotation:'unit_rotation',
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:unitRotationAssessDate(m),
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    meta:{...m}, domains,
+    totalScore:total,
+    maxScore:scored.length*9,
+    scoredCount:scored.length,
+    naCount,
+    blankCount,
+    comment:fd.comment||'',
+    signed:true, sigData:null,
+    createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมินวนหน่วยแล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+// ─── PEDIATRIC FORMS ──────────────────────────────────
+function renderPedForms(ctx){
+  const pf=ctx.pedFormType;
+  return`
+    <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:9px 13px;margin-bottom:13px;font-size:12px;color:var(--teal2);font-weight:600">
+      👶 Pediatric Rotation — เลือกแบบประเมินที่ต้องการกรอก
+    </div>
+    <div class="rota-rotation-tabs" id="ped-form-tabs" style="margin-bottom:16px">
+      ${PED_FORM_KEYS.map(k=>`<button class="rota-rtab${k===pf?' active':''}" data-pf="${k}">${PED_FORMS[k].label}</button>`).join('')}
+    </div>
+    <div id="ped-form-content">${renderSinglePedForm(ctx,pf)}</div>
+    <div class="mbtns" style="margin-top:4px"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button><button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน</button></div>`;}
+
+// ─── SPINE FORMS (scale 0-4 + DOPS S/U) ──────────────
+function renderSpineForms(ctx){
+  const sf=ctx.spineFormType||'minicex';
+  return '<div style="background:#e0f2fe;border:1px solid #7dd3fc;border-radius:8px;padding:9px 13px;margin-bottom:13px;font-size:12px;color:#0369a1;font-weight:600">🦴 Spine Rotation — เลือกแบบประเมินที่ต้องการกรอก</div>'
+    + '<div class="rota-rotation-tabs" id="spine-form-tabs" style="margin-bottom:16px">'
+    + SPINE_FORM_KEYS.map(function(k){return '<button class="rota-rtab'+(k===sf?' active':'')+'" data-sf="'+k+'">'+SPINE_FORMS[k].abbr+'</button>';}).join('')
+    + '</div><div id="spine-form-content">'+renderSingleSpineForm(ctx,sf)+'</div>'
+    + '<div class="mbtns" style="margin-top:4px"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button><button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน</button></div>';
+}
+
+function renderSingleSpineForm(ctx,fk){
+  if(!ctx.spineData[fk]) ctx.spineData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  const fd=ctx.spineData[fk];
+  const form=SPINE_FORMS[fk];
+  const m=fd.meta||{};
+
+  // Meta row
+  var metaRow='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:11px;padding:10px 13px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px">';
+  metaRow+='<div class="fgrp" style="flex:2"><label class="flbl">Diagnosis</label><input id="sf-diagnosis" class="finp" value="'+(m.diagnosis||'')+'" placeholder="ระบุ"></div>';
+  if(form.fields.includes('procedure'))
+    metaRow+='<div class="fgrp" style="flex:2"><label class="flbl">Procedure</label><input id="sf-procedure" class="finp" value="'+(m.procedure||form.procedure||'')+'" placeholder="ระบุ"></div>';
+  if(form.fields.includes('hn'))
+    metaRow+='<div class="fgrp" style="flex:1;min-width:100px"><label class="flbl">HN</label><input id="sf-hn" class="finp" value="'+(m.hn||'')+'" placeholder="HN"></div>';
+  metaRow+='</div><div style="font-size:11px;color:#0369a1;background:#e0f2fe;padding:5px 10px;border-radius:6px;margin-bottom:10px">⚙️ Setting: '+form.setting+'</div>';
+
+  var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">'
+    + '<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#e0f2fe;color:#0369a1">🦴 Spine</span>'
+    + '<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#f0f9ff;color:#0284c7">'+form.abbr+' — '+form.label+'</span>'
+    + '</div>' + metaRow;
+
+  if(form.scale==='su'){
+    // DOPS — S/U checklist
+    html += '<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">Procedure: <span style="color:#0369a1">'+form.procedure+'</span></div>';
+    html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">';
+    html += '<thead><tr style="background:#f0f9ff">'
+      + '<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid #bae6fd;width:70%">หัวข้อ</th>'
+      + '<th style="padding:8px;text-align:center;font-size:12px;border:1px solid #bae6fd;background:#dcfce7;color:#15803d;width:15%">Satisfactory [S]</th>'
+      + '<th style="padding:8px;text-align:center;font-size:12px;border:1px solid #bae6fd;background:#fee2e2;color:#b91c1c;width:15%">Unsatisfactory [U]</th>'
+      + '</tr></thead><tbody>';
+    form.items.forEach(function(item){
+      var cur=fd.scoresSU[item]||'';
+      html += '<tr>'
+        + '<td style="padding:8px 10px;font-size:12px;border:1px solid #bae6fd">'+item+'</td>'
+        + '<td style="padding:6px;text-align:center;border:1px solid #bae6fd;background:#f0fdf4"><label style="cursor:pointer;width:100%;display:flex;justify-content:center;align-items:center;height:28px"><input type="radio" name="su_'+encodeURIComponent(item)+'" value="S" class="spine-su-radio" data-item="'+item+'" '+(cur==='S'?'checked':'')+' style="accent-color:#16a34a;width:16px;height:16px"></label></td>'
+        + '<td style="padding:6px;text-align:center;border:1px solid #bae6fd;background:#fff5f5"><label style="cursor:pointer;width:100%;display:flex;justify-content:center;align-items:center;height:28px"><input type="radio" name="su_'+encodeURIComponent(item)+'" value="U" class="spine-su-radio" data-item="'+item+'" '+(cur==='U'?'checked':'')+' style="accent-color:#dc2626;width:16px;height:16px"></label></td>'
+        + '</tr>';
+    });
+    html += '</tbody></table></div>';
+  } else {
+    // Scale 0-4 with recursive sub-item support
+    var spBorder='#bae6fd'; var spMid='#f0f9ff'; var spAccent='#0369a1';
+    html += '<div style="overflow-x:auto;margin-bottom:11px"><table style="width:100%;border-collapse:collapse;min-width:480px">';
+    html += '<thead><tr style="background:'+spMid+'">'
+      + '<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid '+spBorder+'">หัวข้อการประเมิน</th>'
+      + [0,1,2,3,4].map(function(n){
+          var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+          var col=n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';
+          return '<th style="padding:6px 3px;text-align:center;font-size:11px;border:1px solid '+spBorder+';background:'+bg+';color:'+col+';min-width:42px">'+n+'</th>';
+        }).join('')
+      + '</tr></thead><tbody>';
+    (function renderSPRows(domains, indent){
+      domains.forEach(function(d){
+        var pad=indent===0?'8px 10px':'7px 10px 7px '+(10+indent*14)+'px';
+        if(d.isHeader){
+          var hdrBg=indent===0?spMid:(indent===1?'#e0f2fe':'#f0f9ff');
+          html+='<tr style="background:'+hdrBg+'">'
+            +'<td colspan="6" style="padding:'+pad+';font-size:12px;font-weight:700;border:1px solid '+spBorder+';color:'+spAccent+'">'+d.label+'</td></tr>';
+          if(d.sub&&d.sub.length) renderSPRows(d.sub, indent+1);
+        } else if(d.isOverall){
+          var cur=fd.scores4[d.id];
+          html+='<tr style="background:'+spMid+';font-weight:700"><td style="padding:8px 10px;font-size:12px;border:1px solid '+spBorder+'">'+d.label+'</td>';
+          [0,1,2,3,4].forEach(function(n){
+            var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+            html+='<td style="padding:4px 3px;text-align:center;border:1px solid '+spBorder+'">'
+              +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+              +'<input type="radio" name="sp4_'+d.id+'" value="'+n+'" class="spine4-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;accent-color:'+(n<=1?'#dc2626':n===2?'#d97706':n===3?'#2563eb':'#16a34a')+'"></label></td>';
+          });
+          html+='</tr>';
+        } else {
+          var cur=fd.scores4[d.id];
+          var pfx=indent>0?'<span style="color:'+spBorder+';margin-right:6px">\u2514</span>':'';
+          html+='<tr><td style="padding:'+pad+';font-size:12px;border:1px solid '+spBorder+';color:var(--text2)">'+pfx+d.label+'</td>';
+          [0,1,2,3,4].forEach(function(n){
+            var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+            html+='<td style="padding:4px 3px;text-align:center;border:1px solid '+spBorder+'">'
+              +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+              +'<input type="radio" name="sp4_'+d.id+'" value="'+n+'" class="spine4-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;accent-color:'+(n<=1?'#dc2626':n===2?'#d97706':n===3?'#2563eb':'#16a34a')+'"></label></td>';
+          });
+          html+='</tr>';
+          if(d.sub&&d.sub.length) renderSPRows(d.sub, indent+1);
+        }
+      });
+    })(form.domains, 0);
+    html += '</tbody></table></div>';
+    html += '<div style="font-size:11px;padding:6px 10px;background:#f8fafc;border-radius:6px;color:var(--text3);margin-bottom:10px">'
+      + [0,1,2,3,4].map(function(n){return '<b>'+n+'</b>='+SPINE_SCORE_LABELS[n];}).join(' &nbsp;|&nbsp; ')+'</div>';
+  }
+
+  // Level selector L1-L4 + Acuity (for non-DOPS shown too)
+  html += '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-bottom:10px;padding:10px 13px;background:#f8fafc;border:1px solid var(--border);border-radius:8px">';
+  html += '<div><div class="flbl" style="margin-bottom:6px">ระดับความสามารถ (Level)</div><div class="ped-cbgroup">';
+  SPINE_LEVELS.forEach(function(lv){
+    html += '<label class="ped-cb-opt" style="flex-direction:column;padding:6px 10px;text-align:center"><input type="radio" name="spine-level" value="'+lv.l+'" class="spine-level-radio" '+(fd.level===lv.l?'checked':'')+' style="display:none"><span style="font-weight:700;font-size:13px">'+lv.l+'</span><span style="font-size:10px;color:var(--text3)">'+lv.desc+'</span></label>';
+  });
+  html += '</div></div>';
+  if(form.scale!=='su'){
+    html += '<div><div class="flbl" style="margin-bottom:6px">Acuity to seek help where required</div>'
+      + '<div class="ped-cbgroup">'
+      + '<label class="ped-cb-opt"><input type="radio" name="spine-acuity" value="yes" class="spine-acuity-radio" '+(fd.acuity==='yes'?'checked':'')+'>Yes</label>'
+      + '<label class="ped-cb-opt"><input type="radio" name="spine-acuity" value="no"  class="spine-acuity-radio" '+(fd.acuity==='no'?'checked':'')+'>No</label>'
+      + '</div></div>';
+  }
+  html += '</div>';
+
+  // Comment
+  html += '<div class="fgrp"><label class="flbl">ข้อเสนอแนะเพิ่มเติม (Staff comment)</label>'
+    + '<textarea id="spine-comment" class="finp" rows="3" placeholder="ความเห็นของอาจารย์...">'+(fd.comment||'')+'</textarea></div>';
+
+  return html;
+}
+
+function bindSpineFormEvents(body,ctx){
+  // Tab switch
+  body.querySelectorAll('#spine-form-tabs .rota-rtab').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      _saveSpineFormData(ctx,ctx.spineFormType);
+      ctx.spineFormType=btn.dataset.sf;
+      document.getElementById('spine-form-content').innerHTML=renderSingleSpineForm(ctx,btn.dataset.sf);
+      body.querySelectorAll('#spine-form-tabs .rota-rtab').forEach(function(b){b.classList.toggle('active',b.dataset.sf===btn.dataset.sf);});
+      bindSpineFormContentEvents(body,ctx,btn.dataset.sf);
+    });
+  });
+  bindSpineFormContentEvents(body,ctx,ctx.spineFormType||'minicex');
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',function(){
+    _saveSpineFormData(ctx,ctx.spineFormType);
+    saveSpineAssessment(ctx);
+  });
+}
+
+function bindSpineFormContentEvents(body,ctx,fk){
+  if(!ctx.spineData[fk]) ctx.spineData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  var fd=ctx.spineData[fk];
+  // 0-4 radios
+  body.querySelectorAll('.spine4-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      var domId=r.dataset.domain;
+      fd.scores4[domId]=parseInt(r.value);
+      // update highlight
+      body.querySelectorAll('input[name="sp4_'+domId+'"]').forEach(function(ri){
+        var lbl=ri.closest('label');
+        if(!lbl)return;
+        var n=parseInt(ri.value);
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        lbl.style.background=ri.checked?bg:'transparent';
+      });
+    });
+  });
+  // S/U radios
+  body.querySelectorAll('.spine-su-radio').forEach(function(r){
+    r.addEventListener('change',function(){ fd.scoresSU[r.dataset.item]=r.value; });
+  });
+  // Level
+  body.querySelectorAll('.spine-level-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      fd.level=r.value;
+      body.querySelectorAll('.spine-level-radio').forEach(function(ri){
+        var lbl=ri.closest('label');
+        if(lbl) lbl.style.background=ri.checked?'#dbeafe':'';
+      });
+    });
+  });
+  // Acuity
+  body.querySelectorAll('.spine-acuity-radio').forEach(function(r){
+    r.addEventListener('change',function(){ fd.acuity=r.value; });
+  });
+}
+
+function _saveSpineFormData(ctx,fk){
+  if(!ctx.spineData[fk]) ctx.spineData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  var fd=ctx.spineData[fk];
+  fd.meta.assessDate=ctx.assessDate;
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  if(res){fd.meta.trainee=res.fn+' '+res.ln;fd.meta.yr=YR_LABELS[res.yr]||res.yr;}
+  var g=function(id){return document.getElementById(id);};
+  if(g('sf-diagnosis')) fd.meta.diagnosis=g('sf-diagnosis').value;
+  if(g('sf-procedure')) fd.meta.procedure=g('sf-procedure').value;
+  if(g('sf-hn'))        fd.meta.hn=g('sf-hn').value;
+  if(g('spine-comment')) fd.comment=g('spine-comment').value;
+  var lvEl=document.querySelector('input[name="spine-level"]:checked');
+  if(lvEl) fd.level=lvEl.value;
+  var acEl=document.querySelector('input[name="spine-acuity"]:checked');
+  if(acEl) fd.acuity=acEl.value;
+}
+
+function saveSpineAssessment(ctx){
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  if(!ctx.assessDate){toast('กรุณาระบุวันที่ประเมิน','error');return;}
+  var fk=ctx.spineFormType||'minicex';
+  var fd=ctx.spineData[fk]||{};
+  var form=SPINE_FORMS[fk];
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  var domains=[];
+  if(form.scale==='su'){
+    domains=form.items.map(function(item){return {id:item, label:item, su:fd.scoresSU[item]||''};});
+  } else {
+    (function flatSP(list,par){
+      list.forEach(function(d){
+        if(d.isHeader){ if(d.sub&&d.sub.length) flatSP(d.sub,d.label); }
+        else {
+          domains.push({id:d.id,label:d.label,score4:fd.scores4[d.id]!==undefined?fd.scores4[d.id]:null,isOverall:!!d.isOverall,parent:par||null});
+          if(d.sub&&d.sub.length) flatSP(d.sub,d.label);
+        }
+      });
+    })(form.domains,null);
+  }
+  var rec={
+    id:uid(), type:'spine', formType:fk,
+    resId:ctx.resId, rotation:'spine',
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:ctx.assessDate,
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    meta:fd.meta, domains,
+    level:fd.level||'',
+    acuity:fd.acuity||'',
+    comment:fd.comment||'',
+    signed:true, sigData:null,
+    createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมิน Spine '+form.abbr+' แล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+// ─── JOURNAL CLUB FORM ────────────────────────────────
+function renderJCForm(ctx){
+  if(!ctx.jcData) ctx.jcData={meta:{},scores5:{},comment:''};
+  const fd=ctx.jcData;
+  const m=fd.meta||{};
+
+  // Journal info fields
+  let html='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">'
+    +'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#e8f4fd;color:#1565c0">📚 Journal Club</span>'
+    +'</div>';
+
+  html+='<div style="padding:10px 13px;background:#e8f4fd;border:1px solid #90caf9;border-radius:8px;margin-bottom:11px">'
+    +'<div class="frow" style="margin-bottom:8px">'
+    +'<div class="fgrp" style="flex:2"><label class="flbl">หัวข้อ Journal Club</label><input id="jc-topic" class="finp" value="'+(m.topic||'')+'" placeholder="ระบุหัวข้อ"></div>'
+    +'</div>'
+    +'<div class="frow">'
+    +'<div class="fgrp" style="flex:2"><label class="flbl">ชื่อวารสาร / งานวิจัย</label><input id="jc-journal" class="finp" value="'+(m.journal||'')+'" placeholder="ชื่อวารสาร"></div>'
+    +'<div class="fgrp" style="flex:1;min-width:100px"><label class="flbl">ปีที่พิมพ์</label><input id="jc-year" class="finp" value="'+(m.pubYear||'')+'" placeholder="ปี"></div>'
+    +'</div>'
+    +'</div>';
+
+  html+='<div style="font-size:11px;color:#1565c0;background:#e8f4fd;padding:5px 10px;border-radius:6px;margin-bottom:10px">'
+    +'หมายเหตุ: คะแนน 5=มากที่สุด &nbsp; 4=มาก &nbsp; 3=ปานกลาง &nbsp; 2=น้อย &nbsp; 1=น้อยที่สุด</div>';
+
+  // Score table 1-5
+  html+='<div style="overflow-x:auto;margin-bottom:11px"><table style="width:100%;border-collapse:collapse;min-width:420px">';
+  html+='<thead><tr style="background:#e8f4fd">'
+    +'<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid #90caf9">หัวข้อการประเมินกิจกรรม</th>'
+    +[5,4,3,2,1].map(function(n){
+      var col=n>=4?'#1b5e20':n===3?'#b45309':'#b71c1c';
+      var bg=n>=4?'#e8f5e9':n===3?'#fef9c3':'#fce4ec';
+      return '<th style="padding:6px 3px;text-align:center;font-size:12px;font-weight:700;border:1px solid #90caf9;background:'+bg+';color:'+col+';min-width:52px">'+n+'</th>';
+    }).join('')
+    +'</tr></thead><tbody>';
+
+  JC_FORM.domains.forEach(function(d){
+    var cur=fd.scores5[d.id];
+    html+='<tr><td style="padding:8px 10px;font-size:12px;border:1px solid #90caf9">'+d.label+'</td>';
+    [5,4,3,2,1].forEach(function(n){
+      var bg=n>=4?'#e8f5e9':n===3?'#fef9c3':'#fce4ec';
+      html+='<td style="padding:4px 3px;text-align:center;border:1px solid #90caf9">'
+        +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:30px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+        +'<input type="radio" name="jc5_'+d.id+'" value="'+n+'" class="jc5-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;width:16px;height:16px;accent-color:'+(n>=4?'#2e7d32':n===3?'#d97706':'#c62828')+'"></label></td>';
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+
+  html+='<div class="fgrp"><label class="flbl">Staff comment</label>'
+    +'<textarea id="jc-comment" class="finp" rows="3" placeholder="ความเห็นของอาจารย์...">'+(fd.comment||'')+'</textarea></div>';
+
+  html+='<div class="mbtns" style="margin-top:4px"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button><button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน</button></div>';
+  return html;
+}
+
+function bindJCFormEvents(body,ctx){
+  if(!ctx.jcData) ctx.jcData={meta:{},scores5:{},comment:''};
+  const fd=ctx.jcData;
+  body.querySelectorAll('.jc5-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      var domId=r.dataset.domain;
+      fd.scores5[domId]=parseInt(r.value);
+      body.querySelectorAll('input[name="jc5_'+domId+'"]').forEach(function(ri){
+        var lbl=ri.closest('label'); if(!lbl)return;
+        var n=parseInt(ri.value);
+        var bg=n>=4?'#e8f5e9':n===3?'#fef9c3':'#fce4ec';
+        lbl.style.background=ri.checked?bg:'transparent';
+      });
+    });
+  });
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',function(){
+    _saveJCFormData(ctx);
+    saveJCAssessment(ctx);
+  });
+}
+
+function _saveJCFormData(ctx){
+  if(!ctx.jcData) ctx.jcData={meta:{},scores5:{},comment:''};
+  const fd=ctx.jcData;
+  fd.meta.assessDate=ctx.assessDate;
+  const res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  if(res){fd.meta.trainee=res.fn+' '+res.ln; fd.meta.yr=YR_LABELS[res.yr]||res.yr;}
+  const g=function(id){return document.getElementById(id);};
+  if(g('jc-topic'))   fd.meta.topic=g('jc-topic').value;
+  if(g('jc-journal')) fd.meta.journal=g('jc-journal').value;
+  if(g('jc-year'))    fd.meta.pubYear=g('jc-year').value;
+  if(g('jc-comment')) fd.comment=g('jc-comment').value;
+}
+
+function saveJCAssessment(ctx){
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  if(!ctx.assessDate){toast('กรุณาระบุวันที่ประเมิน','error');return;}
+  const fd=ctx.jcData||{};
+  const res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  const domains=JC_FORM.domains.map(function(d){
+    return {id:d.id, label:d.label, score5:fd.scores5[d.id]||null};
+  });
+  const total=domains.reduce(function(s,d){return s+(d.score5||0);},0);
+  const rec={
+    id:uid(), type:'jc', formType:'jc',
+    resId:ctx.resId, rotation:'jc',
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:ctx.assessDate,
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    meta:fd.meta, domains,
+    totalScore:total, maxScore:JC_FORM.domains.length*5,
+    comment:fd.comment||'',
+    signed:true, sigData:null, createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมิน Journal Club แล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+// ─── TUMOR FORMS (reuses Trauma render helpers) ───────
+function renderTumorForms(ctx){
+  var sf=ctx.tumorFormType||'minicex';
+  return '<div style="background:#f3e5f5;border:1px solid #ce93d8;border-radius:8px;padding:9px 13px;margin-bottom:13px;font-size:12px;color:#4a148c;font-weight:600">🔬 Tumor — เลือกแบบประเมิน</div>'
+    +'<div class="rota-rotation-tabs" id="tumor-form-tabs" style="margin-bottom:16px">'
+    +TUMOR_FORM_KEYS.map(function(k){return '<button class="rota-rtab'+(k===sf?' active':'')+'" data-sf="'+k+'">'+TUMOR_FORMS[k].abbr+'</button>';}).join('')
+    +'</div><div id="tumor-form-content">'+renderSingleTumorForm(ctx,sf)+'</div>'
+    +'<div class="mbtns" style="margin-top:4px"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button><button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน</button></div>';
+}
+
+function renderSingleTumorForm(ctx,fk){
+  if(!ctx.tumorData[fk]) ctx.tumorData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  var fd=ctx.tumorData[fk];
+  var form=TUMOR_FORMS[fk];
+  var m=fd.meta||{};
+  var accent='#4a148c'; var accentLight='#f3e5f5'; var accentBorder='#ce93d8'; var accentMid='#ede7f6';
+
+  var html='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">'
+    +'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:'+accentLight+';color:'+accent+'">🔬 Tumor</span>'
+    +'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:'+accentMid+';color:'+accent+'">'+form.abbr+(form.procedure?' — '+form.procedure:'')+'</span>'
+    +'</div>';
+
+  html+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:11px;padding:10px 13px;background:'+accentMid+';border:1px solid '+accentBorder+';border-radius:8px">';
+  html+='<div class="fgrp" style="flex:2"><label class="flbl">Diagnosis</label><input id="tu-diagnosis" class="finp" value="'+(m.diagnosis||'')+'" placeholder="ระบุ"></div>';
+  if(form.fields.includes('procedure'))
+    html+='<div class="fgrp" style="flex:2"><label class="flbl">Procedure</label><input id="tu-procedure" class="finp" value="'+(m.procedure||'')+'" placeholder="ระบุ"></div>';
+  if(form.fields.includes('hn'))
+    html+='<div class="fgrp" style="flex:1;min-width:100px"><label class="flbl">HN</label><input id="tu-hn" class="finp" value="'+(m.hn||'')+'" placeholder="HN"></div>';
+  html+='</div>';
+  html+='<div style="font-size:11px;color:'+accent+';background:'+accentLight+';padding:5px 10px;border-radius:6px;margin-bottom:10px">⚙️ Setting: '+form.setting+'</div>';
+
+  if(form.scale==='su'){
+    if(form.passThreshold){
+      var sCount=0; form.items.forEach(function(item){if(fd.scoresSU[item]==='S')sCount++;});
+      html+='<div class="tu-pass-info" style="font-size:11px;margin-bottom:8px;padding:5px 10px;border-radius:6px;background:'+(sCount>=form.passThreshold?'#dcfce7':''+accentLight)+';color:'+(sCount>=form.passThreshold?'#15803d':accent)+'">เกณฑ์ผ่าน: S ≥ '+form.passThreshold+' ข้อ (ปัจจุบัน: <b>'+sCount+' S</b>)</div>';
+    }
+    html+='<div style="font-size:12px;font-weight:700;color:'+accent+';margin-bottom:8px">Procedure: '+form.procedure+'</div>';
+    html+='<table style="width:100%;border-collapse:collapse;margin-bottom:11px">';
+    form.items.forEach(function(item){
+      var cur=fd.scoresSU[item]||'';
+      html+='<tr><td style="padding:8px 10px;font-size:12px;border:1px solid '+accentBorder+'">'+item+'</td>'
+        +'<td style="padding:6px;text-align:center;border:1px solid '+accentBorder+';background:'+(cur==='S'?'#dcfce7':'#f0fdf4')+';width:15%"><label style="cursor:pointer;display:flex;justify-content:center;align-items:center;height:28px"><input type="radio" name="tusu_'+encodeURIComponent(item)+'" value="S" class="tu-su-radio" data-item="'+item+'" '+(cur==='S'?'checked':'')+' style="accent-color:#16a34a;width:16px;height:16px"></label></td>'
+        +'<td style="padding:6px;text-align:center;border:1px solid '+accentBorder+';background:'+(cur==='U'?'#fee2e2':'#fff5f5')+';width:15%"><label style="cursor:pointer;display:flex;justify-content:center;align-items:center;height:28px"><input type="radio" name="tusu_'+encodeURIComponent(item)+'" value="U" class="tu-su-radio" data-item="'+item+'" '+(cur==='U'?'checked':'')+' style="accent-color:#dc2626;width:16px;height:16px"></label></td>'
+        +'</tr>';
+    });
+    html+='</table>';
+  } else {
+    // ── 0-4 table with recursive sub-items ──────────────
+    html+='<div style="overflow-x:auto;margin-bottom:11px"><table style="width:100%;border-collapse:collapse;min-width:480px">';
+    html+='<thead><tr style="background:'+accentMid+'">'
+      +'<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid '+accentBorder+'">หัวข้อการประเมิน</th>'
+      +[0,1,2,3,4].map(function(n){
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        var col=n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';
+        return '<th style="padding:6px 3px;text-align:center;font-size:11px;border:1px solid '+accentBorder+';background:'+bg+';color:'+col+';min-width:42px">'+n+'</th>';
+      }).join('')+'</tr></thead><tbody>';
+
+    // Recursive row renderer
+    function renderDomainRows(domains, indent){
+      indent=indent||0;
+      var pad=indent===0?'8px 10px':indent===1?'7px 10px 7px '+(14+indent*14)+'px':'6px 10px 6px '+(14+indent*14)+'px';
+      var indentStyle=indent>0?'color:var(--text2);':'';
+      domains.forEach(function(d){
+        if(d.isHeader){
+          // Header row — no score inputs, full colspan label, colored background
+          var hdrBg=indent===0?accentMid:(indent===1?accentLight:'#fafafa');
+          html+='<tr style="background:'+hdrBg+'">'
+            +'<td colspan="5" style="padding:'+pad+';font-size:12px;font-weight:700;border:1px solid '+accentBorder+';color:'+accent+';'+indentStyle+'">'+d.label+'</td>'
+            +'</tr>';
+          if(d.sub&&d.sub.length) renderDomainRows(d.sub, indent+1);
+        } else if(d.isOverall){
+          // Overall row
+          var cur=fd.scores4[d.id];
+          html+='<tr style="background:'+accentMid+';font-weight:700"><td style="padding:8px 10px;font-size:12px;border:1px solid '+accentBorder+'">'+d.label+'</td>';
+          [0,1,2,3,4].forEach(function(n){
+            var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+            html+='<td style="padding:4px 3px;text-align:center;border:1px solid '+accentBorder+'">'
+              +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+              +'<input type="radio" name="tu4_'+d.id+'" value="'+n+'" class="tu4-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;accent-color:'+(n<=1?'#dc2626':n===2?'#d97706':n===3?'#2563eb':'#16a34a')+'"></label></td>';
+          });
+          html+='</tr>';
+        } else {
+          // Scoreable row
+          var cur=fd.scores4[d.id];
+          html+='<tr><td style="padding:'+pad+';font-size:12px;border:1px solid '+accentBorder+';'+indentStyle+'">'
+            +(indent>0?'<span style="color:'+accentBorder+';margin-right:6px">└</span>':'')
+            +d.label+'</td>';
+          [0,1,2,3,4].forEach(function(n){
+            var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+            html+='<td style="padding:4px 3px;text-align:center;border:1px solid '+accentBorder+'">'
+              +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+              +'<input type="radio" name="tu4_'+d.id+'" value="'+n+'" class="tu4-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;accent-color:'+(n<=1?'#dc2626':n===2?'#d97706':n===3?'#2563eb':'#16a34a')+'"></label></td>';
+          });
+          html+='</tr>';
+          if(d.sub&&d.sub.length) renderDomainRows(d.sub, indent+1);
+        }
+      });
+    }
+    renderDomainRows(form.domains, 0);
+
+    html+='</tbody></table></div>';
+    html+='<div style="font-size:11px;padding:6px 10px;background:'+accentMid+';border-radius:6px;color:var(--text3);margin-bottom:10px">'
+      +[0,1,2,3,4].map(function(n){return '<b>'+n+'</b>='+SPINE_SCORE_LABELS[n];}).join(' | ')+'</div>';
+  }
+
+  html+='<div style="margin-bottom:10px;padding:10px 13px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">';
+  html+='<div><div class="flbl" style="margin-bottom:6px">Level</div><div class="ped-cbgroup">';
+  SPINE_LEVELS.forEach(function(lv){
+    html+='<label class="ped-cb-opt" style="flex-direction:column;padding:6px 10px;text-align:center;'+(fd.level===lv.l?'background:'+accentLight+';border-color:'+accentBorder+';':'')+'">'
+      +'<input type="radio" name="tu-level" value="'+lv.l+'" class="tu-level-radio" '+(fd.level===lv.l?'checked':'')+' style="display:none">'
+      +'<span style="font-weight:700;font-size:13px">'+lv.l+'</span>'
+      +'<span style="font-size:10px;color:var(--text3)">'+lv.desc+'</span></label>';
+  });
+  html+='</div></div>';
+  if(form.hasAcuity){
+    html+='<div><div class="flbl" style="margin-bottom:6px">Acuity to seek help where required</div>'
+      +'<div class="ped-cbgroup">'
+      +'<label class="ped-cb-opt"><input type="radio" name="tu-acuity" value="yes" class="tu-acuity-radio" '+(fd.acuity==='yes'?'checked':'')+'>Yes</label>'
+      +'<label class="ped-cb-opt"><input type="radio" name="tu-acuity" value="no"  class="tu-acuity-radio" '+(fd.acuity==='no'?'checked':'')+'>No</label>'
+      +'</div></div>';
+  }
+  html+='</div>';
+  html+='<div class="fgrp"><label class="flbl">ข้อเสนอแนะเพิ่มเติม (Staff comment)</label>'
+    +'<textarea id="tu-comment" class="finp" rows="3" placeholder="ความเห็นของอาจารย์...">'+(fd.comment||'')+'</textarea></div>';
+  return html;
+}
+
+function bindTumorFormEvents(body,ctx){
+  body.querySelectorAll('#tumor-form-tabs .rota-rtab').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      _saveTumorFormData(ctx,ctx.tumorFormType);
+      ctx.tumorFormType=btn.dataset.sf;
+      document.getElementById('tumor-form-content').innerHTML=renderSingleTumorForm(ctx,btn.dataset.sf);
+      body.querySelectorAll('#tumor-form-tabs .rota-rtab').forEach(function(b){b.classList.toggle('active',b.dataset.sf===btn.dataset.sf);});
+      bindTumorFormContentEvents(body,ctx,btn.dataset.sf);
+    });
+  });
+  bindTumorFormContentEvents(body,ctx,ctx.tumorFormType||'minicex');
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',function(){
+    _saveTumorFormData(ctx,ctx.tumorFormType);
+    saveTumorAssessment(ctx);
+  });
+}
+
+function bindTumorFormContentEvents(body,ctx,fk){
+  if(!ctx.tumorData[fk]) ctx.tumorData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  var fd=ctx.tumorData[fk];
+  body.querySelectorAll('.tu4-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      var domId=r.dataset.domain;
+      fd.scores4[domId]=parseInt(r.value);
+      body.querySelectorAll('input[name="tu4_'+domId+'"]').forEach(function(ri){
+        var lbl=ri.closest('label'); if(!lbl)return;
+        var n=parseInt(ri.value);
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        lbl.style.background=ri.checked?bg:'transparent';
+      });
+    });
+  });
+  body.querySelectorAll('.tu-su-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      fd.scoresSU[r.dataset.item]=r.value;
+      var rows=body.querySelectorAll('input[name="tusu_'+encodeURIComponent(r.dataset.item)+'"]');
+      rows.forEach(function(ri){
+        var td=ri.closest('td'); if(!td)return;
+        if(ri.value==='S') td.style.background=ri.checked?'#dcfce7':'#f0fdf4';
+        if(ri.value==='U') td.style.background=ri.checked?'#fee2e2':'#fff5f5';
+      });
+      var form=TUMOR_FORMS[fk];
+      if(form.passThreshold){
+        var sCount=0; form.items.forEach(function(item){if(fd.scoresSU[item]==='S')sCount++;});
+        var info=body.querySelector('.tu-pass-info');
+        if(info) info.innerHTML='เกณฑ์ผ่าน: S ≥ '+form.passThreshold+' ข้อ (ปัจจุบัน: <b>'+sCount+' S</b>)';
+      }
+    });
+  });
+  body.querySelectorAll('.tu-level-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      fd.level=r.value;
+      body.querySelectorAll('.tu-level-radio').forEach(function(ri){
+        var lbl=ri.closest('label'); if(!lbl)return;
+        lbl.style.background=ri.checked?'#f3e5f5':''; lbl.style.borderColor=ri.checked?'#ce93d8':'';
+      });
+    });
+  });
+  body.querySelectorAll('.tu-acuity-radio').forEach(function(r){
+    r.addEventListener('change',function(){ fd.acuity=r.value; });
+  });
+}
+
+function _saveTumorFormData(ctx,fk){
+  if(!ctx.tumorData[fk]) ctx.tumorData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  var fd=ctx.tumorData[fk];
+  fd.meta.assessDate=ctx.assessDate;
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  if(res){fd.meta.trainee=res.fn+' '+res.ln;fd.meta.yr=YR_LABELS[res.yr]||res.yr;}
+  var g=function(id){return document.getElementById(id);};
+  if(g('tu-diagnosis')) fd.meta.diagnosis=g('tu-diagnosis').value;
+  if(g('tu-procedure')) fd.meta.procedure=g('tu-procedure').value;
+  if(g('tu-hn'))        fd.meta.hn=g('tu-hn').value;
+  if(g('tu-comment'))   fd.comment=g('tu-comment').value;
+  var lvEl=document.querySelector('input[name="tu-level"]:checked');
+  if(lvEl) fd.level=lvEl.value;
+  var acEl=document.querySelector('input[name="tu-acuity"]:checked');
+  if(acEl) fd.acuity=acEl.value;
+}
+
+function saveTumorAssessment(ctx){
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  if(!ctx.assessDate){toast('กรุณาระบุวันที่ประเมิน','error');return;}
+  var fk=ctx.tumorFormType||'minicex';
+  var fd=ctx.tumorData[fk]||{};
+  var form=TUMOR_FORMS[fk];
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  var domains;
+  if(form.scale==='su'){
+    domains=form.items.map(function(item){return {id:item,label:item,su:fd.scoresSU[item]||''};});
+  } else {
+    domains=[];
+    (function flattenD(list,par){
+      list.forEach(function(d){
+        if(d.isHeader){ if(d.sub&&d.sub.length) flattenD(d.sub,d.label); }
+        else {
+          domains.push({id:d.id,label:d.label,score4:fd.scores4[d.id]!==undefined?fd.scores4[d.id]:null,isOverall:!!d.isOverall,parent:par||null});
+          if(d.sub&&d.sub.length) flattenD(d.sub,d.label);
+        }
+      });
+    })(form.domains,null);
+  }
+  var sCount=0;
+  if(form.scale==='su') domains.forEach(function(d){if(d.su==='S')sCount++;});
+  var rec={
+    id:uid(), type:'tumor', formType:fk,
+    resId:ctx.resId, rotation:'tumor',
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:ctx.assessDate,
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    meta:fd.meta, domains,
+    level:fd.level||'', acuity:fd.acuity||'',
+    sCount:sCount, passThreshold:form.passThreshold||0,
+    comment:fd.comment||'',
+    signed:true, sigData:null, createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมิน Tumor '+form.abbr+' แล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+// ─── TRAUMA FORMS ─────────────────────────────────────
+function renderTraumaForms(ctx){
+  var sf=ctx.traumaFormType||'minicex';
+  return '<div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:8px;padding:9px 13px;margin-bottom:13px;font-size:12px;color:#e65100;font-weight:600">🦺 Trauma — เลือกแบบประเมิน</div>'
+    +'<div class="rota-rotation-tabs" id="trauma-form-tabs" style="margin-bottom:16px">'
+    +TRAUMA_FORM_KEYS.map(function(k){return '<button class="rota-rtab'+(k===sf?' active':'')+'" data-sf="'+k+'">'+TRAUMA_FORMS[k].abbr+'</button>';}).join('')
+    +'</div><div id="trauma-form-content">'+renderSingleTraumaForm(ctx,sf)+'</div>'
+    +'<div class="mbtns" style="margin-top:4px"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button><button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน</button></div>';
+}
+
+function renderSingleTraumaForm(ctx,fk){
+  if(!ctx.traumaData[fk]) ctx.traumaData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  var fd=ctx.traumaData[fk];
+  var form=TRAUMA_FORMS[fk];
+  var m=fd.meta||{};
+
+  var html='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">'
+    +'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#fff3e0;color:#e65100">🦺 Trauma</span>'
+    +'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#fff8f0;color:#bf360c">'+form.abbr+(form.procedure?' — '+form.procedure:'')+'</span>'
+    +'</div>';
+
+  // Meta row
+  html+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:11px;padding:10px 13px;background:#fff8f0;border:1px solid #ffcc80;border-radius:8px">';
+  html+='<div class="fgrp" style="flex:2"><label class="flbl">Diagnosis</label><input id="tr-diagnosis" class="finp" value="'+(m.diagnosis||'')+'" placeholder="ระบุ"></div>';
+  if(form.fields.includes('procedure'))
+    html+='<div class="fgrp" style="flex:2"><label class="flbl">Procedure</label><input id="tr-procedure" class="finp" value="'+(m.procedure||'')+'" placeholder="ระบุ"></div>';
+  if(form.fields.includes('hn'))
+    html+='<div class="fgrp" style="flex:1;min-width:100px"><label class="flbl">HN</label><input id="tr-hn" class="finp" value="'+(m.hn||'')+'" placeholder="HN"></div>';
+  html+='</div>';
+  html+='<div style="font-size:11px;color:#e65100;background:#fff3e0;padding:5px 10px;border-radius:6px;margin-bottom:10px">⚙️ Setting: '+form.setting+'</div>';
+
+  if(form.scale==='su'){
+    if(form.itemGroups){
+      // Multiple Trauma — grouped by year
+      html+='<div style="font-size:12px;font-weight:700;color:#e65100;margin-bottom:8px">Procedure: '+form.procedure+'</div>';
+      form.itemGroups.forEach(function(grp){
+        html+='<div style="margin-bottom:11px">';
+        html+='<div style="font-size:11px;font-weight:700;color:#fff;background:#e65100;padding:4px 10px;border-radius:6px 6px 0 0;letter-spacing:.5px">'+grp.group+'</div>';
+        html+='<table style="width:100%;border-collapse:collapse">';
+        grp.items.forEach(function(item){
+          var cur=fd.scoresSU[item]||'';
+          html+='<tr><td style="padding:7px 10px;font-size:12px;border:1px solid #ffcc80">'+item+'</td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #ffcc80;background:'+(cur==='S'?'#dcfce7':'#f0fdf4')+';width:13%"><label style="cursor:pointer;display:flex;justify-content:center;align-items:center;height:26px"><input type="radio" name="trsu_'+encodeURIComponent(item)+'" value="S" class="tr-su-radio" data-item="'+item+'" '+(cur==='S'?'checked':'')+' style="accent-color:#16a34a;width:16px;height:16px"></label></td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #ffcc80;background:'+(cur==='U'?'#fee2e2':'#fff5f5')+';width:13%"><label style="cursor:pointer;display:flex;justify-content:center;align-items:center;height:26px"><input type="radio" name="trsu_'+encodeURIComponent(item)+'" value="U" class="tr-su-radio" data-item="'+item+'" '+(cur==='U'?'checked':'')+' style="accent-color:#dc2626;width:16px;height:16px"></label></td>'
+            +'</tr>';
+        });
+        html+='</table><div style="font-size:10px;text-align:right;padding:3px 8px;background:#fff8f0;border:1px solid #ffcc80;border-top:none;color:var(--text3)">[S]=Satisfactory &nbsp; [U]=Unsatisfactory</div></div>';
+      });
+    } else {
+      // Simple S/U (Surgical Approach)
+      if(form.passThreshold){
+        var sCount=0; form.items.forEach(function(item){if(fd.scoresSU[item]==='S')sCount++;});
+        html+='<div style="font-size:11px;margin-bottom:8px;padding:5px 10px;border-radius:6px;background:'+(sCount>=form.passThreshold?'#dcfce7':'#fff3e0')+';color:'+(sCount>=form.passThreshold?'#15803d':'#e65100')+'">เกณฑ์ผ่าน: S ≥ '+form.passThreshold+' ข้อ (ปัจจุบัน: <b>'+sCount+' S</b>)</div>';
+      }
+      html+='<table style="width:100%;border-collapse:collapse;margin-bottom:11px">';
+      form.items.forEach(function(item){
+        var cur=fd.scoresSU[item]||'';
+        html+='<tr><td style="padding:8px 10px;font-size:12px;border:1px solid #ffcc80">'+item+'</td>'
+          +'<td style="padding:6px;text-align:center;border:1px solid #ffcc80;background:'+(cur==='S'?'#dcfce7':'#f0fdf4')+';width:15%"><label style="cursor:pointer;display:flex;justify-content:center;align-items:center;height:28px"><input type="radio" name="trsu_'+encodeURIComponent(item)+'" value="S" class="tr-su-radio" data-item="'+item+'" '+(cur==='S'?'checked':'')+' style="accent-color:#16a34a;width:16px;height:16px"></label></td>'
+          +'<td style="padding:6px;text-align:center;border:1px solid #ffcc80;background:'+(cur==='U'?'#fee2e2':'#fff5f5')+';width:15%"><label style="cursor:pointer;display:flex;justify-content:center;align-items:center;height:28px"><input type="radio" name="trsu_'+encodeURIComponent(item)+'" value="U" class="tr-su-radio" data-item="'+item+'" '+(cur==='U'?'checked':'')+' style="accent-color:#dc2626;width:16px;height:16px"></label></td>'
+          +'</tr>';
+      });
+      html+='</table>';
+    }
+  } else {
+    // Scale 0-4 with recursive sub-item support
+    var trBorder='#ffcc80'; var trMid='#fff8f0'; var trAccent='#e65100';
+    html+='<div style="overflow-x:auto;margin-bottom:11px"><table style="width:100%;border-collapse:collapse;min-width:480px">';
+    html+='<thead><tr style="background:'+trMid+'">'
+      +'<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid '+trBorder+'">หัวข้อการประเมิน</th>'
+      +[0,1,2,3,4].map(function(n){
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        var col=n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';
+        return '<th style="padding:6px 3px;text-align:center;font-size:11px;border:1px solid '+trBorder+';background:'+bg+';color:'+col+';min-width:42px">'+n+'</th>';
+      }).join('')+'</tr></thead><tbody>';
+    (function renderTRRows(domains, indent){
+      domains.forEach(function(d){
+        var pad=indent===0?'8px 10px':'7px 10px 7px '+(10+indent*14)+'px';
+        if(d.isHeader){
+          var hdrBg=indent===0?trMid:(indent===1?'#fff3e0':'#fffaf5');
+          html+='<tr style="background:'+hdrBg+'">'
+            +'<td colspan="6" style="padding:'+pad+';font-size:12px;font-weight:700;border:1px solid '+trBorder+';color:'+trAccent+'">'+d.label+'</td></tr>';
+          if(d.sub&&d.sub.length) renderTRRows(d.sub, indent+1);
+        } else if(d.isOverall){
+          var cur=fd.scores4[d.id];
+          html+='<tr style="background:'+trMid+';font-weight:700"><td style="padding:8px 10px;font-size:12px;border:1px solid '+trBorder+'">'+d.label+'</td>';
+          [0,1,2,3,4].forEach(function(n){
+            var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+            html+='<td style="padding:4px 3px;text-align:center;border:1px solid '+trBorder+'">'
+              +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+              +'<input type="radio" name="tr4_'+d.id+'" value="'+n+'" class="tr4-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;accent-color:'+(n<=1?'#dc2626':n===2?'#d97706':n===3?'#2563eb':'#16a34a')+'"></label></td>';
+          });
+          html+='</tr>';
+        } else {
+          var cur=fd.scores4[d.id];
+          var pfx=indent>0?'<span style="color:'+trBorder+';margin-right:6px">└</span>':'';
+          html+='<tr><td style="padding:'+pad+';font-size:12px;border:1px solid '+trBorder+';color:var(--text2)">'+pfx+d.label+'</td>';
+          [0,1,2,3,4].forEach(function(n){
+            var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+            html+='<td style="padding:4px 3px;text-align:center;border:1px solid '+trBorder+'">'
+              +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+              +'<input type="radio" name="tr4_'+d.id+'" value="'+n+'" class="tr4-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;accent-color:'+(n<=1?'#dc2626':n===2?'#d97706':n===3?'#2563eb':'#16a34a')+'"></label></td>';
+          });
+          html+='</tr>';
+          if(d.sub&&d.sub.length) renderTRRows(d.sub, indent+1);
+        }
+      });
+    })(form.domains, 0);
+    html+='</tbody></table></div>';
+    html+='<div style="font-size:11px;padding:6px 10px;background:'+trMid+';border-radius:6px;color:var(--text3);margin-bottom:10px">'
+      +[0,1,2,3,4].map(function(n){return '<b>'+n+'</b>='+SPINE_SCORE_LABELS[n];}).join(' | ')+'</div>';
+  }
+
+  // Level L1-L4
+  html+='<div style="margin-bottom:10px;padding:10px 13px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">';
+  html+='<div><div class="flbl" style="margin-bottom:6px">Level</div><div class="ped-cbgroup">';
+  SPINE_LEVELS.forEach(function(lv){
+    html+='<label class="ped-cb-opt" style="flex-direction:column;padding:6px 10px;text-align:center;'+(fd.level===lv.l?'background:#fff3e0;border-color:#ffcc80;':'')+'">'
+      +'<input type="radio" name="tr-level" value="'+lv.l+'" class="tr-level-radio" '+(fd.level===lv.l?'checked':'')+' style="display:none">'
+      +'<span style="font-weight:700;font-size:13px">'+lv.l+'</span>'
+      +'<span style="font-size:10px;color:var(--text3)">'+lv.desc+'</span></label>';
+  });
+  html+='</div></div>';
+  if(form.hasAcuity){
+    html+='<div><div class="flbl" style="margin-bottom:6px">Acuity to seek help where required</div>'
+      +'<div class="ped-cbgroup">'
+      +'<label class="ped-cb-opt"><input type="radio" name="tr-acuity" value="yes" class="tr-acuity-radio" '+(fd.acuity==='yes'?'checked':'')+'>Yes</label>'
+      +'<label class="ped-cb-opt"><input type="radio" name="tr-acuity" value="no"  class="tr-acuity-radio" '+(fd.acuity==='no'?'checked':'')+'>No</label>'
+      +'</div></div>';
+  }
+  html+='</div>';
+
+  html+='<div class="fgrp"><label class="flbl">ข้อเสนอแนะเพิ่มเติม (Staff comment)</label>'
+    +'<textarea id="tr-comment" class="finp" rows="3" placeholder="ความเห็นของอาจารย์...">'+(fd.comment||'')+'</textarea></div>';
+  return html;
+}
+
+function bindTraumaFormEvents(body,ctx){
+  body.querySelectorAll('#trauma-form-tabs .rota-rtab').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      _saveTraumaFormData(ctx,ctx.traumaFormType);
+      ctx.traumaFormType=btn.dataset.sf;
+      document.getElementById('trauma-form-content').innerHTML=renderSingleTraumaForm(ctx,btn.dataset.sf);
+      body.querySelectorAll('#trauma-form-tabs .rota-rtab').forEach(function(b){b.classList.toggle('active',b.dataset.sf===btn.dataset.sf);});
+      bindTraumaFormContentEvents(body,ctx,btn.dataset.sf);
+    });
+  });
+  bindTraumaFormContentEvents(body,ctx,ctx.traumaFormType||'minicex');
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',function(){
+    _saveTraumaFormData(ctx,ctx.traumaFormType);
+    saveTraumaAssessment(ctx);
+  });
+}
+
+function bindTraumaFormContentEvents(body,ctx,fk){
+  if(!ctx.traumaData[fk]) ctx.traumaData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  var fd=ctx.traumaData[fk];
+  body.querySelectorAll('.tr4-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      var domId=r.dataset.domain;
+      fd.scores4[domId]=parseInt(r.value);
+      body.querySelectorAll('input[name="tr4_'+domId+'"]').forEach(function(ri){
+        var lbl=ri.closest('label'); if(!lbl)return;
+        var n=parseInt(ri.value);
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        lbl.style.background=ri.checked?bg:'transparent';
+      });
+    });
+  });
+  body.querySelectorAll('.tr-su-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      fd.scoresSU[r.dataset.item]=r.value;
+      var rows=body.querySelectorAll('input[name="trsu_'+encodeURIComponent(r.dataset.item)+'"]');
+      rows.forEach(function(ri){
+        var td=ri.closest('td'); if(!td)return;
+        if(ri.value==='S') td.style.background=ri.checked?'#dcfce7':'#f0fdf4';
+        if(ri.value==='U') td.style.background=ri.checked?'#fee2e2':'#fff5f5';
+      });
+      // update pass count for approach form
+      var form=TRAUMA_FORMS[fk];
+      if(form.passThreshold){
+        var sCount=0; form.items.forEach(function(item){if(fd.scoresSU[item]==='S')sCount++;});
+        var infoEl=body.querySelector('.tr-pass-info');
+        if(infoEl) infoEl.innerHTML='เกณฑ์ผ่าน: S ≥ '+form.passThreshold+' ข้อ (ปัจจุบัน: <b>'+sCount+' S</b>)';
+      }
+    });
+  });
+  body.querySelectorAll('.tr-level-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      fd.level=r.value;
+      body.querySelectorAll('.tr-level-radio').forEach(function(ri){
+        var lbl=ri.closest('label'); if(!lbl)return;
+        lbl.style.background=ri.checked?'#fff3e0':''; lbl.style.borderColor=ri.checked?'#ffcc80':'';
+      });
+    });
+  });
+  body.querySelectorAll('.tr-acuity-radio').forEach(function(r){
+    r.addEventListener('change',function(){ fd.acuity=r.value; });
+  });
+}
+
+function _saveTraumaFormData(ctx,fk){
+  if(!ctx.traumaData[fk]) ctx.traumaData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  var fd=ctx.traumaData[fk];
+  fd.meta.assessDate=ctx.assessDate;
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  if(res){fd.meta.trainee=res.fn+' '+res.ln;fd.meta.yr=YR_LABELS[res.yr]||res.yr;}
+  var g=function(id){return document.getElementById(id);};
+  if(g('tr-diagnosis')) fd.meta.diagnosis=g('tr-diagnosis').value;
+  if(g('tr-procedure')) fd.meta.procedure=g('tr-procedure').value;
+  if(g('tr-hn'))        fd.meta.hn=g('tr-hn').value;
+  if(g('tr-comment'))   fd.comment=g('tr-comment').value;
+  var lvEl=document.querySelector('input[name="tr-level"]:checked');
+  if(lvEl) fd.level=lvEl.value;
+  var acEl=document.querySelector('input[name="tr-acuity"]:checked');
+  if(acEl) fd.acuity=acEl.value;
+}
+
+function saveTraumaAssessment(ctx){
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  if(!ctx.assessDate){toast('กรุณาระบุวันที่ประเมิน','error');return;}
+  var fk=ctx.traumaFormType||'minicex';
+  var fd=ctx.traumaData[fk]||{};
+  var form=TRAUMA_FORMS[fk];
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  var domains;
+  if(form.scale==='su'){
+    if(form.itemGroups){
+      // flatten groups
+      domains=[];
+      form.itemGroups.forEach(function(grp){
+        grp.items.forEach(function(item){
+          domains.push({id:item,label:item,group:grp.group,su:fd.scoresSU[item]||''});
+        });
+      });
+    } else {
+      domains=form.items.map(function(item){return {id:item,label:item,su:fd.scoresSU[item]||''};});
+    }
+  } else {
+    domains=[];
+    (function flatTR(list,par){
+      list.forEach(function(d){
+        if(d.isHeader){ if(d.sub&&d.sub.length) flatTR(d.sub,d.label); }
+        else {
+          domains.push({id:d.id,label:d.label,score4:fd.scores4[d.id]!==undefined?fd.scores4[d.id]:null,isOverall:!!d.isOverall,parent:par||null});
+          if(d.sub&&d.sub.length) flatTR(d.sub,d.label);
+        }
+      });
+    })(form.domains,null);
+  }
+  var sCount=0;
+  if(form.scale==='su') domains.forEach(function(d){if(d.su==='S')sCount++;});
+  var rec={
+    id:uid(), type:'trauma', formType:fk,
+    resId:ctx.resId, rotation:'trauma',
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:ctx.assessDate,
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    meta:fd.meta, domains,
+    level:fd.level||'', acuity:fd.acuity||'',
+    sCount:sCount, passThreshold:form.passThreshold||0,
+    comment:fd.comment||'',
+    signed:true, sigData:null, createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมิน Trauma '+form.abbr+' แล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+// ─── HIP & KNEE FORMS ─────────────────────────────────
+function renderHKForms(ctx){
+  var sf=ctx.hkFormType||'minicex';
+  return '<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:9px 13px;margin-bottom:13px;font-size:12px;color:#1b5e20;font-weight:600">🦵 Hip & Knee — เลือกแบบประเมิน</div>'
+    +'<div class="rota-rotation-tabs" id="hk-form-tabs" style="margin-bottom:16px">'
+    +HK_FORM_KEYS.map(function(k){return '<button class="rota-rtab'+(k===sf?' active':'')+'" data-sf="'+k+'">'+HK_FORMS[k].abbr+'</button>';}).join('')
+    +'</div><div id="hk-form-content">'+renderSingleHKForm(ctx,sf)+'</div>'
+    +'<div class="mbtns" style="margin-top:4px"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button><button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน</button></div>';
+}
+
+function renderSingleHKForm(ctx,fk){
+  if(!ctx.hkData[fk]) ctx.hkData[fk]={meta:{},scores4:{},scoresSU:{},cbdScores:{},pgy:'',level:'',comment:''};
+  var fd=ctx.hkData[fk];
+  var form=HK_FORMS[fk];
+  var m=fd.meta||{};
+  var scLabels=form.scoreLabels||HK_SCORE_LABELS;
+  var selPgy=fd.pgy||'';
+
+  var html='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">'
+    +'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#e8f5e9;color:#1b5e20">🦵 Hip & Knee</span>'
+    +'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#f1f8e9;color:#33691e">'+form.abbr+(form.procedure?' — '+form.procedure:'')+'</span>'
+    +'</div>';
+
+  // Meta row — เพิ่ม HN
+  html+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:11px;padding:10px 13px;background:#f1f8e9;border:1px solid #a5d6a7;border-radius:8px">';
+  html+='<div class="fgrp" style="flex:2"><label class="flbl">Diagnosis</label><input id="hk-diagnosis" class="finp" value="'+(m.diagnosis||'')+'" placeholder="ระบุ"></div>';
+  if(form.fields&&form.fields.includes('hn'))
+    html+='<div class="fgrp" style="flex:1;min-width:100px"><label class="flbl">HN</label><input id="hk-hn" class="finp" value="'+(m.hn||'')+'" placeholder="HN"></div>';
+  if(form.fields&&form.fields.includes('procedure'))
+    html+='<div class="fgrp" style="flex:2"><label class="flbl">Procedure</label><input id="hk-procedure" class="finp" value="'+(m.procedure||form.procedure||'')+'" placeholder="ระบุ"></div>';
+  html+='</div>';
+  html+='<div style="font-size:11px;color:#1b5e20;background:#e8f5e9;padding:5px 10px;border-radius:6px;margin-bottom:10px">⚙️ Setting: '+form.setting+'</div>';
+
+  // PGY selector
+  if(form.hasPGY){
+    var pgyDesc={
+      'PGY-1':'templating for primary H/K arthroplasty (L1)',
+      'PGY-2':'templating for primary/revision H/K arthroplasty (L1)',
+      'PGY-3':'pre-op evaluate and templating for revision H/K arthroplasty (L2)',
+      'PGY-4':'pre-op evaluate and templating for complex prim/rev H/K arthroplasty (L1)',
+    };
+    html+='<div style="margin-bottom:13px;padding:10px 13px;background:#f8fafc;border:1px solid var(--border);border-radius:8px">'
+      +'<div class="flbl" style="margin-bottom:7px">เลือก PGY Level <span style="color:var(--red)">*</span></div>'
+      +'<div style="display:flex;flex-direction:column;gap:6px">';
+    ['PGY-1','PGY-2','PGY-3','PGY-4'].forEach(function(p){
+      var isChecked=selPgy===p;
+      html+='<label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;padding:7px 10px;border-radius:7px;border:1.5px solid '+(isChecked?'#a5d6a7':'var(--border)')+';background:'+(isChecked?'#e8f5e9':'#fff')+'">'
+        +'<input type="radio" name="hk-pgy" value="'+p+'" class="hk-pgy-radio" '+(isChecked?'checked':'')+' style="margin-top:2px;accent-color:#16a34a">'
+        +'<div><div style="font-weight:700;font-size:13px">'+p+'</div><div style="font-size:11px;color:var(--text3)">'+pgyDesc[p]+'</div></div>'
+        +'</label>';
+    });
+    html+='</div></div>';
+  }
+
+  if(form.scale==='su'){
+    // DOPS unified: PGY selector + items ตาม PGY ที่เลือก
+    var dopsPgy=fd.dopsPgy||'PGY-2';
+    var pgyForms=form.pgyForms||{};
+    var dopsPgyKeys=Object.keys(pgyForms); // ['PGY-2','PGY-3','PGY-4']
+
+    // PGY selector (checkbox style — เลือกได้ 1 ตัว)
+    html+='<div style="margin-bottom:13px;padding:10px 13px;background:#f8fafc;border:1px solid var(--border);border-radius:8px">'
+      +'<div class="flbl" style="margin-bottom:7px">เลือก PGY <span style="color:var(--red)">*</span></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">';
+    var dopsPgyLabels={
+      'PGY-2':'Aspiration / Injection Knee',
+      'PGY-3':'Wound Closure THA/TKA',
+      'PGY-4':'Hemiarthroplasty (FNFx)',
+    };
+    dopsPgyKeys.forEach(function(p){
+      var isChecked=dopsPgy===p;
+      html+='<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:8px 12px;border-radius:8px;border:2px solid '+(isChecked?'#a5d6a7':'var(--border)')+';background:'+(isChecked?'#e8f5e9':'#fff')+';flex:1;min-width:140px">'
+        +'<input type="radio" name="hk-dops-pgy" value="'+p+'" class="hk-dops-pgy-radio" '+(isChecked?'checked':'')+' style="margin-top:3px;accent-color:#16a34a;width:15px;height:15px;flex-shrink:0">'
+        +'<div>'
+          +'<div style="font-weight:700;font-size:13px;color:#1b5e20">'+p+'</div>'
+          +'<div style="font-size:11px;color:var(--text3);line-height:1.3">'+dopsPgyLabels[p]+'</div>'
+        +'</div>'
+        +'</label>';
+    });
+    html+='</div></div>';
+
+    // Items table ตาม PGY ที่เลือก
+    var selDops=pgyForms[dopsPgy];
+    if(selDops){
+      html+='<div style="font-size:12px;font-weight:700;color:#1b5e20;margin-bottom:8px;padding:7px 11px;background:#e8f5e9;border-radius:6px">📋 '+selDops.procedure+'</div>';
+      html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">';
+      html+='<thead><tr style="background:#f1f8e9">'
+        +'<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid #a5d6a7">Steps</th>'
+        +'<th style="padding:8px;text-align:center;font-size:12px;border:1px solid #a5d6a7;background:#dcfce7;color:#15803d;width:90px">Satisfactory [S]</th>'
+        +'<th style="padding:8px;text-align:center;font-size:12px;border:1px solid #a5d6a7;background:#fee2e2;color:#b91c1c;width:90px">Unsatisfactory [U]</th>'
+        +'</tr></thead><tbody>';
+
+      var mainCount=0; // count scoreable items only
+      selDops.items.forEach(function(item){
+        var itemLabel=typeof item==='string'?item:item.label;
+        var isHeader=item.isHeader||false;
+        var hasSub=item.sub&&item.sub.length;
+
+        if(isHeader){
+          // Header row — no S/U
+          html+='<tr style="background:#e8f5e9">'
+            +'<td colspan="3" style="padding:8px 10px;font-size:12px;font-weight:700;border:1px solid #a5d6a7;color:#1b5e20">'+itemLabel+'</td>'
+            +'</tr>';
+          // Sub-item rows — each with own S/U
+          if(hasSub){
+            item.sub.forEach(function(subLabel){
+              var subKey=dopsPgy+'__'+subLabel;
+              var cur=fd.scoresSU[subKey]||'';
+              mainCount++;
+              html+='<tr>'
+                +'<td style="padding:7px 10px 7px 28px;font-size:12px;border:1px solid #a5d6a7;line-height:1.4">'
+                  +'<span style="color:#a5d6a7;margin-right:6px">└</span>'+subLabel
+                +'</td>'
+                +'<td style="padding:6px;text-align:center;border:1px solid #a5d6a7;background:'+(cur==='S'?'#dcfce7':'#f0fdf4')+'">'
+                  +'<label style="cursor:pointer;width:100%;display:flex;justify-content:center;align-items:center;height:28px">'
+                  +'<input type="radio" name="hkdopsu_'+encodeURIComponent(subKey)+'" value="S" class="hk-su-radio" data-item="'+subKey+'" '+(cur==='S'?'checked':'')+' style="accent-color:#16a34a;width:16px;height:16px">'
+                  +'</label></td>'
+                +'<td style="padding:6px;text-align:center;border:1px solid #a5d6a7;background:'+(cur==='U'?'#fee2e2':'#fff5f5')+'">'
+                  +'<label style="cursor:pointer;width:100%;display:flex;justify-content:center;align-items:center;height:28px">'
+                  +'<input type="radio" name="hkdopsu_'+encodeURIComponent(subKey)+'" value="U" class="hk-su-radio" data-item="'+subKey+'" '+(cur==='U'?'checked':'')+' style="accent-color:#dc2626;width:16px;height:16px">'
+                  +'</label></td>'
+                +'</tr>';
+            });
+          }
+        } else {
+          // Normal item with S/U
+          var itemKey=dopsPgy+'__'+itemLabel;
+          var cur=fd.scoresSU[itemKey]||'';
+          mainCount++;
+          html+='<tr>'
+            +'<td style="padding:8px 10px;font-size:12px;border:1px solid #a5d6a7;line-height:1.4">'+itemLabel+'</td>'
+            +'<td style="padding:6px;text-align:center;border:1px solid #a5d6a7;background:'+(cur==='S'?'#dcfce7':'#f0fdf4')+'">'
+              +'<label style="cursor:pointer;width:100%;display:flex;justify-content:center;align-items:center;height:28px">'
+              +'<input type="radio" name="hkdopsu_'+encodeURIComponent(itemKey)+'" value="S" class="hk-su-radio" data-item="'+itemKey+'" '+(cur==='S'?'checked':'')+' style="accent-color:#16a34a;width:16px;height:16px">'
+              +'</label></td>'
+            +'<td style="padding:6px;text-align:center;border:1px solid #a5d6a7;background:'+(cur==='U'?'#fee2e2':'#fff5f5')+'">'
+              +'<label style="cursor:pointer;width:100%;display:flex;justify-content:center;align-items:center;height:28px">'
+              +'<input type="radio" name="hkdopsu_'+encodeURIComponent(itemKey)+'" value="U" class="hk-su-radio" data-item="'+itemKey+'" '+(cur==='U'?'checked':'')+' style="accent-color:#dc2626;width:16px;height:16px">'
+              +'</label></td>'
+            +'</tr>';
+        }
+      });
+
+      // S count — นับเฉพาะ scoreable items (ไม่นับ header)
+      var sCount=0;
+      selDops.items.forEach(function(item){
+        if(item.isHeader){
+          (item.sub||[]).forEach(function(subLabel){
+            if(fd.scoresSU[dopsPgy+'__'+subLabel]==='S') sCount++;
+          });
+        } else {
+          var lbl=typeof item==='string'?item:item.label;
+          if(fd.scoresSU[dopsPgy+'__'+lbl]==='S') sCount++;
+        }
+      });
+      html+='<tr style="background:#f1f8e9"><td style="padding:7px 10px;font-size:12px;font-weight:700;border:1px solid #a5d6a7">ผลรวม</td>'
+        +'<td colspan="2" style="padding:7px 10px;text-align:center;font-size:12px;font-weight:700;border:1px solid #a5d6a7;color:'+(sCount===mainCount?'#15803d':'#b45309')+'">S = '+sCount+' / '+mainCount+'</td></tr>';
+      html+='</tbody></table></div>';
+    }
+
+  } else if(fk==='cbd'){
+    // CBD: 3-section table (Pre-op + HIP + KNEE) with PGY columns — number input
+    if(!fd.cbdScores) fd.cbdScores={};
+    var PGYS=['PGY-1','PGY-2','PGY-3','PGY-4'];
+
+    function renderCBDSection(sectionLabel, items, sectionKey, bgHeader){
+      var h='';
+      if(sectionLabel){
+        h+='<tr><td colspan="5" style="padding:6px 10px;font-weight:700;font-size:12px;background:'+bgHeader+';border:1px solid #a5d6a7;border-top:2px solid #81c784">'+sectionLabel+'</td></tr>';
+      }
+      items.forEach(function(d){
+        h+='<tr><td style="padding:7px 10px;font-size:12px;border:1px solid #a5d6a7;line-height:1.4">'+d.label+'</td>';
+        PGYS.forEach(function(p){
+          var key=sectionKey+'_'+d.id+'_'+p;
+          var cur=fd.cbdScores[key];
+          var isActive=selPgy===p;
+          if(isActive){
+            var scBg=cur!==undefined?(cur<=1?'#fee2e2':cur===2?'#fef9c3':cur===3?'#dbeafe':'#dcfce7'):'#fff';
+            h+='<td style="padding:4px 6px;text-align:center;border:1px solid #a5d6a7;background:#fafffe">'
+              +'<input type="number" min="0" max="4" class="hk-cbd-inp" data-cbdkey="'+key+'" value="'+(cur!==undefined?cur:'')+'" placeholder="—" '
+              +'style="width:52px;height:34px;text-align:center;font-size:15px;font-weight:700;border:2px solid #a5d6a7;border-radius:6px;background:'+scBg+';color:'+(cur!==undefined?(cur<=1?'#b91c1c':cur===2?'#b45309':cur===3?'#1e40af':'#15803d'):'var(--text2)')+';padding:0">'
+              +'</td>';
+          } else {
+            var prev=fd.cbdScores[key];
+            h+='<td style="padding:4px 6px;text-align:center;border:1px solid #a5d6a7;background:#f8fafc;color:#bbb;font-size:13px;">'+(prev!==undefined?'<span style="opacity:.5">'+prev+'</span>':'—')+'</td>';
+          }
+        });
+        h+='</tr>';
+      });
+      return h;
+    }
+
+    html+='<div style="overflow-x:auto;margin-bottom:11px"><table style="width:100%;border-collapse:collapse;min-width:560px">';
+    html+='<thead><tr style="background:#e8f5e9">'
+      +'<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid #a5d6a7;width:42%">หัวข้อการประเมิน</th>'
+      +PGYS.map(function(p){
+        var isActive=selPgy===p;
+        return '<th style="padding:8px 5px;text-align:center;font-size:12px;border:1px solid #a5d6a7;width:14.5%;font-weight:'+(isActive?'700':'400')+';background:'+(isActive?'#c8e6c9':'#f1f8e9')+';color:'+(isActive?'#1b5e20':'#aaa')+'">'+p+(isActive?' ✓':'')+'</th>';
+      }).join('')
+      +'</tr>'
+      +'<tr style="background:#f1f8e9"><td style="padding:4px 10px;font-size:10px;color:var(--text3);border:1px solid #a5d6a7">คะแนน 0–4</td>'
+      +PGYS.map(function(p){
+        var isActive=selPgy===p;
+        return '<td style="padding:4px 5px;text-align:center;font-size:10px;border:1px solid #a5d6a7;color:'+(isActive?'#388e3c':'#ccc')+'">'+(isActive?'กรอกคะแนน':'—')+'</td>';
+      }).join('')+'</tr>'
+      +'</thead><tbody>';
+
+    html+=renderCBDSection('1. Pre-op evaluation', form.preop, 'preop', '#e8f5e9');
+    html+='<tr><td colspan="5" style="padding:6px 10px;font-weight:700;font-size:12px;background:#c8e6c9;border:1px solid #a5d6a7;border-top:2px solid #388e3c">2. Radiographic evaluation — 🦴 HIP</td></tr>';
+    html+=renderCBDSection('', form.hip, 'hip', '#f1f8e9');
+    html+='<tr><td colspan="5" style="padding:6px 10px;font-weight:700;font-size:12px;background:#c8e6c9;border:1px solid #a5d6a7;border-top:2px solid #388e3c">2. Radiographic evaluation — 🦵 KNEE</td></tr>';
+    html+=renderCBDSection('', form.knee, 'knee', '#f1f8e9');
+    html+='</tbody></table></div>';
+
+    if(!selPgy){
+      html+='<div style="padding:9px 13px;background:#fff3e0;border:1px solid #ffcc80;border-radius:7px;font-size:12px;color:#e65100;margin-bottom:10px">⚠️ กรุณาเลือก PGY Level ก่อนเพื่อกรอกคะแนน</div>';
+    }
+    html+='<div style="font-size:11px;padding:6px 10px;background:#f1f8e9;border-radius:6px;color:var(--text3);margin-bottom:10px">'
+      +[0,1,2,3,4].map(function(n){return '<b>'+n+'</b> = '+scLabels[n];}).join(' &nbsp;|&nbsp; ')+'</div>';
+
+  } else {
+    // Mini-CEX / PBA — standard 0-4 table
+    html+='<div style="overflow-x:auto;margin-bottom:11px"><table style="width:100%;border-collapse:collapse;min-width:480px">';
+    html+='<thead><tr style="background:#f1f8e9">'
+      +'<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid #a5d6a7">หัวข้อการประเมิน</th>'
+      +[0,1,2,3,4].map(function(n){
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        var col=n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';
+        return '<th style="padding:6px 3px;text-align:center;font-size:11px;border:1px solid #a5d6a7;background:'+bg+';color:'+col+';min-width:42px">'+n+'</th>';
+      }).join('')+'</tr></thead><tbody>';
+    form.domains.forEach(function(d){
+      var cur=fd.scores4[d.id];
+      var rowBg=d.isOverall?'background:#f1f8e9;font-weight:700;':'';
+      html+='<tr style="'+rowBg+'"><td style="padding:8px 10px;font-size:12px;border:1px solid #a5d6a7">'+d.label+'</td>';
+      [0,1,2,3,4].forEach(function(n){
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        html+='<td style="padding:4px 3px;text-align:center;border:1px solid #a5d6a7">'
+          +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+          +'<input type="radio" name="hk4_'+d.id+'" value="'+n+'" class="hk4-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;accent-color:'+(n<=1?'#dc2626':n===2?'#d97706':n===3?'#2563eb':'#16a34a')+'"></label></td>';
+      });
+      html+='</tr>';
+    });
+    html+='</tbody></table></div>';
+    html+='<div style="font-size:11px;padding:6px 10px;background:#f1f8e9;border-radius:6px;color:var(--text3);margin-bottom:10px">'
+      +[0,1,2,3,4].map(function(n){return '<b>'+n+'</b>='+scLabels[n];}).join(' | ')+'</div>';
+  }
+
+  html+='<div class="fgrp"><label class="flbl">Comments</label>'
+    +'<textarea id="hk-comment" class="finp" rows="3" placeholder="ความเห็นของอาจารย์...">'+(fd.comment||'')+'</textarea></div>';
+  return html;
+}
+
+function bindHKFormEvents(body,ctx){
+  body.querySelectorAll('#hk-form-tabs .rota-rtab').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      _saveHKFormData(ctx,ctx.hkFormType);
+      ctx.hkFormType=btn.dataset.sf;
+      document.getElementById('hk-form-content').innerHTML=renderSingleHKForm(ctx,btn.dataset.sf);
+      body.querySelectorAll('#hk-form-tabs .rota-rtab').forEach(function(b){b.classList.toggle('active',b.dataset.sf===btn.dataset.sf);});
+      bindHKFormContentEvents(body,ctx,btn.dataset.sf);
+    });
+  });
+  bindHKFormContentEvents(body,ctx,ctx.hkFormType||'minicex');
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',function(){
+    _saveHKFormData(ctx,ctx.hkFormType);
+    saveHKAssessment(ctx);
+  });
+}
+
+function bindHKFormContentEvents(body,ctx,fk){
+  if(!ctx.hkData[fk]) ctx.hkData[fk]={meta:{},scores4:{},scoresSU:{},cbdScores:{},pgy:'',level:'',comment:''};
+  var fd=ctx.hkData[fk];
+  if(!fd.cbdScores) fd.cbdScores={};
+  body.querySelectorAll('.hk4-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      var domId=r.dataset.domain;
+      fd.scores4[domId]=parseInt(r.value);
+      body.querySelectorAll('input[name="hk4_'+domId+'"]').forEach(function(ri){
+        var lbl=ri.closest('label'); if(!lbl)return;
+        var n=parseInt(ri.value);
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        lbl.style.background=ri.checked?bg:'transparent';
+      });
+    });
+  });
+  // CBD number inputs — update cbdScores on input
+  body.querySelectorAll('.hk-cbd-inp').forEach(function(inp){
+    inp.addEventListener('input',function(){
+      var raw=parseInt(inp.value);
+      if(isNaN(raw)||raw<0||raw>4){inp.style.background='#fee2e2';return;}
+      fd.cbdScores[inp.dataset.cbdkey]=raw;
+      var bg=raw<=1?'#fee2e2':raw===2?'#fef9c3':raw===3?'#dbeafe':'#dcfce7';
+      var col=raw<=1?'#b91c1c':raw===2?'#b45309':raw===3?'#1e40af':'#15803d';
+      inp.style.background=bg;
+      inp.style.color=col;
+    });
+    inp.addEventListener('blur',function(){
+      var raw=parseInt(inp.value);
+      if(isNaN(raw)||raw<0) inp.value='';
+      if(raw>4){inp.value=4; inp.dispatchEvent(new Event('input'));}
+    });
+  });
+  body.querySelectorAll('.hk-su-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      fd.scoresSU[r.dataset.item]=r.value;
+      var rows=body.querySelectorAll('input[name="hksu_'+encodeURIComponent(r.dataset.item)+'"]');
+      rows.forEach(function(ri){
+        var td=ri.closest('td'); if(!td)return;
+        if(ri.value==='S') td.style.background=ri.checked?'#dcfce7':'#f0fdf4';
+        if(ri.value==='U') td.style.background=ri.checked?'#fee2e2':'#fff5f5';
+      });
+    });
+  });
+  body.querySelectorAll('.hk-dops-pgy-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      _saveHKFormData(ctx,fk);
+      fd.dopsPgy=r.value;
+      var fc=document.getElementById('hk-form-content');
+      if(fc){fc.innerHTML=renderSingleHKForm(ctx,fk);bindHKFormContentEvents(body,ctx,fk);}
+    });
+  });
+  body.querySelectorAll('.hk-pgy-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      _saveHKFormData(ctx,fk);
+      fd.pgy=r.value;
+      // re-render to update column highlight
+      var fc=document.getElementById('hk-form-content');
+      if(fc){fc.innerHTML=renderSingleHKForm(ctx,fk);bindHKFormContentEvents(body,ctx,fk);}
+    });
+  });
+}
+
+function _saveHKFormData(ctx,fk){
+  if(!ctx.hkData[fk]) ctx.hkData[fk]={meta:{},scores4:{},scoresSU:{},cbdScores:{},pgy:'',level:'',comment:''};
+  var fd=ctx.hkData[fk];
+  if(!fd.cbdScores) fd.cbdScores={};
+  fd.meta.assessDate=ctx.assessDate;
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  if(res){fd.meta.trainee=res.fn+' '+res.ln;fd.meta.yr=YR_LABELS[res.yr]||res.yr;}
+  var g=function(id){return document.getElementById(id);};
+  if(g('hk-diagnosis')) fd.meta.diagnosis=g('hk-diagnosis').value;
+  if(g('hk-hn'))        fd.meta.hn=g('hk-hn').value;
+  if(g('hk-procedure')) fd.meta.procedure=g('hk-procedure').value;
+  if(g('hk-comment'))   fd.comment=g('hk-comment').value;
+  var pgyEl=document.querySelector('input[name="hk-pgy"]:checked');
+  if(pgyEl) fd.pgy=pgyEl.value;
+  var dopsPgyEl=document.querySelector('input[name="hk-dops-pgy"]:checked');
+  if(dopsPgyEl) fd.dopsPgy=dopsPgyEl.value;
+}
+
+function saveHKAssessment(ctx){
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  if(!requireHipKneeEvaluator(ctx))return;
+  if(!ctx.assessDate){toast('กรุณาระบุวันที่ประเมิน','error');return;}
+  var fk=ctx.hkFormType||'minicex';
+  var fd=ctx.hkData[fk]||{};
+  var form=HK_FORMS[fk];
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+
+  var domains;
+  if(form.scale==='su'){
+    // merged DOPS — build domains from selected PGY's items
+    var dopsPgy=fd.dopsPgy||'PGY-2';
+    var selDopsForm=(form.pgyForms||{})[dopsPgy]||{items:[]};
+    domains=[];
+    selDopsForm.items.forEach(function(item){
+      var lbl=typeof item==='string'?item:item.label;
+      if(item.isHeader){
+        // skip header itself, add sub-items as scoreable domains
+        (item.sub||[]).forEach(function(subLabel){
+          var subKey=dopsPgy+'__'+subLabel;
+          domains.push({id:subKey, label:subLabel, parentLabel:lbl, su:fd.scoresSU[subKey]||'', pgy:dopsPgy, procedure:selDopsForm.procedure});
+        });
+      } else {
+        var itemKey=dopsPgy+'__'+lbl;
+        domains.push({id:itemKey, label:lbl, su:fd.scoresSU[itemKey]||'', pgy:dopsPgy, procedure:selDopsForm.procedure});
+      }
+    });
+  } else if(fk==='cbd'){
+    // CBD stores scores in cbdScores keyed by "section_domainId_PGY"
+    var cbdS=fd.cbdScores||{};
+    var allSections=[
+      {key:'preop', label:'1. Pre-op evaluation', items:form.preop},
+      {key:'hip',   label:'2. HIP Radiographic evaluation', items:form.hip},
+      {key:'knee',  label:'2. KNEE Radiographic evaluation', items:form.knee},
+    ];
+    domains=[];
+    allSections.forEach(function(sec){
+      sec.items.forEach(function(d){
+        var scoreKey=sec.key+'_'+d.id+'_'+(fd.pgy||'');
+        domains.push({id:d.id,label:d.label,section:sec.key,sectionLabel:sec.label,
+          score4:cbdS[scoreKey]!==undefined?cbdS[scoreKey]:null});
+      });
+    });
+  } else {
+    domains=form.domains.map(function(d){return {id:d.id,label:d.label,score4:fd.scores4[d.id]!==undefined?fd.scores4[d.id]:null,isOverall:!!d.isOverall};});
+  }
+  var rec={
+    id:uid(), type:'hk', formType:fk,
+    resId:ctx.resId, rotation:'hk',
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:ctx.assessDate,
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    meta:{...fd.meta,evaluatorName:advisorFullName(ctx.advId)||fd.meta?.evaluatorName||''}, domains,
+    pgy:fd.pgy||'',
+    dopsPgy:fk==='dops'?(fd.dopsPgy||''):'',
+    dopsProcedure:fk==='dops'?((HK_FORMS.dops.pgyForms[fd.dopsPgy||'PGY-2']||{}).procedure||''):'',
+    comment:fd.comment||'',
+    signed:true, sigData:null, createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมิน Hip & Knee '+form.abbr+' แล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+// ─── HAND FORMS ───────────────────────────────────────
+function renderHandForms(ctx){
+  var sf=ctx.handFormType||'minicex';
+  return '<div style="background:#fce7f3;border:1px solid #f9a8d4;border-radius:8px;padding:9px 13px;margin-bottom:13px;font-size:12px;color:#9d174d;font-weight:600">🤲 Hand — เลือกแบบประเมินที่ต้องการกรอก</div>'
+    + '<div class="rota-rotation-tabs" id="hand-form-tabs" style="margin-bottom:16px">'
+    + HAND_FORM_KEYS.map(function(k){return '<button class="rota-rtab'+(k===sf?' active':'')+'" data-sf="'+k+'">'+HAND_FORMS[k].abbr+'</button>';}).join('')
+    + '</div><div id="hand-form-content">'+renderSingleHandForm(ctx,sf)+'</div>'
+    + '<div class="mbtns" style="margin-top:4px"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button><button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน</button></div>';
+}
+
+function renderSingleHandForm(ctx,fk){
+  if(!ctx.handData[fk]) ctx.handData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  var fd=ctx.handData[fk];
+  var form=HAND_FORMS[fk];
+  var m=fd.meta||{};
+
+  // Header badge
+  var html='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">'
+    +'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#fce7f3;color:#9d174d">🤲 Hand</span>'
+    +'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#fdf2f8;color:#be185d">'+form.abbr+(form.procedure?' — '+form.procedure:'')+'</span>'
+    +'</div>';
+
+  // Meta row
+  html+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:11px;padding:10px 13px;background:#fdf2f8;border:1px solid #f9a8d4;border-radius:8px">';
+  html+='<div class="fgrp" style="flex:2"><label class="flbl">Diagnosis</label><input id="hd-diagnosis" class="finp" value="'+(m.diagnosis||'')+'" placeholder="ระบุ"></div>';
+  if(form.fields.includes('procedure'))
+    html+='<div class="fgrp" style="flex:2"><label class="flbl">Procedure</label><input id="hd-procedure" class="finp" value="'+(m.procedure||form.procedure||'')+'" placeholder="ระบุ"></div>';
+  if(form.fields.includes('hn'))
+    html+='<div class="fgrp" style="flex:1;min-width:100px"><label class="flbl">HN</label><input id="hd-hn" class="finp" value="'+(m.hn||'')+'" placeholder="HN"></div>';
+  html+='</div>';
+  html+='<div style="font-size:11px;color:#9d174d;background:#fce7f3;padding:5px 10px;border-radius:6px;margin-bottom:10px">⚙️ Setting: '+form.setting+'</div>';
+
+  if(form.scale==='su'){
+    // DOPS S/U checklist
+    var sCount=(function(){var c=0;form.items.forEach(function(item){if(fd.scoresSU[item]==='S')c++;});return c;})();
+    html+='<div style="font-size:12px;font-weight:700;color:#9d174d;margin-bottom:8px">Procedure: <span style="color:#be185d">'+form.procedure+'</span></div>';
+    if(form.passThreshold) html+='<div style="font-size:11px;color:#9d174d;background:#fce7f3;padding:4px 10px;border-radius:6px;margin-bottom:10px">เกณฑ์ผ่าน: S ≥ '+form.passThreshold+' ข้อ (ปัจจุบัน: <b>'+sCount+' S</b> / '+form.items.length+')</div>';
+    html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">';
+    html+='<thead><tr style="background:#fdf2f8">'
+      +'<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid #f9a8d4">Steps</th>'
+      +'<th style="padding:8px;text-align:center;font-size:12px;border:1px solid #f9a8d4;background:#dcfce7;color:#15803d;width:15%">[S]</th>'
+      +'<th style="padding:8px;text-align:center;font-size:12px;border:1px solid #f9a8d4;background:#fee2e2;color:#b91c1c;width:15%">[U]</th>'
+      +'</tr></thead><tbody>';
+    form.items.forEach(function(item){
+      var cur=fd.scoresSU[item]||'';
+      html+='<tr>'
+        +'<td style="padding:8px 10px;font-size:12px;border:1px solid #f9a8d4">'+item+'</td>'
+        +'<td style="padding:6px;text-align:center;border:1px solid #f9a8d4;background:'+(cur==='S'?'#dcfce7':'#f0fdf4')+'"><label style="cursor:pointer;width:100%;display:flex;justify-content:center;align-items:center;height:28px"><input type="radio" name="hsu_'+encodeURIComponent(item)+'" value="S" class="hd-su-radio" data-item="'+item+'" '+(cur==='S'?'checked':'')+' style="accent-color:#16a34a;width:16px;height:16px"></label></td>'
+        +'<td style="padding:6px;text-align:center;border:1px solid #f9a8d4;background:'+(cur==='U'?'#fee2e2':'#fff5f5')+'"><label style="cursor:pointer;width:100%;display:flex;justify-content:center;align-items:center;height:28px"><input type="radio" name="hsu_'+encodeURIComponent(item)+'" value="U" class="hd-su-radio" data-item="'+item+'" '+(cur==='U'?'checked':'')+' style="accent-color:#dc2626;width:16px;height:16px"></label></td>'
+        +'</tr>';
+    });
+    html+='</tbody></table></div>';
+  } else {
+    // Scale 0-4 with recursive sub-item support
+    var hdBorder='#f9a8d4'; var hdMid='#fdf2f8'; var hdAccent='#9d174d';
+    html+='<div style="overflow-x:auto;margin-bottom:11px"><table style="width:100%;border-collapse:collapse;min-width:480px">';
+    html+='<thead><tr style="background:'+hdMid+'">'
+      +'<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid '+hdBorder+'">หัวข้อการประเมิน</th>'
+      +[0,1,2,3,4].map(function(n){
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        var col=n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';
+        return '<th style="padding:6px 3px;text-align:center;font-size:11px;border:1px solid '+hdBorder+';background:'+bg+';color:'+col+';min-width:42px">'+n+'</th>';
+      }).join('')+'</tr></thead><tbody>';
+    (function renderHDRows(domains, indent){
+      domains.forEach(function(d){
+        var pad=indent===0?'8px 10px':'7px 10px 7px '+(10+indent*14)+'px';
+        if(d.isHeader){
+          var hdrBg=indent===0?hdMid:(indent===1?'#fce7f3':'#fff5fb');
+          html+='<tr style="background:'+hdrBg+'">'
+            +'<td colspan="6" style="padding:'+pad+';font-size:12px;font-weight:700;border:1px solid '+hdBorder+';color:'+hdAccent+'">'+d.label+'</td></tr>';
+          if(d.sub&&d.sub.length) renderHDRows(d.sub, indent+1);
+        } else if(d.isOverall){
+          var cur=fd.scores4[d.id];
+          html+='<tr style="background:'+hdMid+';font-weight:700"><td style="padding:8px 10px;font-size:12px;border:1px solid '+hdBorder+'">'+d.label+'</td>';
+          [0,1,2,3,4].forEach(function(n){
+            var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+            html+='<td style="padding:4px 3px;text-align:center;border:1px solid '+hdBorder+'">'
+              +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+              +'<input type="radio" name="hd4_'+d.id+'" value="'+n+'" class="hd4-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;accent-color:'+(n<=1?'#dc2626':n===2?'#d97706':n===3?'#2563eb':'#16a34a')+'"></label></td>';
+          });
+          html+='</tr>';
+        } else {
+          var cur=fd.scores4[d.id];
+          var pfx=indent>0?'<span style="color:'+hdBorder+';margin-right:6px">└</span>':'';
+          html+='<tr><td style="padding:'+pad+';font-size:12px;border:1px solid '+hdBorder+';color:var(--text2)">'+pfx+d.label+'</td>';
+          [0,1,2,3,4].forEach(function(n){
+            var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+            html+='<td style="padding:4px 3px;text-align:center;border:1px solid '+hdBorder+'">'
+              +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+              +'<input type="radio" name="hd4_'+d.id+'" value="'+n+'" class="hd4-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;accent-color:'+(n<=1?'#dc2626':n===2?'#d97706':n===3?'#2563eb':'#16a34a')+'"></label></td>';
+          });
+          html+='</tr>';
+          if(d.sub&&d.sub.length) renderHDRows(d.sub, indent+1);
+        }
+      });
+    })(form.domains, 0);
+    html+='</tbody></table></div>';
+    html+='<div style="font-size:11px;padding:6px 10px;background:'+hdMid+';border-radius:6px;color:var(--text3);margin-bottom:10px">'
+      +[0,1,2,3,4].map(function(n){return '<b>'+n+'</b>='+SPINE_SCORE_LABELS[n];}).join(' &nbsp;|&nbsp; ')+'</div>';
+  }
+
+  // Level L1-L4
+  html+='<div style="margin-bottom:10px;padding:10px 13px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">';
+  html+='<div><div class="flbl" style="margin-bottom:6px">Level</div><div class="ped-cbgroup">';
+  SPINE_LEVELS.forEach(function(lv){
+    html+='<label class="ped-cb-opt" style="flex-direction:column;padding:6px 10px;text-align:center;'+(fd.level===lv.l?'background:#fce7f3;border-color:#f9a8d4;':'')+'">'
+      +'<input type="radio" name="hd-level" value="'+lv.l+'" class="hd-level-radio" '+(fd.level===lv.l?'checked':'')+' style="display:none">'
+      +'<span style="font-weight:700;font-size:13px">'+lv.l+'</span>'
+      +'<span style="font-size:10px;color:var(--text3)">'+lv.desc+'</span></label>';
+  });
+  html+='</div></div>';
+  if(form.hasAcuity){
+    html+='<div><div class="flbl" style="margin-bottom:6px">Acuity to seek help where required</div>'
+      +'<div class="ped-cbgroup">'
+      +'<label class="ped-cb-opt"><input type="radio" name="hd-acuity" value="yes" class="hd-acuity-radio" '+(fd.acuity==='yes'?'checked':'')+'>Yes (y)</label>'
+      +'<label class="ped-cb-opt"><input type="radio" name="hd-acuity" value="no"  class="hd-acuity-radio" '+(fd.acuity==='no'?'checked':'')+'>No (n)</label>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.6">'
+      +'<div>( ) สามารถปฏิบัติได้เมื่อมีอาจารย์ควบคุมอย่างใกล้ชิด</div>'
+      +'<div>( ) สามารถปฏิบัติได้เองภายใต้การชี้แนะของอาจารย์</div>'
+      +'<div>( ) สามารถปฏิบัติได้ด้วยตนเองโดยมีอาจารย์ช่วยเหลือเมื่อต้องการ</div>'
+      +'<div>( ) สามารถปฏิบัติได้ด้วยตนเองและควบคุมผู้ที่มีประสบการณ์น้อยกว่า</div>'
+      +'</div></div>';
+  }
+  html+='</div>';
+
+  // Comment
+  html+='<div class="fgrp"><label class="flbl">ข้อเสนอแนะเพิ่มเติม (Staff comment)</label>'
+    +'<textarea id="hd-comment" class="finp" rows="3" placeholder="ความเห็นของอาจารย์...">'+(fd.comment||'')+'</textarea></div>';
+
+  return html;
+}
+
+function bindHandFormEvents(body,ctx){
+  body.querySelectorAll('#hand-form-tabs .rota-rtab').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      _saveHandFormData(ctx,ctx.handFormType);
+      ctx.handFormType=btn.dataset.sf;
+      document.getElementById('hand-form-content').innerHTML=renderSingleHandForm(ctx,btn.dataset.sf);
+      body.querySelectorAll('#hand-form-tabs .rota-rtab').forEach(function(b){b.classList.toggle('active',b.dataset.sf===btn.dataset.sf);});
+      bindHandFormContentEvents(body,ctx,btn.dataset.sf);
+    });
+  });
+  bindHandFormContentEvents(body,ctx,ctx.handFormType||'minicex');
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',function(){
+    _saveHandFormData(ctx,ctx.handFormType);
+    saveHandAssessment(ctx);
+  });
+}
+
+function bindHandFormContentEvents(body,ctx,fk){
+  if(!ctx.handData[fk]) ctx.handData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  var fd=ctx.handData[fk];
+  body.querySelectorAll('.hd4-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      var domId=r.dataset.domain;
+      fd.scores4[domId]=parseInt(r.value);
+      body.querySelectorAll('input[name="hd4_'+domId+'"]').forEach(function(ri){
+        var lbl=ri.closest('label');
+        if(!lbl)return;
+        var n=parseInt(ri.value);
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        lbl.style.background=ri.checked?bg:'transparent';
+      });
+    });
+  });
+  body.querySelectorAll('.hd-su-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      fd.scoresSU[r.dataset.item]=r.value;
+      // update row background
+      var rows=body.querySelectorAll('input[name="hsu_'+encodeURIComponent(r.dataset.item)+'"]');
+      rows.forEach(function(ri){
+        var td=ri.closest('td');
+        if(!td)return;
+        if(ri.value==='S') td.style.background=ri.checked?'#dcfce7':'#f0fdf4';
+        if(ri.value==='U') td.style.background=ri.checked?'#fee2e2':'#fff5f5';
+      });
+      // update pass count
+      var form=HAND_FORMS[fk];
+      if(form.passThreshold){
+        var sCount=0;
+        form.items.forEach(function(item){if(fd.scoresSU[item]==='S')sCount++;});
+        var info=body.querySelector('.hd-pass-info');
+        if(info) info.innerHTML='เกณฑ์ผ่าน: S ≥ '+form.passThreshold+' ข้อ (ปัจจุบัน: <b>'+sCount+' S</b> / '+form.items.length+')';
+      }
+    });
+  });
+  body.querySelectorAll('.hd-level-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      fd.level=r.value;
+      body.querySelectorAll('.hd-level-radio').forEach(function(ri){
+        var lbl=ri.closest('label');
+        if(lbl){lbl.style.background=ri.checked?'#fce7f3':'';lbl.style.borderColor=ri.checked?'#f9a8d4':'';}
+      });
+    });
+  });
+  body.querySelectorAll('.hd-acuity-radio').forEach(function(r){
+    r.addEventListener('change',function(){ fd.acuity=r.value; });
+  });
+}
+
+function _saveHandFormData(ctx,fk){
+  if(!ctx.handData[fk]) ctx.handData[fk]={meta:{},scores4:{},scoresSU:{},level:'',acuity:'',comment:''};
+  var fd=ctx.handData[fk];
+  fd.meta.assessDate=ctx.assessDate;
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  if(res){fd.meta.trainee=res.fn+' '+res.ln;fd.meta.yr=YR_LABELS[res.yr]||res.yr;}
+  var g=function(id){return document.getElementById(id);};
+  if(g('hd-diagnosis')) fd.meta.diagnosis=g('hd-diagnosis').value;
+  if(g('hd-procedure')) fd.meta.procedure=g('hd-procedure').value;
+  if(g('hd-hn'))        fd.meta.hn=g('hd-hn').value;
+  if(g('hd-comment'))   fd.comment=g('hd-comment').value;
+  var lvEl=document.querySelector('input[name="hd-level"]:checked');
+  if(lvEl) fd.level=lvEl.value;
+  var acEl=document.querySelector('input[name="hd-acuity"]:checked');
+  if(acEl) fd.acuity=acEl.value;
+}
+
+function saveHandAssessment(ctx){
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  if(!ctx.assessDate){toast('กรุณาระบุวันที่ประเมิน','error');return;}
+  var fk=ctx.handFormType||'minicex';
+  var fd=ctx.handData[fk]||{};
+  var form=HAND_FORMS[fk];
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  var domains;
+  if(form.scale==='su'){
+    domains=form.items.map(function(item){return {id:item,label:item,su:fd.scoresSU[item]||''};});
+  } else {
+    domains=[];
+    (function flatHD(list,par){
+      list.forEach(function(d){
+        if(d.isHeader){ if(d.sub&&d.sub.length) flatHD(d.sub,d.label); }
+        else {
+          domains.push({id:d.id,label:d.label,score4:fd.scores4[d.id]!==undefined?fd.scores4[d.id]:null,isOverall:!!d.isOverall,parent:par||null});
+          if(d.sub&&d.sub.length) flatHD(d.sub,d.label);
+        }
+      });
+    })(form.domains,null);
+  }
+  // count S for DOPS
+  var sCount=0;
+  if(form.scale==='su') domains.forEach(function(d){if(d.su==='S')sCount++;});
+  var rec={
+    id:uid(), type:'hand', formType:fk,
+    resId:ctx.resId, rotation:'hand',
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:ctx.assessDate,
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    meta:fd.meta, domains,
+    level:fd.level||'', acuity:fd.acuity||'',
+    sCount:sCount, passThreshold:form.passThreshold||0,
+    comment:fd.comment||'',
+    signed:true, sigData:null, createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมิน Hand '+form.abbr+' แล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+// ─── FOOT & ANKLE FORMS ───────────────────────────────
+function renderFootAnkleForms(ctx){
+  var sf=ctx.footankleFormType||'cbd';
+  return '<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:9px 13px;margin-bottom:13px;font-size:12px;color:#92400e;font-weight:600">🦶 Foot & Ankle — เลือกแบบประเมินที่ต้องการกรอก</div>'
+    + '<div class="rota-rotation-tabs" id="fa-form-tabs" style="margin-bottom:16px">'
+    + FOOT_ANKLE_FORM_KEYS.map(function(k){return '<button class="rota-rtab'+(k===sf?' active':'')+'" data-sf="'+k+'">'+FOOT_ANKLE_FORMS[k].abbr+'</button>';}).join('')
+    + '</div><div id="fa-form-content">'+renderSingleFootAnkleForm(ctx,sf)+'</div>'
+    + '<div class="mbtns" style="margin-top:4px"><button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button><button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน</button></div>';
+}
+
+function renderSingleFootAnkleForm(ctx,fk){
+  if(!ctx.footankleData[fk]) ctx.footankleData[fk]={meta:{},scores4:{},scoresSU:{},level:'',comment:''};
+  var fd=ctx.footankleData[fk];
+  var form=FOOT_ANKLE_FORMS[fk];
+  var m=fd.meta||{};
+
+  // header badge + meta
+  var html='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">'
+    +'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#fef9c3;color:#92400e">🦶 Foot & Ankle</span>'
+    +'<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#fefce8;color:#a16207">'+form.abbr+'</span>'
+    +'</div>';
+
+  html+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:11px;padding:10px 13px;background:#fefce8;border:1px solid #fde68a;border-radius:8px">';
+  html+='<div class="fgrp" style="flex:2"><label class="flbl">Diagnosis</label><input id="fa-diagnosis" class="finp" value="'+(m.diagnosis||'')+'" placeholder="ระบุ"></div>';
+  if(form.fields.includes('hn'))
+    html+='<div class="fgrp" style="flex:1;min-width:100px"><label class="flbl">HN</label><input id="fa-hn" class="finp" value="'+(m.hn||'')+'" placeholder="HN"></div>';
+  html+='</div>';
+  html+='<div style="font-size:11px;color:#92400e;background:#fef9c3;padding:5px 10px;border-radius:6px;margin-bottom:10px">⚙️ Setting: '+form.setting+'</div>';
+
+  if(form.scale==='su'){
+    // S/U checklist
+    html+='<div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:8px">Procedure: <span style="color:#b45309">'+form.procedure+'</span></div>';
+    html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">';
+    html+='<thead><tr style="background:#fefce8">'
+      +'<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid #fde68a">หัวข้อ</th>'
+      +'<th style="padding:8px;text-align:center;font-size:12px;border:1px solid #fde68a;background:#dcfce7;color:#15803d;width:15%">Satisfactory [S]</th>'
+      +'<th style="padding:8px;text-align:center;font-size:12px;border:1px solid #fde68a;background:#fee2e2;color:#b91c1c;width:15%">Unsatisfactory [U]</th>'
+      +'</tr></thead><tbody>';
+    form.items.forEach(function(item){
+      var cur=fd.scoresSU[item]||'';
+      html+='<tr>'
+        +'<td style="padding:8px 10px;font-size:12px;border:1px solid #fde68a">'+item+'</td>'
+        +'<td style="padding:6px;text-align:center;border:1px solid #fde68a;background:#f0fdf4"><label style="cursor:pointer;width:100%;display:flex;justify-content:center;align-items:center;height:28px"><input type="radio" name="fasu_'+encodeURIComponent(item)+'" value="S" class="fa-su-radio" data-item="'+item+'" '+(cur==='S'?'checked':'')+' style="accent-color:#16a34a;width:16px;height:16px"></label></td>'
+        +'<td style="padding:6px;text-align:center;border:1px solid #fde68a;background:#fff5f5"><label style="cursor:pointer;width:100%;display:flex;justify-content:center;align-items:center;height:28px"><input type="radio" name="fasu_'+encodeURIComponent(item)+'" value="U" class="fa-su-radio" data-item="'+item+'" '+(cur==='U'?'checked':'')+' style="accent-color:#dc2626;width:16px;height:16px"></label></td>'
+        +'</tr>';
+    });
+    html+='</tbody></table></div>';
+  } else {
+    // Scale 0-4 with recursive sub-item support
+    var faAccent='#92400e'; var faBorder='#fde68a'; var faMid='#fefce8';
+    html+='<div style="overflow-x:auto;margin-bottom:11px"><table style="width:100%;border-collapse:collapse;min-width:480px">';
+    html+='<thead><tr style="background:'+faMid+'">'
+      +'<th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid '+faBorder+'">หัวข้อการประเมิน</th>'
+      +[0,1,2,3,4].map(function(n){
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        var col=n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';
+        return '<th style="padding:6px 3px;text-align:center;font-size:11px;border:1px solid '+faBorder+';background:'+bg+';color:'+col+';min-width:42px">'+n+'</th>';
+      }).join('')+'</tr></thead><tbody>';
+    (function renderFARows(domains, indent){
+      domains.forEach(function(d){
+        var pad=indent===0?'8px 10px':'7px 10px 7px '+(10+indent*14)+'px';
+        if(d.isHeader){
+          var hdrBg=indent===0?faMid:(indent===1?'#fef9c3':'#fffef5');
+          html+='<tr style="background:'+hdrBg+'">'
+            +'<td colspan="6" style="padding:'+pad+';font-size:12px;font-weight:700;border:1px solid '+faBorder+';color:'+faAccent+'">'+d.label+'</td>'
+            +'</tr>';
+          if(d.sub&&d.sub.length) renderFARows(d.sub, indent+1);
+        } else if(d.isOverall){
+          var cur=fd.scores4[d.id];
+          html+='<tr style="background:'+faMid+';font-weight:700"><td style="padding:8px 10px;font-size:12px;border:1px solid '+faBorder+'">'+d.label+'</td>';
+          [0,1,2,3,4].forEach(function(n){
+            var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+            html+='<td style="padding:4px 3px;text-align:center;border:1px solid '+faBorder+'">'
+              +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+              +'<input type="radio" name="fa4_'+d.id+'" value="'+n+'" class="fa4-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;accent-color:'+(n<=1?'#dc2626':n===2?'#d97706':n===3?'#2563eb':'#16a34a')+'"></label></td>';
+          });
+          html+='</tr>';
+        } else {
+          var cur=fd.scores4[d.id];
+          var pfx=indent>0?'<span style="color:'+faBorder+';margin-right:6px">└</span>':'';
+          html+='<tr><td style="padding:'+pad+';font-size:12px;border:1px solid '+faBorder+';color:var(--text2)">'+pfx+d.label+'</td>';
+          [0,1,2,3,4].forEach(function(n){
+            var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+            html+='<td style="padding:4px 3px;text-align:center;border:1px solid '+faBorder+'">'
+              +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;'+(cur===n?'background:'+bg:'background:transparent')+'">'
+              +'<input type="radio" name="fa4_'+d.id+'" value="'+n+'" class="fa4-radio" data-domain="'+d.id+'" '+(cur===n?'checked':'')+' style="cursor:pointer;accent-color:'+(n<=1?'#dc2626':n===2?'#d97706':n===3?'#2563eb':'#16a34a')+'"></label></td>';
+          });
+          html+='</tr>';
+          if(d.sub&&d.sub.length) renderFARows(d.sub, indent+1);
+        }
+      });
+    })(form.domains, 0);
+    html+='</tbody></table></div>';
+    html+='<div style="font-size:11px;padding:6px 10px;background:'+faMid+';border-radius:6px;color:var(--text3);margin-bottom:10px">'
+      +[0,1,2,3,4].map(function(n){return '<b>'+n+'</b>='+SPINE_SCORE_LABELS[n];}).join(' &nbsp;|&nbsp; ')+'</div>';
+  }
+
+  // Level L1-L4
+  html+='<div style="margin-bottom:10px;padding:10px 13px;background:#f8fafc;border:1px solid var(--border);border-radius:8px">';
+  html+='<div class="flbl" style="margin-bottom:6px">ระดับความสามารถ (Level)</div><div class="ped-cbgroup">';
+  SPINE_LEVELS.forEach(function(lv){
+    html+='<label class="ped-cb-opt" style="flex-direction:column;padding:6px 10px;text-align:center;'+(fd.level===lv.l?'background:#fef9c3;border-color:#fde68a;':'')+'">'
+      +'<input type="radio" name="fa-level" value="'+lv.l+'" class="fa-level-radio" '+(fd.level===lv.l?'checked':'')+' style="display:none">'
+      +'<span style="font-weight:700;font-size:13px">'+lv.l+'</span>'
+      +'<span style="font-size:10px;color:var(--text3)">'+lv.desc+'</span></label>';
+  });
+  html+='</div></div>';
+
+  // Comment
+  html+='<div class="fgrp"><label class="flbl">ข้อเสนอแนะเพิ่มเติม (Staff comment)</label>'
+    +'<textarea id="fa-comment" class="finp" rows="3" placeholder="ความเห็นของอาจารย์...">'+(fd.comment||'')+'</textarea></div>';
+
+  return html;
+}
+
+function bindFootAnkleFormEvents(body,ctx){
+  body.querySelectorAll('#fa-form-tabs .rota-rtab').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      _saveFootAnkleFormData(ctx,ctx.footankleFormType);
+      ctx.footankleFormType=btn.dataset.sf;
+      document.getElementById('fa-form-content').innerHTML=renderSingleFootAnkleForm(ctx,btn.dataset.sf);
+      body.querySelectorAll('#fa-form-tabs .rota-rtab').forEach(function(b){b.classList.toggle('active',b.dataset.sf===btn.dataset.sf);});
+      bindFootAnkleFormContentEvents(body,ctx,btn.dataset.sf);
+    });
+  });
+  bindFootAnkleFormContentEvents(body,ctx,ctx.footankleFormType||'cbd');
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',function(){
+    _saveFootAnkleFormData(ctx,ctx.footankleFormType);
+    saveFootAnkleAssessment(ctx);
+  });
+}
+
+function bindFootAnkleFormContentEvents(body,ctx,fk){
+  if(!ctx.footankleData[fk]) ctx.footankleData[fk]={meta:{},scores4:{},scoresSU:{},level:'',comment:''};
+  var fd=ctx.footankleData[fk];
+  body.querySelectorAll('.fa4-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      var domId=r.dataset.domain;
+      fd.scores4[domId]=parseInt(r.value);
+      body.querySelectorAll('input[name="fa4_'+domId+'"]').forEach(function(ri){
+        var lbl=ri.closest('label');
+        if(!lbl)return;
+        var n=parseInt(ri.value);
+        var bg=n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';
+        lbl.style.background=ri.checked?bg:'transparent';
+      });
+    });
+  });
+  body.querySelectorAll('.fa-su-radio').forEach(function(r){
+    r.addEventListener('change',function(){ fd.scoresSU[r.dataset.item]=r.value; });
+  });
+  body.querySelectorAll('.fa-level-radio').forEach(function(r){
+    r.addEventListener('change',function(){
+      fd.level=r.value;
+      body.querySelectorAll('.fa-level-radio').forEach(function(ri){
+        var lbl=ri.closest('label');
+        if(lbl){lbl.style.background=ri.checked?'#fef9c3':'';lbl.style.borderColor=ri.checked?'#fde68a':'';}
+      });
+    });
+  });
+}
+
+function _saveFootAnkleFormData(ctx,fk){
+  if(!ctx.footankleData[fk]) ctx.footankleData[fk]={meta:{},scores4:{},scoresSU:{},level:'',comment:''};
+  var fd=ctx.footankleData[fk];
+  fd.meta.assessDate=ctx.assessDate;
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  if(res){fd.meta.trainee=res.fn+' '+res.ln;fd.meta.yr=YR_LABELS[res.yr]||res.yr;}
+  var g=function(id){return document.getElementById(id);};
+  if(g('fa-diagnosis')) fd.meta.diagnosis=g('fa-diagnosis').value;
+  if(g('fa-hn'))        fd.meta.hn=g('fa-hn').value;
+  if(g('fa-comment'))   fd.comment=g('fa-comment').value;
+  var lvEl=document.querySelector('input[name="fa-level"]:checked');
+  if(lvEl) fd.level=lvEl.value;
+}
+
+function saveFootAnkleAssessment(ctx){
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  if(!ctx.assessDate){toast('กรุณาระบุวันที่ประเมิน','error');return;}
+  var fk=ctx.footankleFormType||'cbd';
+  var fd=ctx.footankleData[fk]||{};
+  var form=FOOT_ANKLE_FORMS[fk];
+  var res=DB.residents.find(function(x){return x.id===ctx.resId;});
+  var domains;
+  if(form.scale==='su'){
+    domains=form.items.map(function(item){return {id:item,label:item,su:fd.scoresSU[item]||''};});
+  } else {
+    domains=[];
+    (function flatFA(list,par){
+      list.forEach(function(d){
+        if(d.isHeader){ if(d.sub&&d.sub.length) flatFA(d.sub,d.label); }
+        else {
+          domains.push({id:d.id,label:d.label,score4:fd.scores4[d.id]!==undefined?fd.scores4[d.id]:null,isOverall:!!d.isOverall,parent:par||null});
+          if(d.sub&&d.sub.length) flatFA(d.sub,d.label);
+        }
+      });
+    })(form.domains,null);
+  }
+  var rec={
+    id:uid(), type:'footankle', formType:fk,
+    resId:ctx.resId, rotation:'footankle',
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:ctx.assessDate,
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    meta:fd.meta, domains,
+    level:fd.level||'', comment:fd.comment||'',
+    signed:true, sigData:null, createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมิน Foot & Ankle '+form.abbr+' แล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+// ─── SPORTS FORMS ─────────────────────────────────────
+function renderSportsForms(ctx){
+  const sf=ctx.sportsFormType||'minicex';
+  return`
+    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:9px 13px;margin-bottom:13px;font-size:12px;color:#856404;font-weight:600">
+      ⚽ Sports Rotation — เลือกแบบประเมินที่ต้องการกรอก
+    </div>
+    <div class="rota-rotation-tabs" id="sports-form-tabs" style="margin-bottom:16px">
+      ${SPORTS_FORM_KEYS.map(k=>`<button class="rota-rtab${k===sf?' active':''}" data-sf="${k}">${SPORTS_FORMS[k].abbr} — ${SPORTS_FORMS[k].label}</button>`).join('')}
+    </div>
+    <div id="sports-form-content">${renderSingleSportsForm(ctx,sf)}</div>
+    <div class="mbtns" style="margin-top:4px">
+      <button class="mbtn-cancel" id="assess-cancel-btn">ยกเลิก</button>
+      <button class="mbtn-save t" id="assess-save-btn">💾 บันทึกแบบประเมิน</button>
+    </div>`;}
+
+function renderSingleSportsForm(ctx,fk){
+  const fd=ctx.sportsData[fk]||{meta:{},scores9:{},strength:'',suggest:'',passFail:''};
+  const form=SPORTS_FORMS[fk];
+  const m=fd.meta||{};
+
+  // Meta fields row 1
+  const hasPatient=form.fields.includes('patientAge');
+  const hasProcedure=form.fields.includes('procedure');
+  const patientRowsHTML = hasPatient ? (
+    '<div class="frow" style="margin-bottom:8px">'
+    + '<div class="fgrp"><label class="flbl">ปัญหาของผู้ป่วย / การวินิจฉัยโรค</label><input id="sf-diagnosis" class="finp" value="'+( m.diagnosis||'')+'" placeholder="ระบุ"></div>'
+    + '<div class="fgrp"><label class="flbl">อายุผู้ป่วย (ปี)</label><input id="sf-age" type="number" class="finp" style="width:80px" value="'+(m.patientAge||'')+'"></div>'
+    + '</div>'
+    + '<div class="frow" style="margin-bottom:8px">'
+    + '<div class="fgrp"><label class="flbl">เพศ</label>'
+    + '<div class="ped-cbgroup" id="sf-sex">'
+    + '<label class="ped-cb-opt"><input type="radio" name="sf-sex" value="ชาย" '+(m.patientSex==='ชาย'?'checked':'')+'>ชาย</label>'
+    + '<label class="ped-cb-opt"><input type="radio" name="sf-sex" value="หญิง" '+(m.patientSex==='หญิง'?'checked':'')+'>หญิง</label>'
+    + '</div></div>'
+    + '<div class="fgrp"><label class="flbl">Clinical setting</label>'
+    + '<div class="ped-cbgroup" id="sf-setting">'
+    + form.settings.map(function(sv){return '<label class="ped-cb-opt"><input type="radio" name="sf-setting" value="'+sv+'" '+(m.setting===sv?'checked':'')+'>'+sv+'</label>';}).join('')
+    + '</div></div></div>'
+  ) : '<div class="fgrp"><label class="flbl">ชนิดของหัตถการ</label><input id="sf-procedure" class="finp" value="'+(m.procedure||'')+'" placeholder="ระบุ"></div>';
+
+  const countRows = ['0','1','2','3','4','≥5'].map(function(n){return '<label class="ped-cb-opt" style="padding:4px 9px"><input type="radio" name="sf-times-tr" value="'+n+'" '+(m.timesTrainee===n?'checked':'')+'>'+n+'</label>';}).join('');
+  const countRowsEv = ['0','1','2','3','4','≥5'].map(function(n){return '<label class="ped-cb-opt" style="padding:4px 9px"><input type="radio" name="sf-times-ev" value="'+n+'" '+(m.timesEvaluator===n?'checked':'')+'>'+n+'</label>';}).join('');
+  const diffRows = ['ง่าย','ปานกลาง','ยาก'].map(function(d){return '<label class="ped-cb-opt"><input type="radio" name="sf-difficulty" value="'+d+'" '+(m.difficulty===d?'checked':'')+'>'+d+'</label>';}).join('');
+
+  const metaHTML = '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:11px 13px;margin-bottom:13px">'
+    + patientRowsHTML
+    + '<div class="frow">'
+    + '<div class="fgrp"><label class="flbl">ความยากง่ายของปัญหา/หัตถการ</label>'
+    + '<div class="ped-cbgroup" id="sf-difficulty">'+diffRows+'</div></div>'
+    + '<div class="fgrp">'
+    + '<label class="flbl">จำนวนครั้งของผู้รับการฝึกอบรม</label>'
+    + '<div class="ped-cbgroup">'+countRows+'</div>'
+    + '<label class="flbl" style="margin-top:6px">จำนวนครั้งของผู้ประเมิน</label>'
+    + '<div class="ped-cbgroup">'+countRowsEv+'</div>'
+    + '</div></div></div>';
+
+  // Scale 1-9 table
+  const scoreTableHTML=`
+    <div style="overflow-x:auto;margin-bottom:13px">
+      <table style="width:100%;border-collapse:collapse;min-width:540px">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:8px 10px;text-align:left;font-size:12px;border:1px solid var(--border);width:38%">ทักษะ</th>
+            <th colspan="3" style="padding:6px;text-align:center;font-size:11px;border:1px solid var(--border);background:#fee2e2;color:#b91c1c">Unsatisfactory</th>
+            <th colspan="3" style="padding:6px;text-align:center;font-size:11px;border:1px solid var(--border);background:#fef9c3;color:#b45309">Satisfactory</th>
+            <th colspan="3" style="padding:6px;text-align:center;font-size:11px;border:1px solid var(--border);background:#dcfce7;color:#15803d">Superior</th>
+            <th style="padding:6px;text-align:center;font-size:10px;border:1px solid var(--border);color:var(--text3);width:54px">ประเมิน<br>ไม่ได้</th>
+          </tr>
+          <tr style="background:#f8fafc">
+            <th style="border:1px solid var(--border)"></th>
+            ${[1,2,3,4,5,6,7,8,9].map(n=>{
+              const bg=n<=3?'#fee2e2':n<=6?'#fef9c3':'#dcfce7';
+              const col=n<=3?'#b91c1c':n<=6?'#b45309':'#15803d';
+              return`<th style="padding:5px 2px;text-align:center;font-size:13px;font-weight:700;border:1px solid var(--border);background:${bg};color:${col}">${n}</th>`;
+            }).join('')}
+            <th style="border:1px solid var(--border)"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${form.domains.map(d=>{
+            const cur=fd.scores9[d.id];
+            const isNA=fd.scores9[d.id+'_na'];
+            const rowBg=d.isSummary?'background:#f0fdfa;':'';
+            return`<tr style="${rowBg}">
+              <td style="padding:8px 10px;font-size:12px;font-weight:${d.isSummary?'700':'400'};border:1px solid var(--border)">${d.label}</td>
+              ${[1,2,3,4,5,6,7,8,9].map(n=>{
+                const bg=n<=3?'#fee2e2':n<=6?'#fef9c3':'#dcfce7';
+                const chkBg=cur===n?`background:${bg};`:''
+                return`<td style="padding:4px 2px;text-align:center;border:1px solid var(--border)">
+                  <label style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:28px;border-radius:4px;${chkBg}">
+                    <input type="radio" name="sports9_${d.id}" value="${n}" class="sports9-radio" data-domain="${d.id}" ${cur===n?'checked':''} style="cursor:pointer;accent-color:${n<=3?'#dc2626':n<=6?'#d97706':'#16a34a'}">
+                  </label>
+                </td>`;
+              }).join('')}
+              <td style="padding:4px 6px;text-align:center;border:1px solid var(--border)">
+                <input type="checkbox" class="sports9-na" data-domain="${d.id}" ${isNA?'checked':''} style="cursor:pointer;width:16px;height:16px;accent-color:var(--text3)">
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  // Pass/Fail + feedback
+  const pfHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:11px">
+      <span style="font-size:13px;font-weight:700;color:var(--text2)">ผลการประเมินโดยรวม:</span>
+      <label class="ped-cb-opt${fd.passFail==='pass'?' sel':''}" id="sf-pass-btn" style="cursor:pointer;${fd.passFail==='pass'?'background:#dcfce7;border-color:#86efac;color:#15803d':''}">
+        <input type="radio" name="sf-passfail" value="pass" ${fd.passFail==='pass'?'checked':''} style="display:none"> ✅ ผ่าน
+      </label>
+      <label class="ped-cb-opt${fd.passFail==='fail'?' sel':''}" id="sf-fail-btn" style="cursor:pointer;${fd.passFail==='fail'?'background:#fee2e2;border-color:#fca5a5;color:#b91c1c':''}">
+        <input type="radio" name="sf-passfail" value="fail" ${fd.passFail==='fail'?'checked':''} style="display:none"> ❌ ไม่ผ่าน
+      </label>
+    </div>`;
+
+  return`
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">
+      <span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#fff3cd;color:#856404">⚽ Sports Medicine</span>
+      <span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#e0f2fe;color:#0369a1">${form.abbr} — ${form.label}</span>
+    </div>
+    ${metaHTML}
+    ${scoreTableHTML}
+    ${pfHTML}
+    ${_feedbackBlock(fd.strength,fd.suggest)}`;}
+
+function bindSportsFormEvents(body,ctx){
+  // Tab switch
+  body.querySelectorAll('#sports-form-tabs .rota-rtab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      _saveSportsFormData(ctx,ctx.sportsFormType);
+      ctx.sportsFormType=btn.dataset.sf;
+      document.getElementById('sports-form-content').innerHTML=renderSingleSportsForm(ctx,btn.dataset.sf);
+      body.querySelectorAll('#sports-form-tabs .rota-rtab').forEach(b=>b.classList.toggle('active',b.dataset.sf===btn.dataset.sf));
+      bindSportsFormContentEvents(body,ctx,btn.dataset.sf);
+    });
+  });
+  bindSportsFormContentEvents(body,ctx,ctx.sportsFormType);
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',()=>{_saveSportsFormData(ctx,ctx.sportsFormType);saveSportsAssessment(ctx);});
+}
+
+function bindSportsFormContentEvents(body,ctx,fk){
+  if(!ctx.sportsData[fk]) ctx.sportsData[fk]={meta:{},scores9:{},strength:'',suggest:'',passFail:''};
+  const fd=ctx.sportsData[fk];
+  // scale 1-9 radios
+  body.querySelectorAll('.sports9-radio').forEach(r=>{
+    r.addEventListener('change',()=>{
+      const domId=r.dataset.domain;
+      fd.scores9[domId]=+r.value;
+      // update row highlight
+      const rows=body.querySelectorAll(`input[name="sports9_${domId}"]`);
+      rows.forEach(ri=>{
+        const lbl=ri.closest('label');
+        if(lbl){const n=+ri.value; lbl.style.background=ri.checked?(n<=3?'#fee2e2':n<=6?'#fef9c3':'#dcfce7'):'';}
+      });
+    });
+  });
+  // NA checkboxes
+  body.querySelectorAll('.sports9-na').forEach(cb=>{
+    cb.addEventListener('change',()=>{ fd.scores9[cb.dataset.domain+'_na']=cb.checked; });
+  });
+}
+
+function _saveSportsFormData(ctx,fk){
+  if(!ctx.sportsData[fk]) ctx.sportsData[fk]={meta:{},scores9:{},strength:'',suggest:'',passFail:''};
+  const fd=ctx.sportsData[fk];
+  const g=id=>document.getElementById(id);
+  fd.meta.assessDate=ctx.assessDate;
+  // sync trainee from ctx.resId
+  const res=DB.residents.find(x=>x.id===ctx.resId);
+  if(res){fd.meta.trainee=res.fn+' '+res.ln; fd.meta.yr=YR_LABELS[res.yr]||res.yr;}
+  if(g('sf-diagnosis')) fd.meta.diagnosis=g('sf-diagnosis').value;
+  if(g('sf-age')) fd.meta.patientAge=g('sf-age').value;
+  if(g('sf-procedure')) fd.meta.procedure=g('sf-procedure').value;
+  const sexEl=document.querySelector('input[name="sf-sex"]:checked');
+  if(sexEl) fd.meta.patientSex=sexEl.value;
+  const setEl=document.querySelector('input[name="sf-setting"]:checked');
+  if(setEl) fd.meta.setting=setEl.value;
+  const diffEl=document.querySelector('input[name="sf-difficulty"]:checked');
+  if(diffEl) fd.meta.difficulty=diffEl.value;
+  const trEl=document.querySelector('input[name="sf-times-tr"]:checked');
+  if(trEl) fd.meta.timesTrainee=trEl.value;
+  const evEl=document.querySelector('input[name="sf-times-ev"]:checked');
+  if(evEl) fd.meta.timesEvaluator=evEl.value;
+  const pfEl=document.querySelector('input[name="sf-passfail"]:checked');
+  if(pfEl) fd.passFail=pfEl.value;
+  const stEl=document.querySelector('.ped-fb-strength');
+  const suEl=document.querySelector('.ped-fb-suggest');
+  if(stEl) fd.strength=stEl.value;
+  if(suEl) fd.suggest=suEl.value;
+}
+
+function saveSportsAssessment(ctx){
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  if(!ctx.assessDate){toast('กรุณาระบุวันที่ประเมิน','error');return;}
+  const fk=ctx.sportsFormType||'minicex';
+  const fd=ctx.sportsData[fk]||{};
+  const form=SPORTS_FORMS[fk];
+  const res=DB.residents.find(x=>x.id===ctx.resId);
+  const domains=form.domains.map(d=>({
+    id:d.id, label:d.label,
+    score9: fd.scores9[d.id]||0,
+    na: !!fd.scores9[d.id+'_na']
+  }));
+  const rec={
+    id:uid(), type:'sports', formType:fk,
+    resId:ctx.resId, rotation:'sports',
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:ctx.assessDate,
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    meta:fd.meta, domains,
+    passFail:fd.passFail||'',
+    strength:fd.strength||'', suggest:fd.suggest||'',
+    signed:true, sigData:null,
+    createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมิน Sports '+form.abbr+' แล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+function renderSinglePedForm(ctx,fk){
+  const fd=ctx.pedData[fk];
+  const form=PED_FORMS[fk];
+  if(fk==='peer') return renderPeerForm(ctx,fd,form);
+
+  // EPA selector for CBD (multi EPA)
+  let epaHTML='';
+  if(form.epa.length){
+    if(fk==='cbd'){
+      // CBD has 2 EPAs — show as selectable checkboxes
+      const selEpas=fd.meta.selectedEpas||[];
+      epaHTML=`<div style="margin-bottom:11px">
+        <div class="flbl" style="margin-bottom:6px">เลือก EPA ที่เกี่ยวข้อง</div>
+        <div class="ped-cbgroup" id="ped-epa-cbg">
+          ${form.epa.map(e=>`<label class="ped-cb-opt${selEpas.includes(e)?' sel':''}" style="padding:6px 11px;font-size:12px">
+            <input type="checkbox" class="ped-epa-chk" value="${e}" ${selEpas.includes(e)?'checked':''} style="margin-right:5px">${e}
+          </label>`).join('')}
+        </div>
+      </div>`;
+    } else {
+      // Other forms — show as badges only
+      epaHTML=`<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:11px">
+        ${form.epa.map(e=>`<span class="assess-rec-rotation" style="background:#ccfbf1;color:var(--teal2)">${e}</span>`).join('')}
+      </div>`;
+    }
+  }
+
+  const settingsHTML=form.settings.length?`<div style="margin-bottom:10px"><label class="flbl">Clinical setting</label><div class="ped-cbgroup" id="${fk}-settings">${form.settings.map(s=>`<label class="ped-cb-opt"><input type="checkbox" value="${s}" ${(fd.meta.settings||[]).includes(s)?'checked':''}>${s}</label>`).join('')}</div></div>`:'';
+  const diagnosisHTML=form.fields.includes('diagnosis')?`<div class="fgrp"><label class="flbl">ปัญหาและวินิจฉัยของผู้ป่วย</label><input id="${fk}-diagnosis" class="finp" value="${fd.meta.diagnosis||''}" placeholder="ระบุปัญหาและการวินิจฉัย"></div>`:'';
+  const operationHTML=form.fields.includes('operation')?`<div class="fgrp"><label class="flbl">การผ่าตัดที่วางแผนในการรักษา</label><input id="${fk}-operation" class="finp" value="${fd.meta.operation||''}" placeholder="ระบุหัตถการ"></div>`:'';
+  const procedureHTML=form.fields.includes('procedure')?`<div class="fgrp"><label class="flbl">หัตถการ</label><input id="${fk}-procedure" class="finp" value="${fd.meta.procedure||''}" placeholder="ระบุหัตถการที่ทำ"></div>`:'';
+
+  const domainsHTML=`<div class="ped-domain-tbl">${form.domains.map(d=>`
+    <div class="ped-domain-row">
+      <div class="ped-domain-info"><div class="ped-domain-name">${d.label}</div><div class="ped-domain-desc">${d.desc}</div></div>
+      <div class="ped-domain-actions">
+        ${_ratingBtns(d.id, fd.domains[d.id]||'')}
+        <textarea class="finp ped-domain-comment" data-domain="${d.id}" rows="1" placeholder="ความเห็น...">${fd.domains[d.id+'_comment']||''}</textarea>
+      </div>
+    </div>`).join('')}</div>`;
+
+  let levelHTML='';
+  if(fk==='pba'){
+    levelHTML=`<div style="margin-top:13px">
+      <div style="margin-bottom:10px"><div class="flbl">ผลการประเมิน — Preop / procedure</div>${_levelGrid(form.levelsPreop,fd.levelPreop,fk+'-levels-pre',3)}</div>
+      <div><div class="flbl">ผลการประเมิน — At scene / outcomes evaluation</div>${_levelGrid(form.levelsScene,fd.levelScene,fk+'-levels-scene',3)}</div>
+    </div>`;
+  } else {
+    const cols=form.levels.length<=3?form.levels.length:4;
+    levelHTML=`<div style="margin-top:13px"><div class="flbl">ผลการประเมินระดับ</div>${_levelGrid(form.levels,fd.level,fk+'-levels',cols)}</div>`;
+  }
+
+  return`
+    ${epaHTML}
+    ${settingsHTML}${diagnosisHTML}${operationHTML}${procedureHTML}
+    ${domainsHTML}${levelHTML}
+    <div class="fgrp" style="margin-top:12px"><label class="flbl">Trainee reflection (staff interview)</label><textarea id="${fk}-reflection" class="finp" rows="2" placeholder="สะท้อนความคิดของแพทย์ผู้รับการฝึกอบรม">${fd.reflection||''}</textarea></div>
+    ${_feedbackBlock(fd.strength,fd.suggest)}`;}
+
+function renderPeerForm(ctx,fd,form){
+  const scoreTable=form.categories.map(cat=>`
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--teal2);text-transform:uppercase;letter-spacing:.6px;padding:6px 10px;background:#f0fdfa;border-radius:6px;margin-bottom:4px">${cat.cat}</div>
+      ${cat.items.map(item=>`<div class="ped-peer-row">
+        <div style="flex:1;font-size:12px">${item}</div>
+        <div class="ped-peer-scores">
+          ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<label class="ped-score-lbl"><input type="radio" name="peer_${item.replace(/\s/g,'_').slice(0,20)}" value="${n}" class="ped-score-radio" data-item="${item}" ${(fd.scores||{})[item]===n?'checked':''}><span class="ped-score-num">${n}</span></label>`).join('')}
+        </div>
+      </div>`).join('')}
+    </div>`).join('');
+
+  return`
+    <div style="margin-bottom:10px">
+      <label class="flbl">ระยะเวลาที่ปฏิบัติงาน</label>
+      <input id="peer-duration" class="finp" value="${fd.meta.duration||''}" placeholder="เช่น 1 เดือน">
+    </div>
+    <div style="margin-bottom:11px">
+      <label class="flbl">ผู้ประเมิน</label>
+      <div class="ped-cbgroup">${form.raterTypes.map(r=>`<label class="ped-cb-opt"><input type="radio" name="peer-rater" value="${r}" ${fd.meta.raterType===r?'checked':''}>${r}</label>`).join('')}</div>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:11px">
+      <div style="padding:9px 13px;background:#f0fdfa;border-bottom:1px solid var(--border);font-size:12px;color:var(--teal2);font-weight:600">คะแนน 1–10 (1=ควรปรับปรุง → 10=ไม่มีที่ติ)</div>
+      <div style="padding:10px 13px">${scoreTable}</div>
+    </div>
+    ${_feedbackBlock(fd.praise,fd.suggest)}`;}
+
+
+// ─── Bind all ped form events ──────────────────────────
+function bindPedFormEvents(body,ctx){
+  // Tab switching — save current form data first
+  body.querySelectorAll('#ped-form-tabs .rota-rtab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      _savePedFormData(ctx,ctx.pedFormType);
+      ctx.pedFormType=btn.dataset.pf;
+      document.getElementById('ped-form-content').innerHTML=renderSinglePedForm(ctx,btn.dataset.pf);
+      body.querySelectorAll('#ped-form-tabs .rota-rtab').forEach(b=>b.classList.toggle('active',b.dataset.pf===btn.dataset.pf));
+      bindPedFormContentEvents(body,ctx,btn.dataset.pf);
+    });
+  });
+  bindPedFormContentEvents(body,ctx,ctx.pedFormType);
+  body.querySelector('#assess-cancel-btn')?.addEventListener('click',closeAssessModal);
+  body.querySelector('#assess-save-btn')?.addEventListener('click',()=>{_savePedFormData(ctx,ctx.pedFormType);savePedAssessment(ctx);});
+}
+
+function bindPedFormContentEvents(body,ctx,fk){
+  const fd=ctx.pedData[fk];
+  // Rating buttons
+  body.querySelectorAll('.ped-rating-group').forEach(grp=>{
+    grp.querySelectorAll('.ped-rbtn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const v=btn.dataset.v, domId=grp.dataset.domain;
+        fd.domains[domId]=fd.domains[domId]===v?'':v;
+        grp.querySelectorAll('.ped-rbtn').forEach(b=>b.classList.remove('unsat','sat','sup'));
+        if(fd.domains[domId]==='unsatisfactory') btn.classList.add('unsat');
+        else if(fd.domains[domId]==='satisfactory') btn.classList.add('sat');
+        else if(fd.domains[domId]==='superior') btn.classList.add('sup');
+      });
+    });
+  });
+  // Level cards
+  body.querySelectorAll('.ped-lv-card').forEach(card=>{
+    card.addEventListener('click',()=>{
+      const grid=card.closest('.ped-level-grid');
+      if(!grid)return;
+      grid.querySelectorAll('.ped-lv-card').forEach(c=>c.classList.remove('sel'));
+      card.classList.add('sel');
+      const gid=grid.id;
+      if(fk==='pba'&&gid.includes('pre')) fd.levelPreop=card.dataset.lv;
+      else if(fk==='pba'&&gid.includes('scene')) fd.levelScene=card.dataset.lv;
+      else fd.level=card.dataset.lv;
+    });
+  });
+  // Peer radio scores
+  if(fk==='peer'){
+    body.querySelectorAll('.ped-score-radio').forEach(r=>{
+      r.addEventListener('change',()=>{fd.scores[r.dataset.item]=+r.value;});
+    });
+  }
+}
+
+function _savePedFormData(ctx,fk){
+  const fd=ctx.pedData[fk];
+  const g=id=>document.getElementById(id);
+  // sync date from header
+  fd.meta.assessDate = ctx.assessDate||fd.meta.assessDate;
+  // sync trainee from ctx.resId
+  const res=DB.residents.find(x=>x.id===ctx.resId);
+  if(res){fd.meta.trainee=res.fn+' '+res.ln; fd.meta.yr=YR_LABELS[res.yr]||res.yr;}
+  // clinical meta fields
+  if(g(fk+'-diagnosis')) fd.meta.diagnosis=g(fk+'-diagnosis').value;
+  if(g(fk+'-operation')) fd.meta.operation=g(fk+'-operation').value;
+  if(g(fk+'-procedure')) fd.meta.procedure=g(fk+'-procedure').value;
+  if(g(fk+'-reflection')) fd.reflection=g(fk+'-reflection').value;
+  if(fk==='peer'){
+    if(g('peer-duration')) fd.meta.duration=g('peer-duration').value;
+    const raterEl=document.querySelector('input[name="peer-rater"]:checked');
+    if(raterEl) fd.meta.raterType=raterEl.value;
+    const praiseEl=document.querySelector('.ped-fb-strength');
+    const sugEl=document.querySelector('.ped-fb-suggest');
+    if(praiseEl) fd.praise=praiseEl.value;
+    if(sugEl) fd.suggest=sugEl.value;
+  } else {
+    const stEl=document.querySelector('.ped-fb-strength');
+    const suEl=document.querySelector('.ped-fb-suggest');
+    if(stEl) fd.strength=stEl.value;
+    if(suEl) fd.suggest=suEl.value;
+  }
+  // settings checkboxes
+  const settingsCbs=document.querySelectorAll(`#${fk}-settings input:checked`);
+  if(settingsCbs.length>0) fd.meta.settings=[...settingsCbs].map(c=>c.value);
+  // EPA checkboxes (CBD only)
+  if(fk==='cbd'){
+    const epaCbs=document.querySelectorAll('.ped-epa-chk:checked');
+    fd.meta.selectedEpas=[...epaCbs].map(c=>c.value);
+  }
+  // domain comments
+  document.querySelectorAll('.ped-domain-comment').forEach(ta=>{
+    fd.domains[ta.dataset.domain+'_comment']=ta.value;
+  });
+}
+
+function savePedAssessment(ctx){
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  if(!ctx.assessDate){toast('กรุณาระบุวันที่ประเมิน','error');return;}
+  const fk=ctx.pedFormType;
+  const fd=ctx.pedData[fk];
+  const form=PED_FORMS[fk];
+  const res=DB.residents.find(x=>x.id===ctx.resId);
+  const domains=(form.domains||[]).map(d=>({id:d.id,label:d.label,rating:fd.domains[d.id]||'',comment:fd.domains[d.id+'_comment']||''}));
+  const rec={
+    id:uid(), type:'pediatric', formType:fk,
+    resId:ctx.resId, rotation:'pediatric',
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:ctx.assessDate,
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    meta:fd.meta, domains,
+    peerScores:fk==='peer'?fd.scores:{},
+    level:fd.level||'', levelPreop:fd.levelPreop||'', levelScene:fd.levelScene||'',
+    reflection:fd.reflection||'', strength:fd.strength||'', suggest:fd.suggest||'',
+    praise:fd.praise||'',
+    signed:true, sigData:null,
+    createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมิน '+form.label+' แล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+function saveAssessment(){
+  const ctx=_assessContext;
+  if(!ctx)return;
+  const dynamicTemplate=ctx.templateId?activeAssessmentTemplateById(ctx.templateId):null;
+  if(dynamicTemplate){
+    saveDynamicTemplateAssessment(ctx,dynamicTemplate,document.getElementById('assess-modal-body'));
+    return;
+  }
+  if(ctx.templateId){toast('แบบฟอร์มนี้ถูกปิดใช้งาน กรุณาเลือกแบบฟอร์มใหม่','error');return;}
+  const rotType=getRotationFormType(ctx.selectedRotation);
+  if(rotType==='pediatric'){_savePedFormData(ctx,ctx.pedFormType);savePedAssessment(ctx);return;}
+  if(rotType==='sports'){_saveSportsFormData(ctx,ctx.sportsFormType);saveSportsAssessment(ctx);return;}
+  if(rotType==='spine'){_saveSpineFormData(ctx,ctx.spineFormType);saveSpineAssessment(ctx);return;}
+  if(rotType==='footankle'){_saveFootAnkleFormData(ctx,ctx.footankleFormType);saveFootAnkleAssessment(ctx);return;}
+  if(rotType==='hand'){_saveHandFormData(ctx,ctx.handFormType);saveHandAssessment(ctx);return;}
+  if(rotType==='hk'){_saveHKFormData(ctx,ctx.hkFormType);saveHKAssessment(ctx);return;}
+  if(rotType==='trauma'){_saveTraumaFormData(ctx,ctx.traumaFormType);saveTraumaAssessment(ctx);return;}
+  if(rotType==='tumor'){_saveTumorFormData(ctx,ctx.tumorFormType);saveTumorAssessment(ctx);return;}
+  if(rotType==='elective'){_saveElectiveFormData(ctx);saveElectiveAssessment(ctx);return;}
+  if(rotType==='unit_rotation'){_saveUnitRotationFormData(ctx);saveUnitRotationAssessment(ctx);return;}
+  if(rotType==='jc'){_saveJCFormData(ctx);saveJCAssessment(ctx);return;}
+  if(!ctx.resId){toast('กรุณาเลือกแพทย์ประจำบ้านก่อน','error');return;}
+  if(!ensureAdvisorAssessmentPermission(ctx))return;
+  if(!ctx.assessDate){toast('กรุณาระบุวันที่ประเมิน','error');return;}
+  const comment=document.getElementById('assess-comment')?.value||'';
+  const res=DB.residents.find(x=>x.id===ctx.resId);
+  const domains=getDomainsForRotation(ctx.selectedRotation).map(d=>({id:d.id,label:d.label,score:ctx.domainData[d.id]?.score||0,passFail:ctx.domainData[d.id]?.passFail||''}));
+  const rec={
+    id:uid(), type:'general', formType:'general',
+    resId:ctx.resId, rotation:ctx.selectedRotation,
+    advisorId:ctx.advId||null, role:ctx.role,
+    assessDate:ctx.assessDate,
+    traineeName:res?res.fn+' '+res.ln:'',
+    traineeYr:res?res.yr:'',
+    domains, comment,
+    signed:true, sigData:null,
+    createdAt:Date.now()
+  };
+  DB.rotaRecords.push(rec);
+  saveAndConfirm('✅ บันทึกแบบประเมินแล้ว');
+  closeAssessModal();
+  if(ctx.role==='admin') renderAssessmentAdmin();
+  if(ctx.role==='advisor') renderAdvResAssessPanel(ctx.resId);
+  renderStats();
+}
+
+// ─── Signature binding helper ─────────────────────────
+
+
+
+
+
+
+
+function closeAssessModal(){document.getElementById('assess-modal').classList.remove('open');_assessContext=null;}
+
+// ═══════════════════════════════════════════════════════
+//  VIEW ASSESSMENT MODAL
+// ═══════════════════════════════════════════════════════
+function openCustomAssessmentView(rec){
+  const template=rec.templateSnapshot||assessmentTemplateById(rec.templateId)||{name:rec.templateName||'แบบประเมิน',fields:[],sections:[]};
+  const ratingMode=rec.ratingMode||template.ratingMode||'score';
+  const resident=DB.residents.find(item=>item.id===rec.resId);
+  const advisor=DB.advisors.find(item=>item.id===rec.advisorId);
+  const rotation=getAssessmentRotation(rec.rotation);
+  const dateText=rec.assessDate?new Date(rec.assessDate).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}):(rec.createdAt?fmtDate(rec.createdAt):'—');
+  const passText=rec.passFail==='pass'?'ผ่าน':rec.passFail==='fail'?'ยังไม่ผ่าน':'';
+  const passColor=rec.passFail==='pass'?'#15803d':rec.passFail==='fail'?'#b91c1c':'#0369a1';
+  document.getElementById('view-assess-ttl').textContent='📋 ผลการประเมิน — '+(template.name||rec.templateName||'แบบกำหนดเอง');
+  const header='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:13px;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+    +'<div><div style="font-size:14px;font-weight:700">'+escapeHtml((resident?.fn||rec.traineeName||'')+(resident?' '+resident.ln:''))+'</div><div style="font-size:12px;color:var(--text2)">'+escapeHtml((resident?.id||'')+' · '+yrFullText(rec.traineeYr||resident?.yr||''))+'</div></div>'
+    +'<span class="assess-rec-rotation">'+escapeHtml((rotation?.emoji||'📋')+' '+(rotation?.label||rec.rotationLabel||rec.rotation))+'</span>'
+    +'<span style="font-size:12px;font-weight:600;color:var(--text2);background:#f1f5f9;padding:3px 10px;border-radius:10px">📅 '+escapeHtml(dateText)+'</span>'
+    +'<span style="font-size:12px;color:var(--text2)">👨‍🏫 '+escapeHtml(advisor?advisor.fn+' '+advisor.ln:'Admin')+'</span></div>';
+  const fieldLabels={};
+  (template.fields||[]).forEach(field=>{fieldLabels[field.id]=field.label;});
+  const metaRows=Object.keys(rec.meta||{}).filter(key=>String(rec.meta[key]??'').trim()!=='').map(key=>'<span style="padding:4px 9px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;font-size:12px">'+escapeHtml(fieldLabels[key]||key)+': '+escapeHtml(Array.isArray(rec.meta[key])?rec.meta[key].join(', '):rec.meta[key])+'</span>').join('');
+  const groups={};
+  const order=[];
+  (rec.domains||[]).forEach(domain=>{
+    const key=domain.sectionId||domain.sectionLabel||'topics';
+    if(!groups[key]){groups[key]={label:domain.sectionLabel||'หัวข้อประเมิน',items:[]};order.push(key);}
+    groups[key].items.push(domain);
+  });
+  const sections=order.map(key=>{
+    const section=groups[key];
+    const rows=section.items.map(domain=>{
+      const hasScore=domain.score!==null&&domain.score!==undefined&&domain.score!=='';
+      const ratio=hasScore&&domain.maxScore?Number(domain.score)/Number(domain.maxScore):0;
+      const color=ratingMode==='uss'?(Number(domain.score)===2?'#15803d':Number(domain.score)===1?'#a16207':'#b91c1c'):ratingMode==='su'?(Number(domain.score)===1?'#15803d':'#b91c1c'):(ratio>=.8?'#15803d':ratio>=.6?'#1e40af':ratio>=.4?'#b45309':'#b91c1c');
+      const scoreText=domain.na?'ไม่ประเมิน':ratingMode==='uss'&&hasScore?(['Unsatisfactory','Satisfactory','Superior'][Number(domain.score)]||'—'):ratingMode==='su'&&hasScore?(Number(domain.score)===1?'Satisfactory':'Unsatisfactory'):hasScore?displayTemplateNumber(domain.score)+' / '+displayTemplateNumber(domain.maxScore):'—';
+      return '<div class="view-domain-row"><div style="flex:1"><div style="font-size:13px;line-height:1.5">'+escapeHtml(domain.label||'')+'</div>'+(domain.help?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+escapeHtml(domain.help)+'</div>':'')+(domain.comment?'<div style="font-size:11px;color:var(--text2);margin-top:5px;padding:6px 8px;background:#f8fafc;border-radius:6px">ความเห็น: '+escapeHtml(domain.comment)+'</div>':'')+'</div><span style="padding:4px 11px;border-radius:12px;font-size:13px;font-weight:800;background:'+(domain.na?'#f1f5f9':'#eef6ff')+';color:'+(domain.na?'var(--text3)':color)+'">'+escapeHtml(scoreText)+'</span></div>';
+    }).join('');
+    return '<div class="view-assess-card" style="margin-top:10px"><div class="view-assess-hdr" style="background:#eff6ff"><div style="font-size:12px;font-weight:800;color:#1e40af">'+escapeHtml(section.label)+'</div></div>'+rows+'</div>';
+  }).join('');
+  const totalMax=rec.maxScore??0;
+  const scorePercent=rec.scorePercent!==undefined&&rec.scorePercent!==null?rec.scorePercent:(totalMax?Math.round(Number(rec.totalScore||0)/Number(totalMax)*1000)/10:null);
+  const total=ratingMode==='uss'?'<div style="margin-bottom:10px;padding:10px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span style="font-size:13px;color:var(--text2)">ผลการประเมิน</span><strong style="font-size:19px;color:#0f766e">ประเมินแล้ว '+(rec.scoredCount||0)+'</strong><span style="font-size:13px;color:var(--text3)">/ '+((rec.scoredCount||0)+(rec.blankCount||0))+' หัวข้อ</span></div>':'<div style="margin-bottom:10px;padding:10px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span style="font-size:13px;color:var(--text2)">'+(ratingMode==='su'?'ผลรวม':'คะแนนรวม')+'</span><strong style="font-size:22px;color:'+passColor+'">'+(ratingMode==='su'?'S '+displayTemplateNumber(rec.totalScore||0):displayTemplateNumber(rec.totalScore||0))+'</strong><span style="font-size:13px;color:var(--text3)">/ '+displayTemplateNumber(rec.configuredMaxScore||totalMax)+(ratingMode!=='su'&&scorePercent!==null?' ('+displayTemplateNumber(scorePercent)+'%)':'')+(ratingMode==='su'&&rec.passCount?' · เกณฑ์ผ่าน '+rec.passCount+' S':rec.passPercent!==undefined&&rec.passPercent!==''?' · เกณฑ์ผ่าน '+displayTemplateNumber(rec.passPercent)+'%':'')+(passText?' · '+passText:'')+'</span></div>';
+  const levelGroups=(template.levelGroups||[]).length?template.levelGroups:[{id:'level',label:'Level',options:template.levelOptions||[]}];
+  const level=levelGroups.map((group,index)=>{const value=rec.levels?.[group.id]??(index===0?rec.level:'');return value?'<div style="margin:7px 0;padding:9px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px"><span style="font-size:12px;font-weight:700;color:var(--text2)">'+escapeHtml(group.label||'Level')+': </span><strong style="color:var(--teal2)">'+escapeHtml(value)+'</strong></div>':'';}).join('');
+  const feedback=(template.feedbackFields||[]).map(field=>{const value=rec.feedback?.[field.id];return value?'<div style="margin-top:10px;padding:10px 13px;background:#f8fafc;border:1px solid var(--border);border-radius:8px"><div class="flbl" style="margin-bottom:4px">'+escapeHtml(field.label||'ข้อเสนอแนะ')+'</div><div style="font-size:13px;white-space:pre-wrap">'+escapeHtml(value)+'</div></div>':'';}).join('');
+  const comment=rec.comment?'<div style="margin-top:10px;padding:10px 13px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px"><div class="flbl" style="color:#0369a1;margin-bottom:4px">ความเห็น / ข้อเสนอแนะ</div><div style="font-size:13px;white-space:pre-wrap">'+escapeHtml(rec.comment)+'</div></div>':'';
+  document.getElementById('view-assess-body').innerHTML=header+(metaRows?'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px">'+metaRows+'</div>':'')+total+sections+level+feedback+comment;
+  document.getElementById('view-assess-modal').classList.add('open');
+}
+function openViewAssessModal(recId){
+  const rec=DB.rotaRecords.find(r=>r.id===recId);
+  if(!rec)return;
+  const isOwnAdvisorRecord=_curAdvId&&String(rec.advisorId)===String(_curAdvId);
+  if(_curAdvId&&!advisorCanAccessResident(_curAdvId,rec.resId)&&!isOwnAdvisorRecord){
+    toast('ไม่มีสิทธิ์ดูแบบประเมินนี้','error');
+    return;
+  }
+  if(rec.type==='custom'||rec.formType==='custom'||rec.templateSnapshot){
+    openCustomAssessmentView(rec);
+    return;
+  }
+  const res=DB.residents.find(x=>x.id===rec.resId);
+  const rot=getAssessmentRotation(rec.rotation);
+  const adv=DB.advisors.find(x=>x.id===rec.advisorId);
+  const isPed=rec.type==='pediatric';
+  const isSports=rec.type==='sports';
+  const isSpine=rec.type==='spine';
+  const isFootAnkle=rec.type==='footankle';
+  const isHand=rec.type==='hand';
+  const isHK=rec.type==='hk';
+  const isTrauma=rec.type==='trauma';
+  const isTumor=rec.type==='tumor';
+  const isJC=rec.type==='jc';
+  const isElective=rec.type==='elective';
+  const isUnitRotation=rec.type==='unit_rotation';
+  const formDef=isUnitRotation?UNIT_ROTATION_FORM:(isElective?ELECTIVE_FORM:(isPed?PED_FORMS[rec.formType]:(isSports?SPORTS_FORMS[rec.formType]:(isSpine?SPINE_FORMS[rec.formType]:(isFootAnkle?FOOT_ANKLE_FORMS[rec.formType]:(isHand?HAND_FORMS[rec.formType]:(isHK?HK_FORMS[rec.formType]:(isTrauma?TRAUMA_FORMS[rec.formType]:(isTumor?TUMOR_FORMS[rec.formType]:null)))))))));
+  document.getElementById('view-assess-ttl').textContent='📋 ผลการประเมิน — '+(rot?.emoji||'')+' '+(rot?.label||rec.rotation)+(formDef?' — '+formDef.abbr:'');
+  const assessDateDisp=isUnitRotation?unitRotationPeriodText(rec.meta):(isElective?electivePeriodText(rec.meta):(rec.assessDate?new Date(rec.assessDate).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}):(rec.createdAt?fmtDate(rec.createdAt):'—')));
+
+  const jcBadge = isJC ? '<span class="assess-rec-rotation" style="background:#e8f4fd;color:#1565c0">📚 Journal Club</span>' : '';
+  const tumorBadge = isTumor ? '<span class="assess-rec-rotation" style="background:#f3e5f5;color:#4a148c">'+(formDef?.abbr||rec.formType)+'</span>' : '';
+  const traumaBadge = isTrauma ? '<span class="assess-rec-rotation" style="background:#fff3e0;color:#e65100">'+(formDef?.abbr||rec.formType)+'</span>' : '';
+  const hkBadge = isHK ? '<span class="assess-rec-rotation" style="background:#e8f5e9;color:#1b5e20">'+(formDef?.abbr||rec.formType)+'</span>' : '';
+  const handBadge = isHand ? '<span class="assess-rec-rotation" style="background:#fce7f3;color:#9d174d">'+(formDef?.abbr||rec.formType)+'</span>' : '';
+  const pedBadge = isPed ? '<span class="assess-rec-rotation" style="background:#ede9fe;color:#7c3aed">'+(formDef?.abbr||rec.formType)+'</span>' : '';
+  const sportsBadge = isSports ? '<span class="assess-rec-rotation" style="background:#fff3cd;color:#856404">'+(formDef?.abbr||rec.formType)+'</span>' : '';
+  const spineBadge = isSpine ? '<span class="assess-rec-rotation" style="background:#e0f2fe;color:#0369a1">'+(formDef?.abbr||rec.formType)+'</span>' : '';
+  const footAnkleBadge = isFootAnkle ? '<span class="assess-rec-rotation" style="background:#fef9c3;color:#92400e">'+(formDef?.abbr||rec.formType)+'</span>' : '';
+  const electiveBadge = isElective ? '<span class="assess-rec-rotation" style="background:#ccfbf1;color:var(--teal2)">Elective</span>' : '';
+  const unitRotationBadge = isUnitRotation ? '<span class="assess-rec-rotation" style="background:#e0f2fe;color:#0369a1">วนหน่วย</span>' : '';
+  const advBadge = '<span style="font-size:12px;color:var(--text2)">👨‍🏫 '+escapeHtml(assessmentEvaluatorName(rec))+'</span>';
+  const pfBadge = rec.passFail==='pass' ? '<span class="overall-badge pass">✅ ผ่าน</span>' : rec.passFail==='fail' ? '<span class="overall-badge fail">❌ ไม่ผ่าน</span>' : '';
+
+  const headerHTML=`<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:9px;padding:13px;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div><div style="font-size:14px;font-weight:700">${res?.fn||rec.traineeName||''} ${res?res.ln:''}</div><div style="font-size:12px;color:var(--text2)">${res?.id||''} · ${yrFullText(rec.traineeYr||res?.yr||'')}</div></div>
+    <span class="assess-rec-rotation">${rot?.emoji||''} ${rot?.label||rec.rotation}</span>
+    ${pedBadge}${sportsBadge}${spineBadge}${footAnkleBadge}${handBadge}${hkBadge}${traumaBadge}${tumorBadge}${electiveBadge}${unitRotationBadge}${jcBadge}
+    <span style="font-size:12px;font-weight:600;color:var(--text2);background:#f1f5f9;padding:3px 10px;border-radius:10px">📅 ${assessDateDisp}</span>
+    ${advBadge}${pfBadge}
+  </div>`;
+
+  // Meta info — แสดงสำหรับทุก type
+  let metaInfoHTML='';
+  {
+    const m=rec.meta||{};
+    const parts=[];
+    if(m.diagnosis)  parts.push('Dx: '+m.diagnosis);
+    if(m.procedure)  parts.push('Procedure: '+m.procedure);
+    if(m.hn)         parts.push('HN: '+m.hn);
+    if(m.patientAge) parts.push('อายุ '+m.patientAge+' ปี');
+    if(m.patientSex) parts.push(m.patientSex);
+    if(m.setting)    parts.push(m.setting);
+    if(m.difficulty) parts.push('ความยาก: '+m.difficulty);
+    if(m.timesTrainee) parts.push('ครั้งที่ผู้รับฝึก: '+m.timesTrainee);
+    if(m.timesEvaluator) parts.push('ครั้งที่ประเมิน: '+m.timesEvaluator);
+    if(m.topic)      parts.push('หัวข้อ: '+m.topic);
+    if(m.journal)    parts.push('วารสาร: '+m.journal);
+    if(m.pubYear)    parts.push('ปีพิมพ์: '+m.pubYear);
+    if(m.selectedEpas&&m.selectedEpas.length) parts.push('EPA: '+m.selectedEpas.join(', '));
+    if(isElective){
+      if(m.trainingStart||m.assessMonth||m.assessBEYear) parts.push('ช่วงฝึกที่ประเมิน: '+electivePeriodText(m));
+      if(m.trainingUnit) parts.push('หน่วยฝึกอบรม: '+m.trainingUnit);
+      if(m.institution) parts.push('สถาบันที่ประเมิน: '+m.institution);
+      if(m.evaluatorName) parts.push('ผู้ประเมิน: '+m.evaluatorName);
+    }
+    if(isUnitRotation){
+      if(m.assessPeriod||m.assessBEYear) parts.push('ช่วงเดือนที่ประเมิน: '+unitRotationPeriodText(m));
+      if(m.workLine) parts.push('สายปฏิบัติงาน: '+m.workLine);
+      if(m.scheduleSource) parts.push('ตารางวนหน่วย: '+m.scheduleSource);
+      if(m.evaluatorName) parts.push('อาจารย์ผู้ประเมิน: '+m.evaluatorName);
+    }
+    if(rec.pgy)      parts.push(rec.pgy);
+    if(rec.level)    parts.push('Level: '+rec.level);
+    if(rec.acuity)   parts.push('Acuity: '+(rec.acuity==='yes'?'Yes':'No'));
+    if(parts.length){
+      const bg=isSports?'#fffbeb':isSpine?'#f0f9ff':isFootAnkle?'#fefce8':isHand?'#fdf2f8':isHK?'#f1f8e9':isTrauma?'#fff8f0':isTumor?'#fdf4ff':isElective?'#f0fdfa':isUnitRotation?'#f0f9ff':isJC?'#eff6ff':'#f8fafc';
+      const border=isSports?'#fde68a':isSpine?'#bae6fd':isFootAnkle?'#fde68a':isHand?'#f9a8d4':isHK?'#a5d6a7':isTrauma?'#ffcc80':isTumor?'#e9d5ff':isElective?'#99f6e4':isUnitRotation?'#bae6fd':isJC?'#bfdbfe':'var(--border)';
+      metaInfoHTML='<div style="margin-bottom:11px;padding:9px 13px;background:'+bg+';border:1px solid '+border+';border-radius:8px;font-size:12px;display:flex;gap:10px;flex-wrap:wrap">'+parts.map(function(p){return'<span style="color:var(--text2)">• '+escapeHtml(p)+'</span>';}).join('')+'</div>';
+    }
+  }
+
+  let contentHTML='';
+  if(isUnitRotation){
+    const domMap={};
+    (rec.domains||[]).forEach(function(d){domMap[d.id]=d;});
+    if(rec.maxScore!==undefined){
+      const pct=rec.maxScore?Math.round(rec.totalScore/rec.maxScore*100):0;
+      const col=pct>=75?'#15803d':pct>=45?'#b45309':'#b91c1c';
+      contentHTML+='<div style="margin-bottom:10px;padding:9px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
+        +'<span style="font-size:13px;color:var(--text2)">คะแนนรวมรายการที่ประเมิน:</span>'
+        +'<span style="font-size:22px;font-weight:800;color:'+col+'">'+(rec.totalScore||0)+'</span>'
+        +'<span style="font-size:13px;color:var(--text3)">/ '+(rec.maxScore||0)+(rec.maxScore?' ('+pct+'%)':'')+'</span>'
+        +'<span style="font-size:12px;color:var(--text3)">ประเมิน '+(rec.scoredCount||0)+' รายการ · ประเมินไม่ได้ '+(rec.naCount||0)+' รายการ'+(rec.blankCount?' · ยังไม่ให้คะแนน '+rec.blankCount+' รายการ':'')+'</span>'
+        +'</div>';
+    }
+    contentHTML+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'
+      +UNIT_ROTATION_SCORE_ZONES.map(function(z){return'<span style="padding:4px 9px;border-radius:12px;font-size:11px;font-weight:700;background:'+z.bg+';color:'+z.color+'">'+z.label+' ('+z.range+')</span>';}).join('')
+      +'</div>';
+    contentHTML+='<div class="view-assess-card">';
+    UNIT_ROTATION_FORM.sections.forEach(function(sec){
+      const isOverall=sec.id==='overall';
+      contentHTML+='<div class="view-assess-hdr" style="background:'+(isOverall?'#eff6ff':'#f0fdfa')+'"><div style="font-size:12px;font-weight:800;color:'+(isOverall?'#1e40af':'var(--teal2)')+'">'+sec.label+'</div></div>';
+      sec.items.forEach(function(item){
+        const saved=domMap[item.id]||{};
+        const sc=saved.score9||0;
+        const na=!!saved.na;
+        const z=unitRotationScoreZone(sc);
+        contentHTML+='<div class="view-domain-row">'
+          +'<div style="flex:1"><div style="font-size:13px;line-height:1.55;font-weight:'+(item.isOverall?'800':'500')+'">'+item.label+'</div></div>'
+          +(na?'<span style="font-size:12px;color:var(--text3);font-style:italic">ประเมินไม่ได้</span>':(sc&&z?'<div style="display:flex;align-items:center;gap:8px"><span style="padding:4px 13px;border-radius:12px;font-size:15px;font-weight:800;background:'+z.bg+';color:'+z.color+'">'+sc+'/9</span><span style="font-size:11px;font-weight:700;color:'+z.color+'">'+z.label+'</span></div>':'<span style="font-size:12px;color:var(--text3)">—</span>'))
+          +'</div>';
+      });
+    });
+    contentHTML+='</div>';
+    contentHTML+='<div style="padding:10px 13px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;margin-top:10px">'
+      +'<div class="flbl" style="margin-bottom:5px">หมายเหตุความสามารถโดยรวม</div>'
+      +UNIT_ROTATION_OVERALL_NOTES.map(function(t){return'<div style="font-size:11px;color:var(--text2);line-height:1.55">• '+t+'</div>';}).join('')
+      +'</div>';
+    if(rec.comment) contentHTML+='<div style="margin-top:9px;padding:10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:7px"><div class="flbl" style="color:#0369a1;margin-bottom:3px">ข้อเสนอแนะ</div><div style="font-size:13px">'+rec.comment+'</div></div>';
+  } else if(isElective){
+    const scoreColor=function(n){return n>=5?'#15803d':n>=4?'#1e40af':n>=3?'#b45309':n>=2?'#c2410c':'#b91c1c';};
+    const scoreBg=function(n){return n>=5?'#dcfce7':n>=4?'#dbeafe':n>=3?'#fef9c3':n>=2?'#ffedd5':'#fee2e2';};
+    const domMap={};
+    (rec.domains||[]).forEach(function(d){domMap[d.id]=d;});
+    if(rec.totalScore!==undefined){
+      const pct=rec.maxScore?Math.round(rec.totalScore/rec.maxScore*100):0;
+      const col=pct>=80?'#15803d':pct>=60?'#1e40af':pct>=40?'#b45309':'#b91c1c';
+      contentHTML+='<div style="margin-bottom:10px;padding:9px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
+        +'<span style="font-size:13px;color:var(--text2)">คะแนนรวม:</span>'
+        +'<span style="font-size:22px;font-weight:800;color:'+col+'">'+rec.totalScore+'</span>'
+        +'<span style="font-size:13px;color:var(--text3)">/ '+rec.maxScore+' ('+pct+'%)</span>'
+        +'</div>';
+    }
+    contentHTML+='<div class="view-assess-card">';
+    ELECTIVE_FORM.sections.forEach(function(sec){
+      contentHTML+='<div class="view-assess-hdr" style="background:#f0fdfa"><div style="font-size:12px;font-weight:800;color:var(--teal2)">'+sec.label+'</div></div>';
+      sec.items.forEach(function(item){
+        const saved=domMap[item.id]||{};
+        const sc=saved.score5||0;
+        contentHTML+='<div class="view-domain-row">'
+          +'<div style="flex:1"><div style="font-size:13px;line-height:1.55">'+item.label+'</div></div>'
+          +(sc?'<div style="display:flex;align-items:center;gap:8px"><span style="padding:4px 13px;border-radius:12px;font-size:15px;font-weight:800;background:'+scoreBg(sc)+';color:'+scoreColor(sc)+'">'+sc+'/5</span><span style="font-size:11px;font-weight:700;color:'+scoreColor(sc)+'">'+(ELECTIVE_SCORE_LABELS[sc]||'')+'</span></div>':'<span style="font-size:12px;color:var(--text3)">—</span>')
+          +'</div>';
+      });
+    });
+    contentHTML+='</div>';
+    if(rec.comment) contentHTML+='<div style="margin-top:9px;padding:10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:7px"><div class="flbl" style="color:var(--teal2);margin-bottom:3px">ข้อเสนอแนะเพิ่มเติม</div><div style="font-size:13px">'+escapeHtml(rec.comment)+'</div></div>';
+  } else if(isJC){
+    // Total score
+    if(rec.totalScore!==undefined){
+      const pct=rec.maxScore?Math.round(rec.totalScore/rec.maxScore*100):0;
+      const col=pct>=80?'#15803d':pct>=60?'#1e40af':pct>=40?'#b45309':'#b91c1c';
+      contentHTML+='<div style="margin-bottom:10px;padding:9px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:12px">'
+        +'<span style="font-size:13px;color:var(--text2)">คะแนนรวม:</span>'
+        +'<span style="font-size:22px;font-weight:800;color:'+col+'">'+rec.totalScore+'</span>'
+        +'<span style="font-size:13px;color:var(--text3)">/ '+rec.maxScore+'</span>'
+        +'</div>';
+    }
+    // Domain scores
+    contentHTML+='<div class="view-assess-card">'+(rec.domains||[]).map(function(d){
+      const sc=d.score5;
+      const hasScore=sc!==null&&sc!==undefined&&sc>0;
+      const col=sc>=4?'#15803d':sc===3?'#b45309':'#b91c1c';
+      const bg=sc>=4?'#dcfce7':sc===3?'#fef9c3':'#fce4ec';
+      const label=JC_SCORE_LABELS[sc]||'';
+      const badge=hasScore?'<span style="padding:4px 13px;border-radius:12px;font-size:14px;font-weight:800;background:'+bg+';color:'+col+'">'+sc+'</span><span style="font-size:11px;color:'+col+'">'+label+'</span>':'<span style="font-size:12px;color:var(--text3)">—</span>';
+      return '<div class="view-domain-row"><div style="flex:1;font-size:13px">'+d.label+'</div><div style="display:flex;align-items:center;gap:8px">'+badge+'</div></div>';
+    }).join('')+'</div>';
+    if(rec.comment) contentHTML+='<div style="margin-top:9px;padding:10px;background:#e8f4fd;border:1px solid #90caf9;border-radius:7px"><div class="flbl" style="color:#1565c0;margin-bottom:3px">💬 Staff comment</div><div style="font-size:13px">'+rec.comment+'</div></div>';
+  } else if(isTumor){
+    const tuForm=TUMOR_FORMS[rec.formType];
+    if(tuForm && tuForm.scale==='su'){
+      var tuSCount=0; (rec.domains||[]).forEach(function(d){if(d.su==='S')tuSCount++;});
+      if(rec.passThreshold) contentHTML+='<div style="margin-bottom:8px;padding:5px 10px;border-radius:6px;font-size:12px;background:'+(tuSCount>=rec.passThreshold?'#dcfce7':'#fee2e2')+';color:'+(tuSCount>=rec.passThreshold?'#15803d':'#b91c1c')+';font-weight:700">'+(tuSCount>=rec.passThreshold?'✅ ผ่าน':'❌ ไม่ผ่าน')+' (S='+tuSCount+'/เกณฑ์ '+rec.passThreshold+')</div>';
+      contentHTML+='<div style="font-size:12px;font-weight:700;color:#4a148c;margin-bottom:6px">Procedure: '+(tuForm.procedure||'')+'</div>';
+      contentHTML+='<table style="width:100%;border-collapse:collapse;margin-bottom:8px">'
+        +(rec.domains||[]).map(function(d){var su=d.su||'';
+          return '<tr><td style="padding:7px 10px;font-size:12px;border:1px solid #ce93d8">'+(d.label||d.id)+'</td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #ce93d8;'+(su==='S'?'background:#dcfce7;color:#15803d;font-weight:700':'')+';width:15%">'+(su==='S'?'✅ S':'—')+'</td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #ce93d8;'+(su==='U'?'background:#fee2e2;color:#b91c1c;font-weight:700':'')+';width:15%">'+(su==='U'?'❌ U':'—')+'</td></tr>';
+        }).join('')+'</table>';
+    } else {
+      const tuScColor=function(n){return n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';};
+      const tuScBg=function(n){return n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';};
+      // Render hierarchy from form definition + saved scores
+      var domMap={};
+      (rec.domains||[]).forEach(function(d){domMap[d.id]=d;});
+      contentHTML+='<table style="width:100%;border-collapse:collapse;margin-bottom:8px">';
+      (function renderViewDomains(list, indent){
+        list.forEach(function(d){
+          var pad=indent===0?'8px 10px':'7px 10px 7px '+(10+indent*14)+'px';
+          if(d.isHeader){
+            var hdrBg=indent===0?'#ede7f6':'#f5f0fb';
+            contentHTML+='<tr style="background:'+hdrBg+'">'
+              +'<td colspan="2" style="padding:'+pad+';font-size:12px;font-weight:700;border:1px solid #ce93d8;color:#4a148c">'+d.label+'</td>'
+              +'</tr>';
+            if(d.sub&&d.sub.length) renderViewDomains(d.sub, indent+1);
+          } else if(d.isOverall){
+            var saved=domMap[d.id]; var sc=saved?saved.score4:null;
+            var hasScore=sc!==null&&sc!==undefined;
+            contentHTML+='<tr style="background:#ede7f6;font-weight:700">'
+              +'<td style="padding:8px 10px;font-size:12px;border:1px solid #ce93d8">'+d.label+'</td>'
+              +'<td style="padding:5px 10px;text-align:right;border:1px solid #ce93d8;white-space:nowrap">'
+              +(hasScore?'<span style="padding:3px 10px;border-radius:8px;font-size:13px;font-weight:800;background:'+tuScBg(sc)+';color:'+tuScColor(sc)+'">'+sc+'/4</span><span style="font-size:11px;color:'+tuScColor(sc)+';margin-left:5px">'+SPINE_SCORE_LABELS[sc]+'</span>':'<span style="font-size:12px;color:var(--text3)">—</span>')
+              +'</td></tr>';
+          } else {
+            var saved2=domMap[d.id]; var sc2=saved2?saved2.score4:null;
+            var hasScore2=sc2!==null&&sc2!==undefined;
+            var indentPfx=indent>0?'<span style="color:#ce93d8;margin-right:6px">└</span>':'';
+            contentHTML+='<tr>'
+              +'<td style="padding:'+pad+';font-size:12px;border:1px solid #ce93d8;color:var(--text2)">'+indentPfx+d.label+'</td>'
+              +'<td style="padding:5px 10px;text-align:right;border:1px solid #ce93d8;white-space:nowrap;width:220px">'
+              +(hasScore2?'<span style="padding:3px 10px;border-radius:8px;font-size:13px;font-weight:800;background:'+tuScBg(sc2)+';color:'+tuScColor(sc2)+'">'+sc2+'/4</span>':'<span style="font-size:12px;color:var(--text3)">—</span>')
+              +'</td></tr>';
+            if(d.sub&&d.sub.length) renderViewDomains(d.sub, indent+1);
+          }
+        });
+      })(tuForm?tuForm.domains:(rec.domains||[]), 0);
+      contentHTML+='</table>';
+    }
+    if(rec.level) contentHTML+='<div style="margin-top:9px;display:flex;gap:8px;align-items:center"><span style="font-size:12px;font-weight:700;color:var(--text2)">Level:</span><span style="padding:4px 13px;background:#f3e5f5;color:#4a148c;border-radius:12px;font-size:13px;font-weight:700">'+rec.level+'</span>'+(SPINE_LEVELS.find(function(l){return l.l===rec.level;})||{desc:''}).desc+'</div>';
+    if(rec.acuity) contentHTML+='<div style="margin-top:5px;font-size:12px;color:var(--text2)">Acuity to seek help: <strong>'+(rec.acuity==='yes'?'Yes':'No')+'</strong></div>';
+    if(rec.comment) contentHTML+='<div style="margin-top:9px;padding:10px;background:#ede7f6;border:1px solid #ce93d8;border-radius:7px"><div class="flbl" style="color:#4a148c;margin-bottom:3px">💬 Staff comment</div><div style="font-size:13px">'+rec.comment+'</div></div>';
+  } else if(isTrauma){
+    const trForm=TRAUMA_FORMS[rec.formType];
+    if(trForm && trForm.scale==='su'){
+      // check if grouped
+      var hasGroups=(rec.domains||[]).some(function(d){return d.group;});
+      if(hasGroups){
+        // group by group field
+        var groups={};
+        (rec.domains||[]).forEach(function(d){
+          if(!groups[d.group]) groups[d.group]=[];
+          groups[d.group].push(d);
+        });
+        Object.keys(groups).forEach(function(grpName){
+          contentHTML+='<div style="margin-bottom:10px">'
+            +'<div style="font-size:11px;font-weight:700;color:#fff;background:#e65100;padding:4px 10px;border-radius:6px 6px 0 0">'+grpName+'</div>'
+            +'<table style="width:100%;border-collapse:collapse">'
+            +groups[grpName].map(function(d){var su=d.su||'';
+              return '<tr><td style="padding:7px 10px;font-size:12px;border:1px solid #ffcc80">'+(d.label||d.id)+'</td>'
+                +'<td style="padding:5px;text-align:center;border:1px solid #ffcc80;'+(su==='S'?'background:#dcfce7;color:#15803d;font-weight:700':'')+';width:13%">'+(su==='S'?'✅ S':'—')+'</td>'
+                +'<td style="padding:5px;text-align:center;border:1px solid #ffcc80;'+(su==='U'?'background:#fee2e2;color:#b91c1c;font-weight:700':'')+';width:13%">'+(su==='U'?'❌ U':'—')+'</td></tr>';
+            }).join('')+'</table></div>';
+        });
+      } else {
+        if(rec.passThreshold){
+          var trSCount=0; (rec.domains||[]).forEach(function(d){if(d.su==='S')trSCount++;});
+          contentHTML+='<div style="margin-bottom:8px;padding:5px 10px;border-radius:6px;font-size:12px;background:'+(trSCount>=rec.passThreshold?'#dcfce7':'#fee2e2')+';color:'+(trSCount>=rec.passThreshold?'#15803d':'#b91c1c')+';font-weight:700">'+(trSCount>=rec.passThreshold?'✅ ผ่าน':'❌ ไม่ผ่าน')+' (S='+trSCount+'/เกณฑ์ '+rec.passThreshold+')</div>';
+        }
+        contentHTML+='<table style="width:100%;border-collapse:collapse;margin-bottom:8px">'
+          +(rec.domains||[]).map(function(d){var su=d.su||'';
+            return '<tr><td style="padding:7px 10px;font-size:12px;border:1px solid #ffcc80">'+(d.label||d.id)+'</td>'
+              +'<td style="padding:5px;text-align:center;border:1px solid #ffcc80;'+(su==='S'?'background:#dcfce7;color:#15803d;font-weight:700':'')+';width:15%">'+(su==='S'?'✅ S':'—')+'</td>'
+              +'<td style="padding:5px;text-align:center;border:1px solid #ffcc80;'+(su==='U'?'background:#fee2e2;color:#b91c1c;font-weight:700':'')+';width:15%">'+(su==='U'?'❌ U':'—')+'</td></tr>';
+          }).join('')+'</table>';
+      }
+    } else {
+      const trScColor=function(n){return n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';};
+      const trScBg=function(n){return n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';};
+      var trDomMap={};
+      (rec.domains||[]).forEach(function(d){trDomMap[d.id]=d;});
+      const trForm=TRAUMA_FORMS[rec.formType];
+      contentHTML+='<table style="width:100%;border-collapse:collapse;margin-bottom:8px">';
+      (function renderTRView(list, indent){
+        list.forEach(function(d){
+          var pad=indent===0?'8px 10px':'7px 10px 7px '+(10+indent*14)+'px';
+          if(d.isHeader){
+            var hdrBg=indent===0?'#fff8f0':(indent===1?'#fff3e0':'#fffaf5');
+            contentHTML+='<tr style="background:'+hdrBg+'">'
+              +'<td colspan="2" style="padding:'+pad+';font-size:12px;font-weight:700;border:1px solid #ffcc80;color:#e65100">'+d.label+'</td></tr>';
+            if(d.sub&&d.sub.length) renderTRView(d.sub, indent+1);
+          } else if(d.isOverall){
+            var saved=trDomMap[d.id]; var sc=saved?saved.score4:null; var has=sc!==null&&sc!==undefined;
+            contentHTML+='<tr style="background:#fff8f0;font-weight:700">'
+              +'<td style="padding:8px 10px;font-size:12px;border:1px solid #ffcc80">'+d.label+'</td>'
+              +'<td style="padding:5px 10px;text-align:right;border:1px solid #ffcc80;white-space:nowrap">'
+              +(has?'<span style="padding:3px 10px;border-radius:8px;font-size:13px;font-weight:800;background:'+trScBg(sc)+';color:'+trScColor(sc)+'">'+sc+'/4</span><span style="font-size:11px;color:'+trScColor(sc)+';margin-left:5px">'+SPINE_SCORE_LABELS[sc]+'</span>':'<span style="color:var(--text3)">—</span>')
+              +'</td></tr>';
+          } else {
+            var saved2=trDomMap[d.id]; var sc2=saved2?saved2.score4:null; var has2=sc2!==null&&sc2!==undefined;
+            var pfx=indent>0?'<span style="color:#ffcc80;margin-right:6px">└</span>':'';
+            contentHTML+='<tr>'
+              +'<td style="padding:'+pad+';font-size:12px;border:1px solid #ffcc80;color:var(--text2)">'+pfx+d.label+'</td>'
+              +'<td style="padding:5px 10px;text-align:right;border:1px solid #ffcc80;white-space:nowrap;width:200px">'
+              +(has2?'<span style="padding:3px 10px;border-radius:8px;font-size:13px;font-weight:800;background:'+trScBg(sc2)+';color:'+trScColor(sc2)+'">'+sc2+'/4</span>':'<span style="color:var(--text3)">—</span>')
+              +'</td></tr>';
+            if(d.sub&&d.sub.length) renderTRView(d.sub, indent+1);
+          }
+        });
+      })(trForm?trForm.domains:(rec.domains||[]), 0);
+      contentHTML+='</table>';
+    }
+    if(rec.level) contentHTML+='<div style="margin-top:9px;display:flex;gap:8px;align-items:center"><span style="font-size:12px;font-weight:700;color:var(--text2)">Level:</span><span style="padding:4px 13px;background:#fff3e0;color:#e65100;border-radius:12px;font-size:13px;font-weight:700">'+rec.level+'</span>'+(SPINE_LEVELS.find(function(l){return l.l===rec.level;})||{desc:''}).desc+'</div>';
+    if(rec.acuity) contentHTML+='<div style="margin-top:5px;font-size:12px;color:var(--text2)">Acuity to seek help: <strong>'+(rec.acuity==='yes'?'Yes':'No')+'</strong></div>';
+    if(rec.comment) contentHTML+='<div style="margin-top:9px;padding:10px;background:#fff8f0;border:1px solid #ffcc80;border-radius:7px"><div class="flbl" style="color:#e65100;margin-bottom:3px">💬 Staff comment</div><div style="font-size:13px">'+rec.comment+'</div></div>';
+  } else if(isHK){
+    const hkForm=HK_FORMS[rec.formType];
+    const hkScColor=function(n){return n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';};
+    const hkScBg=function(n){return n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';};
+
+    if(rec.pgy){
+      contentHTML+='<div style="margin-bottom:9px;display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:12px;font-weight:700;color:var(--text2)">PGY Level:</span>'
+        +'<span style="padding:4px 12px;background:#e8f5e9;color:#1b5e20;border-radius:10px;font-size:13px;font-weight:700">'+rec.pgy+'</span>'
+        +'</div>';
+    }
+
+    if(hkForm && hkForm.scale==='su'){
+      // merged DOPS — show PGY + procedure header
+      var dispPgy=rec.dopsPgy||'';
+      var dispProc=rec.dopsProcedure||dispPgy;
+      if(dispPgy) contentHTML+='<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:12px;font-weight:700;color:var(--text2)">PGY:</span>'
+        +'<span style="padding:3px 10px;background:#e8f5e9;color:#1b5e20;border-radius:9px;font-size:13px;font-weight:700">'+dispPgy+'</span>'
+        +'</div>';
+      if(dispProc) contentHTML+='<div style="font-size:12px;font-weight:700;color:#1b5e20;margin-bottom:8px;padding:7px 11px;background:#e8f5e9;border-radius:6px">📋 '+dispProc+'</div>';
+      var hkSCount=0; (rec.domains||[]).forEach(function(d){if(d.su==='S')hkSCount++;});
+      var dopsPgyRef=rec.dopsPgy||'';
+      var dopsFormRef=(HK_FORMS.dops.pgyForms||{})[dopsPgyRef]||{items:[]};
+      contentHTML+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">';
+      dopsFormRef.items.forEach(function(item){
+        var lbl=typeof item==='string'?item:item.label;
+        if(item.isHeader){
+          // Header row — no S/U
+          contentHTML+='<tr style="background:#e8f5e9">'
+            +'<td colspan="3" style="padding:8px 10px;font-size:12px;font-weight:700;border:1px solid #a5d6a7;color:#1b5e20">'+lbl+'</td>'
+            +'</tr>';
+          // Sub-item rows with S/U from saved domains
+          (item.sub||[]).forEach(function(subLabel){
+            var d=rec.domains.find(function(x){return x.label===subLabel;})||{su:''};
+            var su=d.su||'';
+            contentHTML+='<tr>'
+              +'<td style="padding:7px 10px 7px 28px;font-size:12px;border:1px solid #a5d6a7;line-height:1.4">'
+                +'<span style="color:#a5d6a7;margin-right:6px">└</span>'+subLabel
+              +'</td>'
+              +'<td style="padding:5px;text-align:center;border:1px solid #a5d6a7;'+(su==='S'?'background:#dcfce7;color:#15803d;font-weight:700':'')+';width:90px">'+(su==='S'?'✅ S':'—')+'</td>'
+              +'<td style="padding:5px;text-align:center;border:1px solid #a5d6a7;'+(su==='U'?'background:#fee2e2;color:#b91c1c;font-weight:700':'')+';width:90px">'+(su==='U'?'❌ U':'—')+'</td>'
+              +'</tr>';
+          });
+        } else {
+          var d2=rec.domains.find(function(x){return x.label===lbl;})||{su:''};
+          var su2=d2.su||'';
+          contentHTML+='<tr>'
+            +'<td style="padding:7px 10px;font-size:12px;border:1px solid #a5d6a7;line-height:1.4">'+lbl+'</td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #a5d6a7;'+(su2==='S'?'background:#dcfce7;color:#15803d;font-weight:700':'')+';width:90px">'+(su2==='S'?'✅ S':'—')+'</td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #a5d6a7;'+(su2==='U'?'background:#fee2e2;color:#b91c1c;font-weight:700':'')+';width:90px">'+(su2==='U'?'❌ U':'—')+'</td>'
+            +'</tr>';
+        }
+      });
+      contentHTML+='<tr style="background:#f1f8e9"><td style="padding:7px 10px;font-size:12px;font-weight:700;border:1px solid #a5d6a7">ผลรวม</td>'
+        +'<td colspan="2" style="padding:7px;text-align:center;font-size:13px;font-weight:700;border:1px solid #a5d6a7;color:'+(hkSCount===(rec.domains||[]).length?'#15803d':'#b45309')+'">S = '+hkSCount+' / '+(rec.domains||[]).length+'</td></tr>'
+        +'</table></div>';
+
+    } else if(rec.formType==='cbd'){
+      // CBD — group by section
+      var sections={preop:[],hip:[],knee:[]};
+      var sectionLabels={preop:'1. Pre-op evaluation',hip:'2. Radiographic evaluation — 🦴 HIP',knee:'2. Radiographic evaluation — 🦵 KNEE'};
+      (rec.domains||[]).forEach(function(d){if(sections[d.section])sections[d.section].push(d);});
+      ['preop','hip','knee'].forEach(function(sec){
+        if(!sections[sec].length)return;
+        contentHTML+='<div style="margin-bottom:11px">'
+          +'<div style="font-size:11px;font-weight:700;color:#fff;background:#388e3c;padding:5px 10px;border-radius:6px 6px 0 0">'+sectionLabels[sec]+'</div>'
+          +'<table style="width:100%;border-collapse:collapse">'
+          +sections[sec].map(function(d){
+            var sc=d.score4; var hasScore=sc!==null&&sc!==undefined;
+            return '<tr><td style="padding:7px 10px;font-size:12px;border:1px solid #a5d6a7">'+d.label+'</td>'
+              +'<td style="padding:5px;text-align:right;border:1px solid #a5d6a7;width:160px">'
+              +(hasScore?'<span style="padding:3px 10px;border-radius:8px;font-size:12px;font-weight:700;background:'+hkScBg(sc)+';color:'+hkScColor(sc)+'">'+sc+'/4</span>'
+                        :'<span style="font-size:12px;color:var(--text3)">—</span>')
+              +'</td></tr>';
+          }).join('')+'</table></div>';
+      });
+      // Overall
+      contentHTML+='<div style="padding:8px 12px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;font-size:12px;color:#1b5e20">'
+        +'MPL: '+(rec.pgy==='PGY-1'||rec.pgy==='PGY-2'?'10 (PGY-1,2)':rec.pgy==='PGY-3'||rec.pgy==='PGY-4'?'16 (PGY-3,4)':'—')+'</div>';
+
+    } else {
+      // Mini-CEX / PBA — standard 0-4
+      contentHTML+='<div class="view-assess-card">'+(rec.domains||[]).map(function(d){
+        var sc=d.score4; var hasScore=sc!==null&&sc!==undefined;
+        var badge=hasScore?'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><span style="padding:4px 13px;border-radius:12px;font-size:14px;font-weight:800;background:'+hkScBg(sc)+';color:'+hkScColor(sc)+'">'+sc+'/4</span><span style="font-size:10px;font-weight:600;color:'+hkScColor(sc)+'">'+HK_SCORE_LABELS[sc]+'</span></div>':'<span style="font-size:12px;color:var(--text3)">—</span>';
+        return '<div class="view-domain-row"><div style="flex:1"><div style="font-size:13px;font-weight:'+(d.isOverall?'700':'500')+'">'+d.label+'</div></div><div style="display:flex;align-items:center;gap:8px">'+badge+'</div></div>';
+      }).join('')+'</div>';
+    }
+    if(rec.comment) contentHTML+='<div style="margin-top:9px;padding:10px;background:#f1f8e9;border:1px solid #a5d6a7;border-radius:7px"><div class="flbl" style="color:#1b5e20;margin-bottom:3px">💬 Comments</div><div style="font-size:13px">'+rec.comment+'</div></div>';
+  } else if(isHand){
+    const hdForm=HAND_FORMS[rec.formType];
+    if(hdForm && hdForm.scale==='su'){
+      // DOPS S/U view
+      var sCount=0; (rec.domains||[]).forEach(function(d){if(d.su==='S')sCount++;});
+      contentHTML+='<div style="font-size:12px;font-weight:700;color:#9d174d;margin-bottom:6px">Procedure: '+(hdForm.procedure||'')+'</div>';
+      if(rec.passThreshold) contentHTML+='<div style="margin-bottom:8px;padding:5px 10px;border-radius:6px;font-size:12px;background:'+(sCount>=rec.passThreshold?'#dcfce7':'#fee2e2')+';color:'+(sCount>=rec.passThreshold?'#15803d':'#b91c1c')+';font-weight:700">'+( sCount>=rec.passThreshold?'✅ ผ่าน':'❌ ไม่ผ่าน')+' (S = '+sCount+'/'+rec.passThreshold+' เกณฑ์)</div>';
+      contentHTML+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+        +(rec.domains||[]).map(function(d){
+          var su=d.su||'';
+          return '<tr><td style="padding:7px 10px;font-size:12px;border:1px solid #f9a8d4">'+(d.label||d.id)+'</td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #f9a8d4;'+(su==='S'?'background:#dcfce7;color:#15803d;font-weight:700':'')+'">'+(su==='S'?'✅ S':'—')+'</td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #f9a8d4;'+(su==='U'?'background:#fee2e2;color:#b91c1c;font-weight:700':'')+'">'+(su==='U'?'❌ U':'—')+'</td>'
+            +'</tr>';
+        }).join('')+'</table></div>';
+    } else {
+      const hdScColor=function(n){return n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';};
+      const hdScBg=function(n){return n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';};
+      var hdDomMap={}; (rec.domains||[]).forEach(function(d){hdDomMap[d.id]=d;});
+      const hdForm=HAND_FORMS[rec.formType];
+      contentHTML+='<table style="width:100%;border-collapse:collapse;margin-bottom:8px">';
+      (function renderHDView(list, indent){
+        list.forEach(function(d){
+          var pad=indent===0?'8px 10px':'7px 10px 7px '+(10+indent*14)+'px';
+          if(d.isHeader){
+            var hdrBg=indent===0?'#fdf2f8':(indent===1?'#fce7f3':'#fff5fb');
+            contentHTML+='<tr style="background:'+hdrBg+'">'
+              +'<td colspan="2" style="padding:'+pad+';font-size:12px;font-weight:700;border:1px solid #f9a8d4;color:#9d174d">'+d.label+'</td></tr>';
+            if(d.sub&&d.sub.length) renderHDView(d.sub, indent+1);
+          } else if(d.isOverall){
+            var saved=hdDomMap[d.id]; var sc=saved?saved.score4:null; var has=sc!==null&&sc!==undefined;
+            contentHTML+='<tr style="background:#fdf2f8;font-weight:700">'
+              +'<td style="padding:8px 10px;font-size:12px;border:1px solid #f9a8d4">'+d.label+'</td>'
+              +'<td style="padding:5px 10px;text-align:right;border:1px solid #f9a8d4;white-space:nowrap">'
+              +(has?'<span style="padding:3px 10px;border-radius:8px;font-size:13px;font-weight:800;background:'+hdScBg(sc)+';color:'+hdScColor(sc)+'">'+sc+'/4</span><span style="font-size:11px;color:'+hdScColor(sc)+';margin-left:5px">'+SPINE_SCORE_LABELS[sc]+'</span>':'<span style="color:var(--text3)">—</span>')
+              +'</td></tr>';
+          } else {
+            var saved2=hdDomMap[d.id]; var sc2=saved2?saved2.score4:null; var has2=sc2!==null&&sc2!==undefined;
+            var pfx=indent>0?'<span style="color:#f9a8d4;margin-right:6px">└</span>':'';
+            contentHTML+='<tr>'
+              +'<td style="padding:'+pad+';font-size:12px;border:1px solid #f9a8d4;color:var(--text2)">'+pfx+d.label+'</td>'
+              +'<td style="padding:5px 10px;text-align:right;border:1px solid #f9a8d4;white-space:nowrap;width:200px">'
+              +(has2?'<span style="padding:3px 10px;border-radius:8px;font-size:13px;font-weight:800;background:'+hdScBg(sc2)+';color:'+hdScColor(sc2)+'">'+sc2+'/4</span>':'<span style="color:var(--text3)">—</span>')
+              +'</td></tr>';
+            if(d.sub&&d.sub.length) renderHDView(d.sub, indent+1);
+          }
+        });
+      })(hdForm?hdForm.domains:(rec.domains||[]), 0);
+      contentHTML+='</table>';
+    }
+    if(rec.level) contentHTML+='<div style="margin-top:9px;display:flex;gap:8px;align-items:center"><span style="font-size:12px;font-weight:700;color:var(--text2)">Level:</span><span style="padding:4px 13px;background:#fce7f3;color:#9d174d;border-radius:12px;font-size:13px;font-weight:700">'+rec.level+'</span>'+(SPINE_LEVELS.find(function(l){return l.l===rec.level;})||{desc:''}).desc+'</div>';
+    if(rec.acuity) contentHTML+='<div style="margin-top:5px;font-size:12px;color:var(--text2)">Acuity to seek help: <strong>'+(rec.acuity==='yes'?'Yes (y)':'No (n)')+'</strong></div>';
+    if(rec.comment) contentHTML+='<div style="margin-top:9px;padding:10px;background:#fdf2f8;border:1px solid #f9a8d4;border-radius:7px"><div class="flbl" style="color:#9d174d;margin-bottom:3px">💬 Staff comment</div><div style="font-size:13px">'+rec.comment+'</div></div>';
+  } else if(isFootAnkle){
+    const faMeta=rec.meta||{};
+    const faMetaParts=[];
+    if(faMeta.diagnosis) faMetaParts.push('Dx: '+faMeta.diagnosis);
+    if(faMeta.hn) faMetaParts.push('HN: '+faMeta.hn);
+    if(faMetaParts.length) contentHTML+='<div style="margin-bottom:10px;padding:8px 12px;background:#fefce8;border:1px solid #fde68a;border-radius:7px;font-size:12px;color:#92400e;display:flex;gap:12px;flex-wrap:wrap">'+faMetaParts.map(function(p){return '<span>• '+p+'</span>';}).join('')+'</div>';
+    const faForm=FOOT_ANKLE_FORMS[rec.formType];
+    if(faForm && faForm.scale==='su'){
+      contentHTML+='<div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:8px">Procedure: <span style="color:#b45309">'+(faForm.procedure||'')+'</span></div>';
+      contentHTML+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+        +(rec.domains||[]).map(function(d){
+          var su=d.su||'';
+          return '<tr><td style="padding:7px 10px;font-size:12px;border:1px solid #fde68a">'+(d.label||d.id)+'</td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #fde68a;'+(su==='S'?'background:#dcfce7;color:#15803d;font-weight:700':'')+'">'+(su==='S'?'✅ S':'—')+'</td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #fde68a;'+(su==='U'?'background:#fee2e2;color:#b91c1c;font-weight:700':'')+'">'+(su==='U'?'❌ U':'—')+'</td>'
+            +'</tr>';
+        }).join('')+'</table></div>';
+    } else {
+      const faScColor=function(n){return n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';};
+      const faScBg=function(n){return n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';};
+      var faDomMap={};
+      (rec.domains||[]).forEach(function(d){faDomMap[d.id]=d;});
+      contentHTML+='<table style="width:100%;border-collapse:collapse;margin-bottom:8px">';
+      (function renderFAView(list, indent){
+        list.forEach(function(d){
+          var pad=indent===0?'8px 10px':'7px 10px 7px '+(10+indent*14)+'px';
+          if(d.isHeader){
+            var hdrBg=indent===0?'#fefce8':(indent===1?'#fef9c3':'#fffef5');
+            contentHTML+='<tr style="background:'+hdrBg+'">'
+              +'<td colspan="2" style="padding:'+pad+';font-size:12px;font-weight:700;border:1px solid #fde68a;color:#92400e">'+d.label+'</td></tr>';
+            if(d.sub&&d.sub.length) renderFAView(d.sub, indent+1);
+          } else if(d.isOverall){
+            var saved=faDomMap[d.id]; var sc=saved?saved.score4:null; var has=sc!==null&&sc!==undefined;
+            contentHTML+='<tr style="background:#fefce8;font-weight:700">'
+              +'<td style="padding:8px 10px;font-size:12px;border:1px solid #fde68a">'+d.label+'</td>'
+              +'<td style="padding:5px 10px;text-align:right;border:1px solid #fde68a;white-space:nowrap">'
+              +(has?'<span style="padding:3px 10px;border-radius:8px;font-size:13px;font-weight:800;background:'+faScBg(sc)+';color:'+faScColor(sc)+'">'+sc+'/4</span><span style="font-size:11px;color:'+faScColor(sc)+';margin-left:5px">'+SPINE_SCORE_LABELS[sc]+'</span>':'<span style="color:var(--text3)">—</span>')
+              +'</td></tr>';
+          } else {
+            var saved2=faDomMap[d.id]; var sc2=saved2?saved2.score4:null; var has2=sc2!==null&&sc2!==undefined;
+            var pfx=indent>0?'<span style="color:#fde68a;margin-right:6px">└</span>':'';
+            contentHTML+='<tr>'
+              +'<td style="padding:'+pad+';font-size:12px;border:1px solid #fde68a;color:var(--text2)">'+pfx+d.label+'</td>'
+              +'<td style="padding:5px 10px;text-align:right;border:1px solid #fde68a;white-space:nowrap;width:200px">'
+              +(has2?'<span style="padding:3px 10px;border-radius:8px;font-size:13px;font-weight:800;background:'+faScBg(sc2)+';color:'+faScColor(sc2)+'">'+sc2+'/4</span>':'<span style="color:var(--text3)">—</span>')
+              +'</td></tr>';
+            if(d.sub&&d.sub.length) renderFAView(d.sub, indent+1);
+          }
+        });
+      })(faForm?faForm.domains:(rec.domains||[]), 0);
+      contentHTML+='</table>';
+    }
+    if(rec.level) contentHTML+='<div style="margin-top:9px;display:flex;gap:8px;align-items:center"><span style="font-size:12px;font-weight:700;color:var(--text2)">Level:</span><span style="padding:4px 13px;background:#fef9c3;color:#92400e;border-radius:12px;font-size:13px;font-weight:700">'+rec.level+'</span>'+(SPINE_LEVELS.find(function(l){return l.l===rec.level;})||{desc:''}).desc+'</div>';
+    if(rec.comment) contentHTML+='<div style="margin-top:9px;padding:10px;background:#fefce8;border:1px solid #fde68a;border-radius:7px"><div class="flbl" style="color:#92400e;margin-bottom:3px">💬 Staff comment</div><div style="font-size:13px">'+rec.comment+'</div></div>';
+  } else if(isSpine){
+    const spineMeta=rec.meta||{};
+    const metaParts=[];
+    if(spineMeta.diagnosis) metaParts.push('Dx: '+spineMeta.diagnosis);
+    if(spineMeta.procedure) metaParts.push('Procedure: '+spineMeta.procedure);
+    if(spineMeta.hn) metaParts.push('HN: '+spineMeta.hn);
+    if(metaParts.length) contentHTML+='<div style="margin-bottom:10px;padding:8px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:7px;font-size:12px;color:#0369a1;display:flex;gap:12px;flex-wrap:wrap">'+metaParts.map(function(p){return '<span>• '+p+'</span>';}).join('')+'</div>';
+    const sf=SPINE_FORMS[rec.formType];
+    if(sf && sf.scale==='su'){
+      // DOPS S/U view
+      const sDiv=document.createElement('div');
+      sDiv.innerHTML='<div style="font-size:12px;font-weight:700;color:#0369a1;margin-bottom:8px">Procedure: '+(sf.procedure||'')+'</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+        +(rec.domains||[]).map(function(d){
+          const su=d.su||'';
+          return '<tr><td style="padding:7px 10px;font-size:12px;border:1px solid #bae6fd">'+(d.label||d.id)+'</td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #bae6fd;'+(su==='S'?'background:#dcfce7;color:#15803d;font-weight:700':'')+'">'+( su==='S'?'✅ S':'—')+'</td>'
+            +'<td style="padding:5px;text-align:center;border:1px solid #bae6fd;'+(su==='U'?'background:#fee2e2;color:#b91c1c;font-weight:700':'')+'">'+( su==='U'?'❌ U':'—')+'</td>'
+            +'</tr>';
+        }).join('')+'</table></div>';
+      contentHTML+=sDiv.innerHTML;
+    } else {
+      // Scale 0-4 with hierarchy
+      const scColor=function(n){return n<=1?'#b91c1c':n===2?'#b45309':n===3?'#1e40af':'#15803d';};
+      const scBg=function(n){return n<=1?'#fee2e2':n===2?'#fef9c3':n===3?'#dbeafe':'#dcfce7';};
+      var spDomMap={};
+      (rec.domains||[]).forEach(function(d){spDomMap[d.id]=d;});
+      contentHTML+='<table style="width:100%;border-collapse:collapse;margin-bottom:8px">';
+      (function renderSPView(list, indent){
+        list.forEach(function(d){
+          var pad=indent===0?'8px 10px':'7px 10px 7px '+(10+indent*14)+'px';
+          if(d.isHeader){
+            var hdrBg=indent===0?'#f0f9ff':(indent===1?'#e0f2fe':'#f0f9ff');
+            contentHTML+='<tr style="background:'+hdrBg+'">'
+              +'<td colspan="2" style="padding:'+pad+';font-size:12px;font-weight:700;border:1px solid #bae6fd;color:#0369a1">'+d.label+'</td></tr>';
+            if(d.sub&&d.sub.length) renderSPView(d.sub, indent+1);
+          } else if(d.isOverall){
+            var saved=spDomMap[d.id]; var sc=saved?saved.score4:null; var has=sc!==null&&sc!==undefined;
+            contentHTML+='<tr style="background:#f0f9ff;font-weight:700">'
+              +'<td style="padding:8px 10px;font-size:12px;border:1px solid #bae6fd">'+d.label+'</td>'
+              +'<td style="padding:5px 10px;text-align:right;border:1px solid #bae6fd;white-space:nowrap">'
+              +(has?'<span style="padding:3px 10px;border-radius:8px;font-size:13px;font-weight:800;background:'+scBg(sc)+';color:'+scColor(sc)+'">'+sc+'/4</span><span style="font-size:11px;color:'+scColor(sc)+';margin-left:5px">'+SPINE_SCORE_LABELS[sc]+'</span>':'<span style="color:var(--text3)">—</span>')
+              +'</td></tr>';
+          } else {
+            var saved2=spDomMap[d.id]; var sc2=saved2?saved2.score4:null; var has2=sc2!==null&&sc2!==undefined;
+            var pfx=indent>0?'<span style="color:#bae6fd;margin-right:6px">└</span>':'';
+            contentHTML+='<tr>'
+              +'<td style="padding:'+pad+';font-size:12px;border:1px solid #bae6fd;color:var(--text2)">'+pfx+d.label+'</td>'
+              +'<td style="padding:5px 10px;text-align:right;border:1px solid #bae6fd;white-space:nowrap;width:200px">'
+              +(has2?'<span style="padding:3px 10px;border-radius:8px;font-size:13px;font-weight:800;background:'+scBg(sc2)+';color:'+scColor(sc2)+'">'+sc2+'/4</span>':'<span style="color:var(--text3)">—</span>')
+              +'</td></tr>';
+            if(d.sub&&d.sub.length) renderSPView(d.sub, indent+1);
+          }
+        });
+      })(sf?sf.domains:(rec.domains||[]), 0);
+      contentHTML+='</table>';
+    }
+    // Level + Acuity + comment
+    if(rec.level) contentHTML+='<div style="margin-top:9px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;font-weight:700;color:var(--text2)">Level:</span><span style="padding:4px 13px;background:#dbeafe;color:#1e40af;border-radius:12px;font-size:13px;font-weight:700">'+rec.level+'</span>'+(SPINE_LEVELS.find(function(l){return l.l===rec.level;})||{desc:''}).desc+'</div>';
+    if(rec.acuity) contentHTML+='<div style="margin-top:6px;font-size:12px;color:var(--text2)">Acuity to seek help: <strong>'+(rec.acuity==='yes'?'Yes':'No')+'</strong></div>';
+    if(rec.comment) contentHTML+='<div style="margin-top:9px;padding:10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:7px"><div class="flbl" style="color:#0369a1;margin-bottom:3px">💬 Staff comment</div><div style="font-size:13px">'+rec.comment+'</div></div>';
+  } else if(isSports){
+    // Sports 1-9 scale view
+    const scoreColor=n=>n>=7?'#15803d':n>=4?'#b45309':'#b91c1c';
+    const scoreBg=n=>n>=7?'#dcfce7':n>=4?'#fef9c3':'#fee2e2';
+    const scoreZone=n=>n>=7?'Superior':n>=4?'Satisfactory':'Unsatisfactory';
+    contentHTML=`<div class="view-assess-card">
+      ${(rec.domains||[]).map(d=>{
+        const n=d.score9||0;
+        const isNA=d.na;
+        return`<div class="view-domain-row">
+          <div style="flex:1"><div style="font-size:13px;font-weight:${formDef?.domains?.find(x=>x.id===d.id)?.isSummary?'700':'500'}">${d.label}</div></div>
+          ${isNA?`<span style="font-size:12px;color:var(--text3);font-style:italic">ประเมินไม่ได้</span>`:
+            n>0?`<div style="display:flex;align-items:center;gap:8px">
+              <span style="padding:4px 14px;border-radius:12px;font-size:15px;font-weight:800;background:${scoreBg(n)};color:${scoreColor(n)}">${n}</span>
+              <span style="font-size:11px;font-weight:600;color:${scoreColor(n)}">${scoreZone(n)}</span>
+            </div>`:`<span style="font-size:12px;color:var(--text3)">—</span>`}
+        </div>`;
+      }).join('')}
+    </div>`;
+    if(rec.strength) contentHTML+=`<div style="margin-top:8px;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px"><div class="flbl" style="color:#15803d;margin-bottom:3px">✅ จุดแข็ง</div><div style="font-size:13px">${rec.strength}</div></div>`;
+    if(rec.suggest) contentHTML+=`<div style="margin-top:8px;padding:10px;background:#fefce8;border:1px solid #fde68a;border-radius:7px"><div class="flbl" style="color:var(--gold);margin-bottom:3px">💡 ข้อเสนอแนะ</div><div style="font-size:13px">${rec.suggest}</div></div>`;
+  } else if(isPed && rec.formType==='peer'){
+    const cats=PED_FORMS.peer.categories;
+    contentHTML=cats.map(cat=>`
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--teal2);background:#f0fdfa;padding:6px 10px;border-radius:6px;margin-bottom:4px">${cat.cat}</div>
+        ${cat.items.map(item=>{const sc=(rec.peerScores||{})[item];return`<div class="view-domain-row"><div style="flex:1;font-size:12px">${item}</div><div style="display:flex;align-items:center;gap:8px">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<span style="font-size:12px;font-weight:700;color:${sc>=n?'#0f766e':'#d1d5db'}">${n===sc?'●':'·'}</span>`).join('')}<span style="font-weight:700;font-size:13px;color:${sc?'var(--teal)':'var(--text3)'}">${sc||'—'}</span></div></div>`;}).join('')}
+      </div>`).join('');
+    if(rec.praise) contentHTML+=`<div style="margin-top:10px;padding:11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px"><div class="flbl" style="color:#15803d;margin-bottom:3px">✅ คุณลักษณะที่ดี</div><div style="font-size:13px">${rec.praise}</div></div>`;
+    if(rec.suggest) contentHTML+=`<div style="margin-top:8px;padding:11px;background:#fefce8;border:1px solid #fde68a;border-radius:7px"><div class="flbl" style="color:var(--gold);margin-bottom:3px">💡 ข้อเสนอแนะ</div><div style="font-size:13px">${rec.suggest}</div></div>`;
+  } else if(isPed){
+    const ratingColor={unsatisfactory:'#b91c1c',satisfactory:'var(--gold)',superior:'#15803d'};
+    const ratingBg={unsatisfactory:'#fee2e2',satisfactory:'#fef9c3',superior:'#dcfce7'};
+    const ratingLabel={unsatisfactory:'Unsatisfactory',satisfactory:'Satisfactory',superior:'Superior'};
+    contentHTML=`<div class="view-assess-card">
+      ${(rec.domains||[]).map(d=>`<div class="view-domain-row">
+        <div style="flex:1"><div style="font-size:13px;font-weight:600">${d.label}</div>${d.comment?`<div style="font-size:11px;color:var(--text2);margin-top:2px">💬 ${d.comment}</div>`:''}</div>
+        ${d.rating?`<span style="padding:4px 11px;border-radius:12px;font-size:12px;font-weight:700;background:${ratingBg[d.rating]};color:${ratingColor[d.rating]}">${ratingLabel[d.rating]||d.rating}</span>`:'<span style="font-size:12px;color:var(--text3)">—</span>'}
+      </div>`).join('')}
+    </div>`;
+    const levelInfo=rec.formType==='pba'?
+      `${rec.levelPreop?`<span style="margin-right:8px;padding:4px 11px;background:#dbeafe;color:#1e40af;border-radius:12px;font-size:12px;font-weight:700">Preop: ${rec.levelPreop}</span>`:''}${rec.levelScene?`<span style="padding:4px 11px;background:#fee2e2;color:#b91c1c;border-radius:12px;font-size:12px;font-weight:700">At scene: ${rec.levelScene}</span>`:''}`:
+      rec.level?`<span style="padding:4px 11px;background:#ccfbf1;color:var(--teal2);border-radius:12px;font-size:12px;font-weight:700">${rec.level}</span>`:'';
+    if(levelInfo) contentHTML+=`<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;font-weight:700;color:var(--text2)">ผลการประเมินระดับ:</span>${levelInfo}</div>`;
+    if(rec.reflection) contentHTML+=`<div style="margin-top:10px;padding:10px;background:#f8fafc;border:1px solid var(--border);border-radius:7px"><div class="flbl" style="margin-bottom:3px">Trainee reflection</div><div style="font-size:13px">${rec.reflection}</div></div>`;
+    if(rec.strength) contentHTML+=`<div style="margin-top:8px;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px"><div class="flbl" style="color:#15803d;margin-bottom:3px">✅ จุดแข็ง</div><div style="font-size:13px">${rec.strength}</div></div>`;
+    if(rec.suggest) contentHTML+=`<div style="margin-top:8px;padding:10px;background:#fefce8;border:1px solid #fde68a;border-radius:7px"><div class="flbl" style="color:var(--gold);margin-bottom:3px">💡 ข้อเสนอแนะ</div><div style="font-size:13px">${rec.suggest}</div></div>`;
+  } else {
+    contentHTML=`<div class="view-assess-card">
+      ${(rec.domains||[]).map(d=>{const stars=[1,2,3,4,5].map(n=>`<span class="star-disp${(d.score||0)>=n?' lit':''}">★</span>`).join('');const pfBadge=d.passFail?`<span class="overall-badge ${d.passFail}" style="font-size:11px">${d.passFail==='pass'?'✅ ผ่าน':'❌ ไม่ผ่าน'}</span>`:'';return`<div class="view-domain-row"><div style="flex:1"><div style="font-size:13px;font-weight:600">${d.label}</div></div><div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap"><div class="stars-display">${stars}</div><span style="font-size:13px;font-weight:700;color:${(d.score||0)>0?'var(--teal)':'var(--text3)'}">${(d.score||0)>0?d.score+'/5':'—'}</span>${pfBadge}</div></div>`;}).join('')}
+    </div>`;
+    if(rec.comment) contentHTML+=`<div style="margin-top:10px;padding:11px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:7px"><div class="flbl" style="color:var(--teal2);margin-bottom:3px">💬 ความเห็น</div><div style="font-size:13px">${rec.comment}</div></div>`;
+  }
+
+  document.getElementById('view-assess-body').innerHTML=`${headerHTML}${metaInfoHTML}${contentHTML}<div class="mbtns" style="margin-top:14px"><button class="mbtn-cancel" id="view-assess-close-btn">ปิด</button></div>`;
+  document.getElementById('view-assess-close-btn').addEventListener('click',()=>document.getElementById('view-assess-modal').classList.remove('open'));
+  document.getElementById('view-assess-modal').classList.add('open');
+}
+
+// ═══════════════════════════════════════════════════════
+//  RESIDENT ASSESSMENT VIEW (in portfolio)
+// ═══════════════════════════════════════════════════════
+function assessmentYearKey(rec){
+  const res=DB.residents.find(x=>x.id===rec.resId);
+  const n=parseInt(rec.traineeYr||res?.yr||'',10);
+  return n>=1&&n<=6?String(n):'unknown';
+}
+function assessmentYearLabel(y){return y==='unknown'?'ไม่ระบุชั้นปี':yrText(y);}
+function assessmentYearKeys(records){
+  const keys=[...new Set(records.map(assessmentYearKey))];
+  const order={1:1,2:2,3:3,4:4,6:5,5:6,unknown:99};
+  return keys.sort((a,b)=>(order[a]||90)-(order[b]||90));
+}
+function renderAssessmentGroupedByYear(records,baseId){
+  if(!records.length)return'<div class="empty-st">ไม่มีแบบประเมิน</div>';
+  const byYear={};
+  records.forEach(rec=>{const y=assessmentYearKey(rec);if(!byYear[y])byYear[y]=[];byYear[y].push(rec);});
+  const years=assessmentYearKeys(records);
+  return`
+    <div class="score-year-tabs" style="margin-bottom:12px">
+      ${years.map((y,i)=>`<button type="button" class="score-year-tab assess-year-tab${i===0?' active':''}" data-base="${baseId}" data-year="${y}">${assessmentYearLabel(y)} <span style="background:rgba(0,0,0,.1);border-radius:10px;padding:1px 7px;font-size:10px">${byYear[y].length}</span></button>`).join('')}
+    </div>
+    ${years.map((y,yi)=>{
+      const rotList=assessmentRotations();
+      const byRot={};rotList.forEach(r=>byRot[r.id]=[]);
+      byYear[y].forEach(rec=>{
+        const rotId=rec.rotation||'unknown';
+        if(!byRot[rotId]){
+          byRot[rotId]=[];
+          rotList.push({id:rotId,label:rotId==='unknown'?'ไม่ระบุ Rotation':String(rotId),emoji:'📋'});
+        }
+        byRot[rotId].push(rec);
+      });
+      const activeRots=rotList.filter(r=>byRot[r.id]&&byRot[r.id].length>0);
+      return`<div class="assess-year-panel" data-base="${baseId}" data-year="${y}" style="${yi===0?'':'display:none'}">
+        <div style="font-size:12px;font-weight:800;color:var(--text2);margin-bottom:8px">${assessmentYearLabel(y)}: แบบประเมินที่ได้รับ</div>
+        <div class="rota-rotation-tabs" style="margin-bottom:14px">
+          ${activeRots.map((r,i)=>`<button type="button" class="rota-rtab assess-rot-tab${i===0?' active':''}" data-base="${baseId}" data-year="${y}" data-rot="${r.id}">${r.emoji} ${r.label} <span style="background:rgba(0,0,0,.1);border-radius:10px;padding:1px 7px;font-size:10px">${byRot[r.id].length}</span></button>`).join('')}
+        </div>
+        ${activeRots.map((r,i)=>`<div class="assess-rot-panel" data-base="${baseId}" data-year="${y}" data-rot="${r.id}" style="${i===0?'':'display:none'}">${renderRotationSummary(byRot[r.id])}</div>`).join('')}
+      </div>`;
+    }).join('')}`;
+}
+function bindAssessmentGroupedTabs(root,baseId){
+  root.querySelectorAll(`.assess-year-tab[data-base="${baseId}"]`).forEach(btn=>btn.addEventListener('click',()=>{
+    const y=btn.dataset.year;
+    root.querySelectorAll(`.assess-year-tab[data-base="${baseId}"]`).forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    root.querySelectorAll(`.assess-year-panel[data-base="${baseId}"]`).forEach(p=>{p.style.display=p.dataset.year===y?'block':'none';});
+  }));
+  root.querySelectorAll(`.assess-rot-tab[data-base="${baseId}"]`).forEach(btn=>btn.addEventListener('click',()=>{
+    const y=btn.dataset.year,rot=btn.dataset.rot;
+    root.querySelectorAll(`.assess-rot-tab[data-base="${baseId}"][data-year="${y}"]`).forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    root.querySelectorAll(`.assess-rot-panel[data-base="${baseId}"][data-year="${y}"]`).forEach(p=>{p.style.display=p.dataset.rot===rot?'block':'none';});
+  }));
+}
+function renderResidentAssessmentSection(resId, containerId){
+  const el=document.getElementById(containerId);
+  if(!el)return;
+  let records=DB.rotaRecords.filter(r=>r.resId===resId);
+  if(_curAdvId&&String(containerId||'').includes('adv-')){
+    if(!advisorCanAccessResident(_curAdvId,resId)){
+      el.innerHTML='<div class="empty-st" style="padding:20px">ไม่มีสิทธิ์ดูแบบประเมิน Rotation ของแพทย์คนนี้</div>';
+      return;
+    }
+  }
+  if(!records.length){el.innerHTML='<div class="empty-st" style="padding:20px">ยังไม่มีแบบประเมิน Rotation</div>';return;}
+  el.innerHTML=renderAssessmentGroupedByYear(records,containerId);
+  bindAssessmentGroupedTabs(el,containerId);
+  el.querySelectorAll('.view-assess-btn').forEach(b=>b.addEventListener('click',()=>openViewAssessModal(b.dataset.recid)));
+}
+
+function renderRotationSummary(records){
+  if(!records.length)return'<div class="empty-st">ไม่มีแบบประเมิน</div>';
+  const sorted=[...records].sort((a,b)=>(b.assessDate||b.createdAt||0)>(a.assessDate||a.createdAt||0)?1:-1);
+  const typeColors={
+    pediatric:{bg:'#ede9fe',col:'#7c3aed'},sports:{bg:'#fff3cd',col:'#856404'},
+    spine:{bg:'#e0f2fe',col:'#0369a1'},footankle:{bg:'#fef9c3',col:'#92400e'},
+    hand:{bg:'#fce7f3',col:'#9d174d'},hk:{bg:'#e8f5e9',col:'#1b5e20'},
+    trauma:{bg:'#fff3e0',col:'#e65100'},tumor:{bg:'#f3e5f5',col:'#4a148c'},
+    elective:{bg:'#ccfbf1',col:'var(--teal2)'},unit_rotation:{bg:'#e0f2fe',col:'#0369a1'},jc:{bg:'#e8f4fd',col:'#1565c0'},general:{bg:'#f0fdfa',col:'var(--teal2)'},custom:{bg:'#e0f2fe',col:'#1e40af'},
+  };
+  const ftLabel={cbd:'CBD',minicex:'Mini-CEX',pba:'PBA',dops:'DOPS',
+    dops_arthro:'DOPS-Arthro',dops_orif:'DOPS-ORIF',dops_cts:'DOPS-CTS',
+    dops_injection:'DOPS-Inj',dops_aspinj:'DOPS-Asp/Inj',dops_wound:'DOPS-Wound',
+    dops_hemi:'DOPS-Hemi',dops_biopsy:'DOPS-Biopsy',dops_approach:'DOPS-Approach',
+    dops_trauma:'DOPS-Trauma',peer:'Peer/360°',general:'ทั่วไป',custom:'แบบกำหนดเอง',elective:'Elective',unit_rotation:'วนหน่วย',jc:'Journal Club'};
+  return sorted.map(function(rec){
+    const adv=DB.advisors.find(x=>x.id===rec.advisorId);
+    const tc=typeColors[rec.type]||typeColors.general;
+    const fLabel=rec.templateName||ftLabel[rec.formType]||rec.formType||'';
+    const dateDisp=assessmentDateDisplay(rec);
+    const m=rec.meta||{};
+    const metaParts=[];
+    if(m.diagnosis) metaParts.push('Dx: '+m.diagnosis);
+    if(m.procedure) metaParts.push(m.procedure);
+    if(m.hn)        metaParts.push('HN: '+m.hn);
+    if(m.topic)     metaParts.push(m.topic);
+    if(m.selectedEpas&&m.selectedEpas.length) metaParts.push(m.selectedEpas.join(', '));
+    if(rec.type==='elective'){
+      if(m.trainingUnit) metaParts.push('หน่วย: '+m.trainingUnit);
+      if(m.institution) metaParts.push('สถาบัน: '+m.institution);
+      if(m.evaluatorName) metaParts.push('ผู้ประเมิน: '+m.evaluatorName);
+    }
+    if(rec.type==='unit_rotation'){
+      if(m.workLine) metaParts.push('สาย: '+m.workLine);
+      if(m.scheduleSource) metaParts.push('ตาราง: '+m.scheduleSource);
+      if(m.evaluatorName) metaParts.push('ผู้ประเมิน: '+m.evaluatorName);
+    }
+    // quick summary badge
+    var summaryBadge='';
+    if(rec.type==='general'){
+      const od=rec.domains&&rec.domains.find(d=>d.id==='overall');
+      if(od&&od.score) summaryBadge='<span style="font-size:12px;font-weight:700;color:var(--teal);">'+od.score+'/5 ⭐</span>';
+      if(od&&od.passFail==='pass') summaryBadge+='<span class="overall-badge pass" style="font-size:11px">✅ ผ่าน</span>';
+      if(od&&od.passFail==='fail') summaryBadge+='<span class="overall-badge fail" style="font-size:11px">❌ ไม่ผ่าน</span>';
+    }else if(rec.type==='sports'){
+      if(rec.passFail==='pass') summaryBadge='<span class="overall-badge pass" style="font-size:11px">✅ ผ่าน</span>';
+      if(rec.passFail==='fail') summaryBadge='<span class="overall-badge fail" style="font-size:11px">❌ ไม่ผ่าน</span>';
+    }else if(rec.type==='custom'&&rec.totalScore!==undefined){
+      summaryBadge='<span style="font-size:12px;font-weight:700;color:#1e40af;">'+displayTemplateNumber(rec.totalScore)+'/'+displayTemplateNumber(rec.maxScore||0)+(rec.passFail==='pass'?' · ✓':rec.passFail==='fail'?' · !':'')+'</span>';
+    }else if(rec.type==='jc'&&rec.totalScore!==undefined){
+      summaryBadge='<span style="font-size:12px;font-weight:700;color:var(--teal2);">'+rec.totalScore+'/'+rec.maxScore+'</span>';
+    }else if(rec.type==='elective'&&rec.totalScore!==undefined){
+      summaryBadge='<span style="font-size:12px;font-weight:700;color:var(--teal2);">'+rec.totalScore+'/'+rec.maxScore+'</span>';
+    }else if(rec.type==='unit_rotation'&&rec.totalScore!==undefined){
+      summaryBadge='<span style="font-size:12px;font-weight:700;color:#0369a1;">'+rec.totalScore+'/'+rec.maxScore+'</span>';
+    }else if(rec.type==='spine'||rec.type==='footankle'||rec.type==='hand'||rec.type==='hk'||rec.type==='trauma'||rec.type==='tumor'){
+      const od=rec.domains&&rec.domains.find(d=>d.isOverall);
+      if(od&&od.score4!==null&&od.score4!==undefined){
+        var bg=od.score4<=1?'#fee2e2':od.score4===2?'#fef9c3':od.score4===3?'#dbeafe':'#dcfce7';
+        var col=od.score4<=1?'#b91c1c':od.score4===2?'#b45309':od.score4===3?'#1e40af':'#15803d';
+        summaryBadge='<span style="padding:2px 8px;border-radius:8px;font-size:12px;font-weight:700;background:'+bg+';color:'+col+'">Overall: '+od.score4+'/4</span>';
+      }
+      if(rec.passThreshold){
+        var sCount=0;(rec.domains||[]).forEach(function(d){if(d.su==='S')sCount++;});
+        summaryBadge=sCount>=rec.passThreshold
+          ?'<span class="overall-badge pass" style="font-size:11px">✅ ผ่าน (S='+sCount+')</span>'
+          :'<span class="overall-badge fail" style="font-size:11px">❌ ไม่ผ่าน (S='+sCount+')</span>';
+      }
+    }else if(rec.type==='pediatric'&&rec.type!=='peer'){
+      if(rec.level) summaryBadge='<span style="padding:2px 8px;background:#dbeafe;color:#1e40af;border-radius:8px;font-size:11px;font-weight:700">'+rec.level+'</span>';
+    }
+    return '<div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+          +'<span style="font-size:12px;font-weight:600;color:var(--text2)">📅 '+dateDisp+'</span>'
+          +(fLabel?'<span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:'+tc.bg+';color:'+tc.col+'">'+fLabel+'</span>':'')+summaryBadge
+        +'</div>'
+        +(metaParts.length?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+metaParts.map(escapeHtml).join(' · ')+'</div>':'')+
+        '<div style="font-size:11px;color:var(--text3);margin-top:1px">👨‍🏫 '+escapeHtml(assessmentEvaluatorName(rec))+'</div>'
+      +'</div>'
+      +'<button class="abtn t view-assess-btn" data-recid="'+rec.id+'" style="padding:4px 9px;font-size:11px;flex-shrink:0">👁 ดู</button>'
+      +'</div>';
+  }).join('');
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  RESIDENT MODAL: Add/Edit
+// ═══════════════════════════════════════════════════════
+function openAddRes(){editResId=null;document.getElementById('m-ttl').textContent='✨ เพิ่มแพทย์ประจำบ้าน';['m-fn','m-ln','m-id','m-pass','m-email','m-port','m-act'].forEach(id=>document.getElementById(id).value='');resetPasswordEditor('m-pass','m-pass-toggle');document.getElementById('m-id').readOnly=false;document.getElementById('m-yr').value='1';document.getElementById('m-dept').value='';document.getElementById('m-photo').value='';setResPhotoPreview('');document.getElementById('res-modal').classList.add('open');}
+function openEditRes(id){const r=DB.residents.find(x=>x.id===id);if(!r)return;editResId=id;document.getElementById('m-ttl').textContent='✏️ แก้ไขข้อมูลแพทย์';document.getElementById('m-fn').value=r.fn;document.getElementById('m-ln').value=r.ln;document.getElementById('m-id').value=r.id;document.getElementById('m-id').readOnly=true;document.getElementById('m-pass').value='';resetPasswordEditor('m-pass','m-pass-toggle');document.getElementById('m-yr').value=r.yr;document.getElementById('m-dept').value=r.dept;document.getElementById('m-email').value=r.email||'';document.getElementById('m-port').value=(r.links||[]).join('\n');document.getElementById('m-act').value=(r.acts||[]).join('\n');document.getElementById('m-photo').value='';setResPhotoPreview(r.photo||'');document.getElementById('res-modal').classList.add('open');}
+function closeResModal(){document.getElementById('res-modal').classList.remove('open');}
+function validateResidentPayload(data,editingId){
+  if(!data.fn||!data.ln||!data.id||(!editingId&&!data.newPassword))return'กรุณากรอกชื่อ นามสกุล รหัส และรหัสผ่านให้ครบ';
+  if(!/^[A-Za-z0-9_-]+$/.test(data.id))return'รหัสแพทย์ใช้ได้เฉพาะ A-Z, 0-9, _ และ -';
+  if(data.email&&!validEmail(data.email))return'รูปแบบอีเมลไม่ถูกต้อง';
+  const duplicate=DB.residents.find(r=>r.id===data.id&&r.id!==editingId);
+  if(duplicate)return'รหัสแพทย์นี้มีอยู่แล้ว';
+  return'';
+}
+function saveRes(){
+  const passInput=document.getElementById('m-pass'),enteredPassword=passInput.value.trim();
+  const newPassword=passInput.dataset.loadedPassword==='1'&&enteredPassword===passInput.dataset.originalPassword?'':enteredPassword;
+  const fn=document.getElementById('m-fn').value.trim(),ln=document.getElementById('m-ln').value.trim(),id=document.getElementById('m-id').value.trim();
+  const links=document.getElementById('m-port').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const acts=document.getElementById('m-act').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const photoField=document.getElementById('m-photo-data');
+  const yr=+document.getElementById('m-yr').value,dept=document.getElementById('m-dept').value.trim(),email=document.getElementById('m-email').value.trim(),photo=photoField.value||'';
+  const data={fn,ln,id,newPassword,yr,dept,email,links,acts};
+  if(photo||photoField.dataset.cleared==='1'||!editResId)data.photo=photo;
+  if(photoField.dataset.cleared==='1')data.photoClear=true;
+  const err=validateResidentPayload(data,editResId);
+  if(err){toast(err,'error');return;}
+  if(editResId){
+    const i=DB.residents.findIndex(x=>x.id===editResId);if(i<0)return;
+    const before={...DB.residents[i]};
+    DB.residents[i]={...DB.residents[i],...data,passwordRevealAvailable:newPassword?true:DB.residents[i].passwordRevealAvailable};
+    const diff=changeSummary(before,DB.residents[i],['fn','ln','id','yr','dept','email']);
+    if(diff)recordChange('resident',id,'แก้ไขข้อมูลแพทย์',diff,'บันทึกแล้ว');
+  }else{
+    DB.residents.push({id,newPassword,fn,ln,yr,dept,email,photo,os:makeEmptyOS(),cs:{},links,acts,passwordRevealAvailable:true});
+    recordChange('resident',id,'เพิ่มแพทย์ประจำบ้าน','—',residentName({fn,ln,id}));
+  }
+  saveAndConfirm('✅ บันทึกข้อมูลแพทย์แล้ว');
+  closeResModal();renderAdmin();
+}
+function delRes(id){if(!confirm('ลบข้อมูลแพทย์ประจำบ้านนี้?'))return;DB.residents=DB.residents.filter(r=>r.id!==id);saveDB();renderAdmin();toast('🗑️ ลบแล้ว');}
+
+// ═══════════════════════════════════════════════════════
+//  ADVISOR MODAL: Add/Edit
+// ═══════════════════════════════════════════════════════
+function openAddAdv(){editAdvId=null;document.getElementById('am-ttl').textContent='✨ เพิ่มอาจารย์';['am-fn','am-ln','am-id','am-pass','am-title','am-dept','am-email'].forEach(id=>document.getElementById(id).value='');resetPasswordEditor('am-pass','am-pass-toggle');document.getElementById('am-id').readOnly=false;document.getElementById('adv-modal').classList.add('open');}
+function openEditAdv(id){const a=DB.advisors.find(x=>x.id===id);if(!a)return;editAdvId=id;document.getElementById('am-ttl').textContent='✏️ แก้ไขข้อมูลอาจารย์';document.getElementById('am-fn').value=a.fn;document.getElementById('am-ln').value=a.ln;document.getElementById('am-id').value=a.id;document.getElementById('am-id').readOnly=true;document.getElementById('am-pass').value='';resetPasswordEditor('am-pass','am-pass-toggle');document.getElementById('am-title').value=a.title||'';document.getElementById('am-dept').value=a.dept||'';document.getElementById('am-email').value=a.email||'';document.getElementById('adv-modal').classList.add('open');}
+function closeAdvModal(){document.getElementById('adv-modal').classList.remove('open');}
+function validateAdvisorPayload(data,editingId){
+  if(!data.fn||!data.ln||!data.id||(!editingId&&!data.newPassword))return'กรุณากรอกชื่อ นามสกุล รหัส และรหัสผ่านให้ครบ';
+  if(!/^[A-Za-z0-9_-]+$/.test(data.id))return'รหัสอาจารย์ใช้ได้เฉพาะ A-Z, 0-9, _ และ -';
+  if(data.email&&!validEmail(data.email))return'รูปแบบอีเมลไม่ถูกต้อง';
+  const duplicate=DB.advisors.find(a=>a.id===data.id&&a.id!==editingId);
+  if(duplicate)return'รหัสอาจารย์นี้มีอยู่แล้ว';
+  return'';
+}
+function saveAdv(){
+  const passInput=document.getElementById('am-pass'),enteredPassword=passInput.value.trim();
+  const newPassword=passInput.dataset.loadedPassword==='1'&&enteredPassword===passInput.dataset.originalPassword?'':enteredPassword;
+  const fn=document.getElementById('am-fn').value.trim(),ln=document.getElementById('am-ln').value.trim(),id=document.getElementById('am-id').value.trim();
+  const title=document.getElementById('am-title').value.trim(),dept=document.getElementById('am-dept').value.trim(),email=document.getElementById('am-email').value.trim();
+  const data={fn,ln,id,newPassword,title,dept,email};
+  const err=validateAdvisorPayload(data,editAdvId);
+  if(err){toast(err,'error');return;}
+  if(editAdvId){
+    const i=DB.advisors.findIndex(x=>x.id===editAdvId);if(i<0)return;
+    const before={...DB.advisors[i]};
+    DB.advisors[i]={...DB.advisors[i],...data,passwordRevealAvailable:newPassword?true:DB.advisors[i].passwordRevealAvailable};
+    const diff=changeSummary(before,DB.advisors[i],['fn','ln','id','title','dept','email']);
+    if(diff)recordChange('advisor',id,'แก้ไขข้อมูลอาจารย์',diff,'บันทึกแล้ว');
+  }else{
+    DB.advisors.push({id,newPassword,fn,ln,title,dept,email,allowedResidents:[],allowedRotations:allRotationIds(),passwordRevealAvailable:true});
+    recordChange('advisor',id,'เพิ่มอาจารย์','—',`${fn} ${ln}`);
+  }
+  saveAndConfirm('✅ บันทึกข้อมูลอาจารย์แล้ว');
+  closeAdvModal();renderAdmin();
+}
+function delAdv(id){if(!confirm('ลบอาจารย์นี้?'))return;DB.advisors=DB.advisors.filter(a=>a.id!==id);saveDB();renderAdmin();toast('🗑️ ลบแล้ว');}
+
+// ═══════════════════════════════════════════════════════
+//  PERMISSION MODAL
+// ═══════════════════════════════════════════════════════
+let _permYearFilter='all';
+function openPermModal(advId){
+  permAdvId=advId;
+  const a=DB.advisors.find(x=>x.id===advId);
+  if(!a)return;
+  document.getElementById('pm-ttl').textContent=`🔑 กำหนดสิทธิ์ — ${a.fn} ${a.ln}`;
+  _permYearFilter='all';
+  const allowed=advisorExplicitResidentIds(a);
+  const allowedRots=advisorAllowedRotationIds(a);
+  const yearTabs=[{v:'all',l:'ทั้งหมด'},...RESIDENT_YEAR_ORDER.map(v=>({v,l:yrText(v)}))];
+  const resRows=DB.residents.map(r=>`<div class="perm-res-row" data-perm-year="${r.yr}"><div class="avatar av-green" style="width:30px;height:30px;font-size:11px;flex-shrink:0">${(r.fn.replace(/[นพ.พญ.]/g,'')[0]||'?')}${r.ln[0]||''}</div><div class="perm-name">${r.fn} ${r.ln} <span class="badge-yr ${YR_CLASS[r.yr]||'yr1'}" style="margin-left:6px">${yrFullText(r.yr)}</span></div><span style="font-size:11px;color:var(--text3);margin-right:8px;font-family:monospace">${r.id}</span><label class="perm-toggle"><input type="checkbox" class="perm-chk" value="${r.id}" ${allowed.includes(String(r.id))?'checked':''}><span class="perm-slider"></span></label></div>`).join('')||'<div class="empty-st">ยังไม่มีแพทย์ประจำบ้าน</div>';
+  const rotRows=assessmentRotations().map(r=>`<div class="perm-res-row"><div style="width:30px;height:30px;border-radius:8px;background:#e0f2fe;color:#0369a1;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${r.emoji}</div><div class="perm-name">${r.label}</div><span style="font-size:11px;color:var(--text3);margin-right:8px">แบบประเมิน Rotation</span><label class="perm-toggle"><input type="checkbox" class="perm-rot-chk" value="${r.id}" ${allowedRots.includes(r.id)?'checked':''}><span class="perm-slider"></span></label></div>`).join('');
+  document.getElementById('perm-list').innerHTML=`
+    <div style="font-size:12px;font-weight:800;color:var(--text2);margin:0 0 8px">แพทย์ในความดูแล</div>
+    <div class="score-year-tabs" id="perm-year-tabs" style="margin-bottom:8px">
+      ${yearTabs.map(t=>`<button type="button" class="score-year-tab ${String(t.v)===_permYearFilter?'active':''}" data-pyf="${t.v}">${t.l}</button>`).join('')}
+    </div>
+    <div id="perm-res-count" style="font-size:11px;color:var(--text3);margin:-3px 0 5px"></div>
+    <div id="perm-res-rows" style="display:flex;flex-direction:column;gap:6px">${resRows}</div>
+    <div style="font-size:12px;font-weight:800;color:var(--text2);margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--border)">แบบประเมิน Rotation ที่อาจารย์สร้างได้</div>
+    ${rotRows}`;
+  bindPermYearFilter();
+  applyPermYearFilter();
+  document.getElementById('perm-modal').classList.add('open');
+}
+function closePermModal(){document.getElementById('perm-modal').classList.remove('open');permAdvId=null;}
+function bindPermYearFilter(){
+  document.querySelectorAll('#perm-year-tabs .score-year-tab').forEach(btn=>btn.addEventListener('click',()=>{
+    _permYearFilter=btn.dataset.pyf||'all';
+    document.querySelectorAll('#perm-year-tabs .score-year-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    applyPermYearFilter();
+  }));
+}
+function applyPermYearFilter(){
+  const rows=[...document.querySelectorAll('#perm-res-rows .perm-res-row')];
+  let shown=0;
+  rows.forEach(row=>{
+    const show=_permYearFilter==='all'||String(row.dataset.permYear)===String(_permYearFilter);
+    row.style.display=show?'flex':'none';
+    if(show)shown++;
+  });
+  const label=_permYearFilter==='all'?'ทั้งหมด':yrFullText(_permYearFilter);
+  const count=document.getElementById('perm-res-count');
+  if(count)count.textContent=`แสดง ${shown} คน (${label})`;
+}
+function visiblePermResidentChecks(){
+  return [...document.querySelectorAll('#perm-res-rows .perm-chk')].filter(c=>c.closest('.perm-res-row')?.style.display!=='none');
+}
+function savePerm(){
+  const a=DB.advisors.find(x=>x.id===permAdvId);if(!a)return;
+  const beforeResidents=(a.allowedResidents||[]).slice(),beforeRots=advisorAllowedRotationIds(a).slice();
+  a.allowedResidents=[...document.querySelectorAll('.perm-chk:checked')].map(c=>c.value);
+  a.allowedRotations=[...document.querySelectorAll('.perm-rot-chk:checked')].map(c=>c.value);
+  recordChange('advisor_permission',a.id,'แก้ไขสิทธิ์อาจารย์',`แพทย์ ${beforeResidents.length} · แบบประเมิน ${beforeRots.length}`,`แพทย์ ${a.allowedResidents.length} · แบบประเมิน ${a.allowedRotations.length}`);
+  saveDB({immediate:true});closePermModal();renderAdvTable();toast('✅ บันทึกสิทธิ์เรียบร้อย');
+}
+
+// ═══════════════════════════════════════════════════════
+//  SCORES TAB
+// ═══════════════════════════════════════════════════════
+function makeEmptyFeedbackYear(){return[{resident:'',advisor:'',advisorId:''},{resident:'',advisor:'',advisorId:''}];}
+function makeEmptyResearchProgress(){return{titleTh:'',titleEn:'',advisorNames:'',type:'',otherType:'',proposalStatus:'',proposalOther:'',ecStatus:'',ecOther:'',dates:{requested:'',submitted:'',revisionNotice:'',resubmitted:'',approved:''},progressStatus:'',progressOther:'',dissemination:'',milestones:{dataCollectionComplete:false,dataAnalysisComplete:false,manuscriptOutline:false,manuscriptComplete:false,submitted:false,presented:false,published:false},followUps:[],reviews:{R2:{decision:'pending',comment:'',reviewerId:'',reviewedAt:''},R3:{decision:'pending',comment:'',reviewerId:'',reviewedAt:''},R4:{decision:'pending',comment:'',reviewerId:'',reviewedAt:''}},updatedAt:'',updatedBy:''};}
+function makeEmptyOS(){const rc={};RCOST.forEach(e=>{rc[e.key]={score:'',max:e.max,stats:{max:'',min:'',mean:'',sd:'',mpl:''}};if(e.hasSubs)rc[e.key].subs={};});const fm={},feedback={};YEARS.forEach(y=>{fm[y]={mid:{mcq:[],seq:[]},final:{mcq:[],seq:[]}};feedback[y]=makeEmptyFeedbackYear();});return{rc,fm,feedback,researchProgress:makeEmptyResearchProgress()};}
+function normalizeFeedback(os){
+  if(!os.feedback||typeof os.feedback!=='object'||Array.isArray(os.feedback))os.feedback={};
+  for(const year of YEARS){
+    if(!Array.isArray(os.feedback[year]))os.feedback[year]=makeEmptyFeedbackYear();
+    const rows=os.feedback[year];
+    while(rows.length<2)rows.push({resident:'',advisor:'',advisorId:''});
+    for(let index=0;index<2;index++){
+      const row=rows[index];
+      rows[index]={...row,resident:row?.resident||'',advisor:row?.advisor||'',advisorId:row?.advisorId||''};
+    }
+  }
+}
+function normalizeResearchProgress(os){
+  const blank=makeEmptyResearchProgress(),source=os.researchProgress&&typeof os.researchProgress==='object'?os.researchProgress:{};
+  const normalized=Object.assign({},blank,source);
+  normalized.dates=Object.assign({},blank.dates,source.dates||{});
+  normalized.milestones=Object.assign({},blank.milestones,source.milestones||{});
+  normalized.followUps=Array.isArray(source.followUps)?source.followUps.filter(Boolean).map((item,index)=>({id:String(item.id||`follow_${Date.now()}_${index}`),date:item.date||'',status:item.status||'on_track',note:item.note||'',actor:item.actor||'',createdAt:item.createdAt||''})):[];
+  normalized.reviews={};
+  ['R2','R3','R4'].forEach(y=>{normalized.reviews[y]=Object.assign({},blank.reviews[y],source.reviews?.[y]||{});});
+  os.researchProgress=normalized;
+  return normalized;
+}
+function normalizeFm(os){
+  const isRecord=value=>value&&typeof value==='object'&&!Array.isArray(value);
+  if(!isRecord(os.fm))os.fm={};
+  for(const year of YEARS){
+    if(!isRecord(os.fm[year]))os.fm[year]={};
+    for(const period of ['mid','final']){
+      const prior=os.fm[year][period];
+      const scores=Array.isArray(prior)?{mcq:prior}:isRecord(prior)?prior:{};
+      for(const section of ['mcq','seq'])if(!Array.isArray(scores[section]))scores[section]=[];
+      os.fm[year][period]=scores;
+    }
+  }
+  normalizeFeedback(os);
+}
+function normalizeOS(os){
+  const target=os&&typeof os==='object'&&!Array.isArray(os)?os:{};
+  const blank=makeEmptyOS();
+  if(!target.rc||typeof target.rc!=='object'||Array.isArray(target.rc))target.rc={};
+  RCOST.forEach(exam=>{
+    const current=target.rc[exam.key]&&typeof target.rc[exam.key]==='object'?target.rc[exam.key]:{};
+    const normalized=Object.assign({},blank.rc[exam.key],current);
+    normalized.stats=Object.assign({},blank.rc[exam.key].stats,current.stats||{});
+    if(exam.hasSubs)normalized.subs=current.subs&&typeof current.subs==='object'?current.subs:{};
+    target.rc[exam.key]=normalized;
+  });
+  normalizeFm(target);
+  normalizeResearchProgress(target);
+  return target;
+}
+function scoreNumber(v){if(v===''||v==null)return null;const n=parseFloat(String(v).replace(/,/g,''));return Number.isFinite(n)?n:null;}
+function scoreDisplay(value){return value===''||value==null?'—':escapeHtml(value);}
+function scoreMplStatus(score,mpl,examKey=''){const sc=scoreNumber(score);if(sc===null)return'';if(examKey==='bkr_r1')return'pass';const mp=scoreNumber(mpl);if(mp===null)return'';return sc>=mp?'pass':'fail';}
+function scoreStatusInputStyle(status){return status==='pass'?'background:#dcfce7;color:#166534;border-color:#86efac':status==='fail'?'background:#fee2e2;color:#991b1b;border-color:#fca5a5':'';}
+function scoreStatusCellStyle(status){const base='text-align:center;font-weight:800';return status==='pass'?base+';background:#dcfce7;color:#166534':status==='fail'?base+';background:#fee2e2;color:#991b1b':base;}
+function scoreStatusTextColor(status,fallback){return status==='pass'?'#166534':status==='fail'?'#991b1b':fallback;}
+function clampScoreValue(v,max){
+  if(v===''||v==null)return'';
+  let n=parseFloat(v);if(!Number.isFinite(n))return'';
+  n=Math.max(0,Math.min(parseFloat(max)||n,n));
+  return String(n);
+}
+let _scoreYearFilter='all';
+function renderScoreTab(){
+  if(!hasPendingSaves())setScoreSaveStatus(`อ่านข้อมูล: DB / DR · revision ${DB.revision||0}`);
+  renderScorePicker();
+}
+function renderScorePicker(){const picker=document.getElementById('sc-picker'),area=document.getElementById('sc-area');if(!picker)return;delete area.dataset.residentId;area.style.display='none';picker.style.display='block';document.getElementById('sc-breadcrumb').innerHTML='';if(!DB.residents.length){picker.innerHTML='<div class="empty-st">ยังไม่มีแพทย์ประจำบ้าน</div>';return;}const YR_COLORS={1:'#3b82f6',2:'#22863a',3:'#d97706',4:'#ec4899',5:'#6b7280',6:'#0891b2'};const tabs=[{v:'all',l:'ทั้งหมด'},...RESIDENT_YEAR_ORDER.map(v=>({v,l:yrText(v)}))];const rows=DB.residents.filter(r=>_scoreYearFilter==='all'||String(r.yr)===String(_scoreYearFilter));picker.innerHTML=`<div class="score-year-tabs">${tabs.map(t=>`<button class="score-year-tab ${String(t.v)===String(_scoreYearFilter)?'active':''}" data-yf="${t.v}">${t.l}</button>`).join('')}</div>${rows.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px">${rows.map(r=>`<div class="sc-pick-card" data-rid="${r.id}" style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:15px;cursor:pointer;transition:.18s;display:flex;flex-direction:column;gap:5px"><div style="display:flex;align-items:center;gap:9px"><div style="width:38px;height:38px;border-radius:8px;background:${YR_COLORS[r.yr]||'#888'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">${(r.fn||'?')[0]}${(r.ln||'?')[0]}</div><div><div style="font-size:13px;font-weight:700">${r.fn} ${r.ln}</div><div style="font-size:11px;color:var(--text2)">${r.id}</div></div></div><span style="display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700;background:${YR_COLORS[r.yr]||'#888'}22;color:${YR_COLORS[r.yr]||'#888'}">${yrText(r.yr)}</span></div>`).join('')}</div>`:`<div class="empty-st">ไม่พบข้อมูลใน${_scoreYearFilter==='all'?'รายการนี้':yrText(_scoreYearFilter)}</div>`}`;picker.querySelectorAll('.score-year-tab').forEach(btn=>btn.addEventListener('click',()=>{_scoreYearFilter=btn.dataset.yf;renderScorePicker();}));picker.querySelectorAll('.sc-pick-card').forEach(card=>{card.addEventListener('mouseenter',()=>{card.style.borderColor='var(--green)';card.style.transform='translateY(-2px)';card.style.boxShadow='0 4px 14px rgba(26,107,58,.12)';});card.addEventListener('mouseleave',()=>{card.style.borderColor='var(--border)';card.style.transform='';card.style.boxShadow='';});card.addEventListener('click',()=>renderScoreEntry(card.dataset.rid));});}
+function renderScoreEntry(sid){if(!sid)return;const picker=document.getElementById('sc-picker'),area=document.getElementById('sc-area');const res=DB.residents.find(x=>x.id===sid);if(!res)return;area.dataset.residentId=sid;picker.style.display='none';area.style.display='block';document.getElementById('sc-breadcrumb').innerHTML=`<button id="sc-back-btn" type="button" style="background:transparent;border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--text2);margin-right:6px">← กลับ</button><span style="font-size:13px;font-weight:600;color:var(--text)">${res.fn} ${res.ln}</span>`;document.getElementById('sc-back-btn')?.addEventListener('click',renderScorePicker);res.os=normalizeOS(res.os);const os=res.os;const left=RCOST.filter(e=>e.col==='left'),right=RCOST.filter(e=>e.col==='right');const maxRows=Math.max(left.length,right.length);let rows='';for(let i=0;i<maxRows;i++){rows+=`<div class="score-entry-grid" style="margin-bottom:13px">${left[i]?seCard(left[i],os,sid):'<div></div>'}${right[i]?seCard(right[i],os,sid):'<div></div>'}</div>`;}area.innerHTML=`<div class="sec-hdr-green" style="margin-bottom:13px">🏥 คะแนนสอบ ราชวิทยาลัยออร์โธปิดิกส์แห่งประเทศไทย</div>${rows}<div class="sec-hdr-green" style="margin-top:4px;margin-bottom:13px">📝 ผลสอบ กลางภาค-ปลายภาค สาขาวิชาออร์โธปิดิกส์</div>${semSection(os)}${renderResearchAdminSection(res)}${renderFeedbackSection(os,sid)}`;bindScoreEvents(area,sid,res);}
+function scoreSubEntries(exam,ex){if(!ex.subs)ex.subs={};return Object.keys(ex.subs).map(k=>{const v=ex.subs[k]||{};const def=(exam.subs||[]).find(s=>s.k===k);return{k,label:v.label||def?.l||k,score:v.score??'',max:v.max??'',hasData:!!v.label||v.score!==undefined&&v.score!==''||v.max!==undefined&&v.max!==''};}).filter(s=>s.hasData);}
+function addScoreSubBox(sid,examKey){const label=(prompt('ชื่อกล่องคะแนนย่อย:')||'').trim();if(!label)return;const res=DB.residents.find(x=>x.id===sid);const exam=RCOST.find(e=>e.key===examKey);if(!res||!exam)return;res.os=normalizeOS(res.os);const ex=res.os.rc[examKey]||(res.os.rc[examKey]={score:'',max:exam.max,stats:{max:'',min:'',mean:'',sd:'',mpl:''},subs:{}});if(!ex.subs)ex.subs={};const key='sub_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);ex.subs[key]={label,score:'',max:''};saveDB();renderScoreEntry(sid);}
+function deleteScoreSubBox(sid,examKey,subKey){if(!confirm('ลบกล่องคะแนนย่อยนี้?'))return;const res=DB.residents.find(x=>x.id===sid);if(!res?.os?.rc?.[examKey]?.subs)return;delete res.os.rc[examKey].subs[subKey];saveDB();renderScoreEntry(sid);}
+function seCard(exam,os,sid){
+  const ex=os.rc[exam.key]||(os.rc[exam.key]={score:'',max:exam.max,stats:{max:'',min:'',mean:'',sd:'',mpl:''}});
+  if(!ex.stats)ex.stats={max:'',min:'',mean:'',sd:'',mpl:''};
+  if(exam.hasSubs&&!ex.subs)ex.subs={};
+  const pct=ex.score?Math.min(parseFloat(ex.score)/exam.max*100,100):0;
+  const scoreStatus=scoreMplStatus(ex.score,ex.stats?.mpl,exam.key);
+  const barCol=scoreStatus==='pass'?'#22863a':scoreStatus==='fail'?'#dc2626':pct>=60?'#22863a':pct>=40?'#d97706':'#dc2626';
+  const scoreInputStyle=scoreStatusInputStyle(scoreStatus);
+  const subRows=exam.hasSubs?scoreSubEntries(exam,ex):[];
+  const subsHTML=exam.hasSubs?`<div class="subs-grid">${subRows.map(s=>`<div class="sub-box"><div class="sub-head"><input class="sub-label-inp" value="${escapeHtml(s.label)}" data-sid="${sid}" data-exam="${exam.key}" data-sub="${escapeHtml(s.k)}" data-sf="label"><button type="button" class="sub-del" data-sid="${sid}" data-exam="${exam.key}" data-sub="${escapeHtml(s.k)}">✕</button></div><div class="sub-inps"><input type="number" class="sub-inp" value="${escapeHtml(s.score)}" placeholder="—" data-sid="${sid}" data-exam="${exam.key}" data-sub="${escapeHtml(s.k)}" data-sf="score"><span style="font-size:11px;color:var(--text3)">/</span><input type="number" class="sub-inp" value="${escapeHtml(s.max)}" placeholder="max" data-sid="${sid}" data-exam="${exam.key}" data-sub="${escapeHtml(s.k)}" data-sf="max"></div></div>`).join('')}<button type="button" class="add-row-btn sub-add-btn" data-sid="${sid}" data-exam="${exam.key}" style="margin-top:0">＋ เพิ่มกล่องคะแนนย่อย</button></div>`:'';
+  return`<div class="se-card"><div class="se-card-hdr">${exam.label} <span style="font-weight:400;color:var(--text3)">(เต็ม ${exam.max})</span></div><div class="se-body"><div class="se-main-row"><input type="number" min="0" max="${exam.max}" class="score-main-inp" value="${escapeHtml(ex.score??'')}" placeholder="คะแนน" data-sid="${sid}" data-exam="${exam.key}" style="${scoreInputStyle}"><span class="score-max-lbl">/ ${exam.max}</span><div style="flex:1"><div class="bar-wrap"><div class="bar-fill" style="width:${pct.toFixed(1)}%;background:${barCol}" data-bar="${exam.key}"></div></div><div style="font-size:10px;color:var(--text3);margin-top:2px">${scoreNumber(ex.score)!==null?pct.toFixed(1)+'%':''}</div></div></div><div class="stats-row-grid">${['max','min','mean','sd','mpl'].map(st=>`<div class="stat-mini"><label>${st.toUpperCase()}</label><input type="number" value="${escapeHtml(ex.stats?.[st]??'')}" placeholder="—" data-sid="${sid}" data-exam="${exam.key}" data-stat="${st}"></div>`).join('')}</div>${subsHTML}<div style="display:flex;justify-content:flex-end;margin-top:12px"><button type="button" class="abtn g rc-savebtn" data-sid="${sid}" data-exam="${exam.key}" style="min-width:130px;justify-content:center">💾 บันทึกคะแนน</button></div></div></div>`;
+}
+function renderTermScoreRows(rows,year,period,section){
+  const fields=[['sc','—'],['mx','100'],['max','—'],['min','—'],['mean','—'],['mpl','—']];
+  return rows.map((row,index)=>{
+    const r=row||{};
+    const data=`data-y="${year}" data-p="${period}" data-sec="${section}" data-i="${index}"`;
+    return `<tr>
+      <td><input class="s-subj se-subj2" value="${escapeHtml(r.s??'')}" placeholder="ชื่อวิชา" ${data} data-f="s"></td>
+      ${fields.map(([field,placeholder])=>`<td><input type="number" class="s-num se-score2" value="${escapeHtml(r[field]??'')}" placeholder="${placeholder}" ${data} data-f="${field}"${field==='sc'?` style="${scoreStatusInputStyle(scoreMplStatus(r.sc,r.mpl))}"`:''}></td>`).join('')}
+      <td><button type="button" class="del-row se-delrow2" ${data}>✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTermScoreYear(os,year){
+  const periodLabels={mid:'กลางภาค (Midterm)',final:'ปลายภาค (Final)'};
+  const colors={mcq:['#1a6b3a','#e8f5e9'],seq:['#7c3aed','#f3e8ff']};
+  return `<div class="sem-grid">${['mid','final'].map(period=>`<div class="sem-box">
+    <div class="sem-box-hdr">${periodLabels[period]}</div>
+    ${['mcq','seq'].map(section=>`<div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:${colors[section][0]};letter-spacing:.6px;margin-bottom:5px;padding:3px 8px;background:${colors[section][1]};border-radius:5px;display:inline-block">${section.toUpperCase()}</div>
+      <table class="sem-tbl"><thead><tr><th>วิชา/หัวข้อ</th><th style="width:60px">คะแนน</th><th style="width:50px">เต็ม</th><th style="width:50px">MAX</th><th style="width:50px">MIN</th><th style="width:50px">MEAN</th><th style="width:50px">MPL</th><th style="width:26px"></th></tr></thead>
+      <tbody id="se-fm-${year}-${period}-${section}">${renderTermScoreRows(os.fm[year][period][section],year,period,section)}</tbody></table>
+      <button type="button" class="add-row-btn se-addrow2" data-y="${year}" data-p="${period}" data-sec="${section}">＋ เพิ่ม ${section.toUpperCase()}</button>
+    </div>`).join('')}
+    <div style="text-align:right;margin-top:8px"><button type="button" class="abtn g se-savebtn2" style="min-width:130px">💾 บันทึกคะแนน</button></div>
+  </div>`).join('')}</div>`;
+}
+
+function semSection(os){
+  return `<div class="term-score-section" style="margin-bottom:17px">
+    <div class="ytabs" data-yttype="fm">${YEARS.map((year,index)=>`<button type="button" class="ytab${index===0?' active':''}" data-yy="${year}" data-yt="fm">${FM_YEAR_LABELS[year]}</button>`).join('')}</div>
+    ${YEARS.map((year,index)=>`<div class="ypanel${index===0?' active':''}" id="yp-fm-${year}">${index===0?renderTermScoreYear(os,year):''}</div>`).join('')}
+  </div>`;
+}
+
+function bindTermScores(section,os){
+  if(!section)return;
+  const capture=input=>{
+    if(input.validity?.badInput)return;
+    const {y,p,sec,i,f}=input.dataset;
+    const rows=os.fm[y][p][sec];
+    const index=Number(i);
+    const row=rows[index];
+    if(!row||typeof row!=='object'||Array.isArray(row)){
+      if(input.value!=='')rows[index]={[f]:input.value};
+      return;
+    }
+    row[f]=input.value;
+  };
+  section.addEventListener('input',event=>{
+    if(!event.target.matches('.se-subj2,.se-score2'))return;
+    if(event.target.validity?.badInput)return;
+    capture(event.target);
+    saveDB();
+  });
+  section.addEventListener('click',event=>{
+    const button=event.target.closest('button');
+    if(!button)return;
+    if(button.matches('.ytab')){
+      const year=button.dataset.yy;
+      const panel=section.querySelector(`#yp-fm-${year}`);
+      if(!panel.firstElementChild)panel.innerHTML=renderTermScoreYear(os,year);
+      section.querySelectorAll('.ytab').forEach(tab=>tab.classList.toggle('active',tab===button));
+      section.querySelectorAll('.ypanel').forEach(item=>item.classList.toggle('active',item===panel));
+      return;
+    }
+    if(button.matches('.se-savebtn2')){
+      section.querySelectorAll('.se-subj2,.se-score2').forEach(capture);
+      saveAndConfirm('✅ บันทึกคะแนนกลางภาค-ปลายภาคแล้ว',button);
+      return;
+    }
+    const add=button.matches('.se-addrow2');
+    if(!add&&!button.matches('.se-delrow2'))return;
+    const {y,p,sec,i}=button.dataset;
+    const rows=os.fm[y][p][sec];
+    if(add)rows.push({s:'',sc:'',mx:'100',max:'',min:'',mean:'',mpl:''});
+    else rows.splice(Number(i),1);
+    section.querySelector(`#se-fm-${y}-${p}-${sec}`).innerHTML=renderTermScoreRows(rows,y,p,sec);
+    saveDB();
+  });
+}
+
+
+function advisorFullName(id){const a=DB.advisors.find(x=>x.id===id);return a?`${a.title?`${a.title} `:''}${a.fn} ${a.ln}`:'';}
+function advisorExplicitResidentIds(advOrId){
+  const a=typeof advOrId==='string'?DB.advisors.find(x=>x.id===advOrId):advOrId;
+  const existing=new Set(DB.residents.map(r=>String(r.id)));
+  return [...new Set((Array.isArray(a?.allowedResidents)?a.allowedResidents:[]).map(String).filter(id=>id&&existing.has(id)))];
+}
+function advisorAllowedResidentIds(advOrId){
+  return advisorExplicitResidentIds(advOrId);
+}
+function advisorCanAccessResident(advOrId,resId){return !!resId&&advisorAllowedResidentIds(advOrId).includes(String(resId));}
+function allRotationIds(){return assessmentRotations().map(r=>r.id);}
+function advisorAllowedRotationIds(advOrId){
+  const a=typeof advOrId==='string'?DB.advisors.find(x=>x.id===advOrId):advOrId;
+  if(!a)return[];
+  if(Array.isArray(a.allowedRotations)){
+    return a.allowedRotations.filter(id=>allRotationIds().includes(id));
+  }
+  return allRotationIds();
+}
+function advisorCanAccessRotation(advOrId,rotationId){
+  if(!rotationId||!allRotationIds().includes(rotationId))return true;
+  return advisorAllowedRotationIds(advOrId).includes(rotationId);
+}
+function rotationsForAssessmentContext(ctx){
+  if(ctx?.role==='advisor'){
+    const allowed=advisorAllowedRotationIds(ctx.advId);
+    return assessmentRotations().filter(r=>allowed.includes(r.id));
+  }
+  return assessmentRotations();
+}
+function residentsForAssessmentContext(ctx){
+  return assessmentEligibleResidents();
+}
+function ensureAdvisorAssessmentPermission(ctx){
+  if(!ctx||ctx.role!=='advisor')return true;
+  if(advisorCanAccessRotation(ctx.advId,ctx.selectedRotation))return true;
+  toast('ไม่มีสิทธิ์ใช้แบบประเมินสาขานี้ กรุณาติดต่อ admin','error');
+  return false;
+}
+function requireHipKneeEvaluator(ctx){
+  if(ctx.role!=='admin')return true;
+  const selected=document.getElementById('assess-evaluator-id');
+  if(selected)ctx.advId=selected.value||null;
+  if(ctx.advId&&DB.advisors.some(advisor=>String(advisor.id)===String(ctx.advId)))return true;
+  toast('กรุณาเลือกอาจารย์ผู้ประเมิน Hip & Knee','error');
+  selected?.focus();
+  return false;
+}
+function assessmentEvaluatorName(record){
+  const advisor=DB.advisors.find(person=>String(person.id)===String(record.advisorId));
+  if(advisor)return [advisor.title,advisor.fn,advisor.ln].filter(Boolean).join(' ');
+  return record.meta?.evaluatorName||(record.role==='external'?'ผู้ประเมินภายนอก':'Admin');
+}
+function assignedAdvisorIdsForResident(resId){if(!resId)return[];return DB.advisors.filter(a=>advisorExplicitResidentIds(a).includes(String(resId))).map(a=>a.id);}
+function defaultAdvisorIdForResident(resId,preferredId){const ids=assignedAdvisorIdsForResident(resId);if(preferredId&&advisorCanAccessResident(preferredId,resId))return preferredId;return ids[0]||DB.advisors.find(a=>advisorCanAccessResident(a,resId))?.id||'';}
+function effectiveFeedbackAdvisorId(row,resId,preferredId){const ids=assignedAdvisorIdsForResident(resId);if(row?.advisorId&&(!ids.length||ids.includes(row.advisorId)))return row.advisorId;return defaultAdvisorIdForResident(resId,preferredId)||row?.advisorId||'';}
+function syncFeedbackAdvisorDefaults(os,resId,preferredId){normalizeFeedback(os);YEARS.forEach(y=>{(os.feedback[y]||[]).forEach(row=>{const aid=effectiveFeedbackAdvisorId(row,resId,preferredId);if(aid)row.advisorId=aid;});});}
+function feedbackAdvisorOptions(selectedId){return`<option value="">เลือกอาจารย์ที่ปรึกษา</option>${DB.advisors.map(a=>`<option value="${escapeHtml(a.id)}" ${a.id===selectedId?'selected':''}>${escapeHtml(`${a.title?`${a.title} `:''}${a.fn} ${a.ln}`)}</option>`).join('')}`;}
+function ensureFeedbackRow(os,y,idx){normalizeFeedback(os);if(!os.feedback[y][idx])os.feedback[y][idx]={resident:'',advisor:'',advisorId:''};return os.feedback[y][idx];}
+function researchOptions(options,selected,placeholder='เลือกสถานะ'){
+  return`<option value="">${escapeHtml(placeholder)}</option>${options.map(option=>{const value=Array.isArray(option)?option[0]:option.value,label=Array.isArray(option)?option[1]:option.label;return`<option value="${escapeHtml(value)}" ${value===selected?'selected':''}>${escapeHtml(label)}</option>`;}).join('')}`;
+}
+function researchTypeMeta(type){return RESEARCH_TYPES.find(item=>item.value===type)||{value:'',label:'ยังไม่ระบุประเภทงานวิจัย',group:'other'};}
+function researchValidFollowUpDates(rp){return(rp.followUps||[]).map(item=>new Date(`${item.date}T00:00:00`)).filter(date=>!Number.isNaN(date.getTime())&&date.getTime()<=Date.now()).sort((a,b)=>a-b);}
+function researchFollowUpCoverage(rp){
+  const dates=researchValidFollowUpDates(rp);
+  if(dates.length<2)return false;
+  for(let i=1;i<dates.length;i++){if((dates[i]-dates[i-1])/86400000>70)return false;}
+  const daysSince=(Date.now()-dates[dates.length-1].getTime())/86400000;
+  return daysSince<=70;
+}
+function researchNextFollowUp(rp){
+  const dates=researchValidFollowUpDates(rp);
+  if(!dates.length)return null;
+  const due=new Date(dates[dates.length-1]);due.setMonth(due.getMonth()+2);
+  const iso=`${due.getFullYear()}-${String(due.getMonth()+1).padStart(2,'0')}-${String(due.getDate()).padStart(2,'0')}`;
+  return{iso,overdue:due.getTime()<Date.now()};
+}
+function researchCriterionState(rp,year){
+  const decision=rp.reviews?.[year]?.decision||'pending';
+  if(decision==='passed')return{key:'passed',label:'อาจารย์รับรองว่าผ่าน'};
+  if(decision==='not_passed')return{key:'failed',label:'อาจารย์ระบุว่ายังไม่ผ่าน'};
+  const group=researchTypeMeta(rp.type).group,m=rp.milestones||{};
+  let ready=false;
+  if(group==='short'){
+    if(year==='R2')ready=!!m.dataCollectionComplete;
+    if(year==='R3')ready=!!m.dataAnalysisComplete&&!!m.manuscriptOutline;
+    if(year==='R4')ready=!!m.manuscriptComplete||!!m.submitted;
+  }else if(group==='long'){
+    if(year==='R2')ready=researchFollowUpCoverage(rp);
+    if(year==='R3')ready=(!!m.dataCollectionComplete&&!!m.dataAnalysisComplete)||researchFollowUpCoverage(rp)||!!m.manuscriptOutline;
+    if(year==='R4')ready=!!m.manuscriptComplete||!!m.submitted;
+  }
+  return ready?{key:'ready',label:'ข้อมูลครบ พร้อมให้อาจารย์รับรอง'}:{key:'pending',label:'ยังไม่ครบตามเกณฑ์'};
+}
+function syncResearchMilestonesFromStatus(rp){
+  const order=RESEARCH_PROGRESS_STATUSES.map(item=>item[0]),rank=order.indexOf(rp.progressStatus),m=rp.milestones||(rp.milestones={});
+  if(rank>=order.indexOf('analyzing'))m.dataCollectionComplete=true;
+  if(rank>=order.indexOf('analysis_complete'))m.dataAnalysisComplete=true;
+  if(rank>=order.indexOf('summary_complete'))m.manuscriptOutline=true;
+  if(rank>=order.indexOf('manuscript_complete'))m.manuscriptComplete=true;
+  if(rank>=order.indexOf('submitted'))m.submitted=true;
+  if(rp.progressStatus==='presented')m.presented=true;
+  if(rp.progressStatus==='published')m.published=true;
+}
+function researchTouch(rp){rp.updatedAt=new Date().toISOString();rp.updatedBy=currentActorLabel();}
+function setResearchField(rp,path,value){const parts=String(path).split('.');let target=rp;parts.slice(0,-1).forEach(part=>{if(!target[part]||typeof target[part]!=='object')target[part]={};target=target[part];});target[parts[parts.length-1]]=value;researchTouch(rp);}
+function researchRefreshContext(res,context){if(context==='score')renderScoreEntry(res.id);else renderPortfolio(res,context);}
+function renderResearchTracker(res,role,context){
+  const rp=normalizeResearchProgress(res.os),type=researchTypeMeta(rp.type),group=type.group;
+  const canReview=role==='admin'||role==='advisor';
+  const currentYear=Number(res.yr)>=2&&Number(res.yr)<=4?`R${res.yr}`:'';
+  const currentState=currentYear?researchCriterionState(rp,currentYear):{key:'pending',label:'เริ่มบันทึกข้อมูลความก้าวหน้า'};
+  const nextFollow=researchNextFollowUp(rp);
+  const progressOther=rp.progressStatus==='other'?`<div class="research-field-wide"><label class="research-field-label">รายละเอียดความก้าวหน้าอื่น ๆ</label><input class="finp research-field" data-research-field="progressOther" value="${escapeHtml(rp.progressOther)}"></div>`:'';
+  const criteria=RESEARCH_CRITERIA[group]||RESEARCH_CRITERIA.other;
+  const yearCards=['R2','R3','R4'].map(year=>{
+    const review=rp.reviews[year],state=researchCriterionState(rp,year),isCurrent=year===currentYear;
+    const reviewUI=canReview?`<div class="research-review"><label class="research-field-label">ผลรับรองโดยอาจารย์</label><select class="finp research-review-decision" data-research-review="${year}"><option value="pending" ${review.decision==='pending'?'selected':''}>รอตรวจ</option><option value="passed" ${review.decision==='passed'?'selected':''}>ผ่านเกณฑ์</option><option value="not_passed" ${review.decision==='not_passed'?'selected':''}>ยังไม่ผ่านเกณฑ์</option></select><textarea class="finp research-review-comment" data-research-review-comment="${year}" rows="2" placeholder="ข้อเสนอแนะของอาจารย์">${escapeHtml(review.comment)}</textarea></div>`:`<div class="research-review"><div class="research-field-label">ผลรับรองโดยอาจารย์</div><div class="research-review-note">${escapeHtml(review.comment||'ยังไม่มีข้อเสนอแนะ')}</div></div>`;
+    return`<div class="research-year-card${isCurrent?' current':''}"><div class="research-year-head"><span class="research-year-name">${year}</span><span class="research-year-state ${state.key}">${state.label}</span></div><div class="research-year-criterion">${escapeHtml(criteria[year])}</div>${reviewUI}</div>`;
+  }).join('');
+  const followUps=(rp.followUps||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).map(item=>`<div class="research-followup-row" data-followup-id="${escapeHtml(item.id)}"><input type="date" class="finp research-followup-field" data-followup-field="date" value="${escapeHtml(item.date)}"><select class="finp research-followup-field" data-followup-field="status"><option value="on_track" ${item.status==='on_track'?'selected':''}>ตามแผน</option><option value="risk" ${item.status==='risk'?'selected':''}>เสี่ยงล่าช้า</option><option value="blocked" ${item.status==='blocked'?'selected':''}>ติดปัญหา</option><option value="completed" ${item.status==='completed'?'selected':''}>เสร็จขั้นตอน</option></select><textarea class="finp research-followup-field" data-followup-field="note" placeholder="สรุปความก้าวหน้า">${escapeHtml(item.note)}</textarea><button type="button" class="ibtn del research-followup-delete" title="ลบบันทึก" aria-label="ลบบันทึก">✕</button></div>`).join('');
+  const updated=rp.updatedAt?`อัปเดตล่าสุด ${new Date(rp.updatedAt).toLocaleString('th-TH')} โดย ${escapeHtml(rp.updatedBy||'ผู้ใช้งาน')}`:'ยังไม่เคยบันทึกข้อมูล';
+  return`<section class="research-tracker" data-research-context="${escapeHtml(context)}"><div class="research-topbar"><div><div class="research-title">ข้อมูลและสถานะงานวิจัย</div><div class="research-subtitle">อ้างอิงแบบบันทึกความก้าวหน้าและเกณฑ์สิ้นสุดชั้นปี 2, 3 และ 4</div></div><span class="research-status-pill ${currentState.key}">${currentYear?`${currentYear}: `:''}${currentState.label}</span></div>
+    <div class="research-section"><div class="research-section-title">ข้อมูลงานวิจัย</div><div class="research-form-grid"><div><label class="research-field-label">ชื่อเรื่องภาษาไทย</label><input class="finp research-field" data-research-field="titleTh" value="${escapeHtml(rp.titleTh)}"></div><div><label class="research-field-label">ชื่อเรื่องภาษาอังกฤษ</label><input class="finp research-field" data-research-field="titleEn" value="${escapeHtml(rp.titleEn)}"></div><div><label class="research-field-label">ประเภทงานวิจัย</label><select class="finp research-field" data-research-field="type">${researchOptions(RESEARCH_TYPES,rp.type,'เลือกประเภทงานวิจัย')}</select></div><div><label class="research-field-label">ประเภทอื่น ๆ</label><input class="finp research-field" data-research-field="otherType" value="${escapeHtml(rp.otherType)}" ${rp.type==='other'?'':'disabled'} placeholder="ระบุเมื่อเลือกอื่น ๆ"></div><div class="research-field-wide"><label class="research-field-label">อาจารย์ที่ปรึกษางานวิจัย</label><input class="finp research-field" data-research-field="advisorNames" value="${escapeHtml(rp.advisorNames)}" placeholder="ระบุชื่ออาจารย์ที่ปรึกษา"></div></div></div>
+    <div class="research-section"><div class="research-section-title">Proposal และจริยธรรมการวิจัย (EC)</div><div class="research-form-grid"><div><label class="research-field-label">ความก้าวหน้า Proposal</label><select class="finp research-field" data-research-field="proposalStatus">${researchOptions(RESEARCH_PROPOSAL_STATUSES,rp.proposalStatus)}</select></div><div><label class="research-field-label">สถานะ EC</label><select class="finp research-field" data-research-field="ecStatus">${researchOptions(RESEARCH_EC_STATUSES,rp.ecStatus)}</select></div></div></div>
+    <div class="research-section"><div class="research-section-title">ความก้าวหน้าปัจจุบันและหลักฐาน Milestone</div><div class="research-form-grid"><div class="research-field-wide"><label class="research-field-label">สถานะการทำวิจัย</label><select class="finp research-field" data-research-field="progressStatus">${researchOptions(RESEARCH_PROGRESS_STATUSES,rp.progressStatus)}</select></div>${progressOther}<div class="research-field-wide"><div class="research-milestone-grid">${RESEARCH_MILESTONES.map(([key,label])=>`<label class="research-check"><input type="checkbox" class="research-field" data-research-field="milestones.${key}" ${rp.milestones[key]?'checked':''}><span>${label}</span></label>`).join('')}</div></div><div class="research-field-wide"><label class="research-field-label">การประชุมที่นำเสนอผลงาน / วารสารที่ตีพิมพ์</label><textarea class="finp research-field" data-research-field="dissemination" rows="3" placeholder="ระบุชื่อการประชุม วารสาร DOI หรือลิงก์หลักฐาน">${escapeHtml(rp.dissemination)}</textarea></div></div></div>
+    <div class="research-section"><div class="research-section-title">เกณฑ์ความก้าวหน้าปลายชั้นปี</div><div class="research-year-grid">${yearCards}</div></div>
+    <div class="research-section"><div class="research-section-title">บันทึกติดตามความก้าวหน้าทุก 2 เดือน</div>${nextFollow?`<div class="research-next-due${nextFollow.overdue?' overdue':''}">ครั้งถัดไป: ${escapeHtml(nextFollow.iso)}${nextFollow.overdue?' (เกินกำหนด)':''}</div>`:`<div class="research-next-due">ยังไม่มีประวัติการติดตาม</div>`}<div class="research-followup-add"><div><label class="research-field-label">วันที่ติดตาม</label><input type="date" class="finp research-followup-new-date"></div><div><label class="research-field-label">สรุปความก้าวหน้า</label><input class="finp research-followup-new-note" placeholder="สิ่งที่ทำเสร็จ ปัญหา และแผนถัดไป"></div><button type="button" class="abtn research-followup-add-btn">＋ เพิ่มบันทึก</button></div><div class="research-followup-list">${followUps||'<div class="empty-st" style="padding:14px">ยังไม่มีบันทึกความก้าวหน้า</div>'}</div></div>
+    <div class="research-subtitle">${updated}</div><div class="research-actions"><button type="button" class="abtn g research-save-btn">บันทึกความก้าวหน้างานวิจัย</button></div></section>`;
+}
+function bindResearchTrackerEvents(container,res,role,context){
+  const tracker=container.querySelector(`.research-tracker[data-research-context="${context}"]`);
+  if(!tracker)return;
+  const rp=normalizeResearchProgress(res.os),refreshFields=new Set(['type','progressStatus']);
+  tracker.querySelectorAll('.research-field').forEach(input=>{const eventName=input.type==='checkbox'||input.tagName==='SELECT'?'change':'input';input.addEventListener(eventName,()=>{const value=input.type==='checkbox'?input.checked:input.value;setResearchField(rp,input.dataset.researchField,value);if(input.dataset.researchField==='progressStatus')syncResearchMilestonesFromStatus(rp);saveDB();if(refreshFields.has(input.dataset.researchField))researchRefreshContext(res,context);});});
+  tracker.querySelectorAll('.research-review-decision').forEach(input=>input.addEventListener('change',()=>{const review=rp.reviews[input.dataset.researchReview];review.decision=input.value;review.reviewerId=_curAdvId||'admin';review.reviewedAt=new Date().toISOString();researchTouch(rp);saveDB();researchRefreshContext(res,context);}));
+  tracker.querySelectorAll('.research-review-comment').forEach(input=>input.addEventListener('input',()=>{const review=rp.reviews[input.dataset.researchReviewComment];review.comment=input.value;review.reviewerId=_curAdvId||'admin';review.reviewedAt=new Date().toISOString();researchTouch(rp);saveDB();}));
+  tracker.querySelectorAll('.research-followup-field').forEach(input=>{const eventName=input.tagName==='SELECT'||input.type==='date'?'change':'input';input.addEventListener(eventName,()=>{const row=input.closest('[data-followup-id]'),item=rp.followUps.find(entry=>entry.id===row?.dataset.followupId);if(!item)return;item[input.dataset.followupField]=input.value;researchTouch(rp);saveDB();});});
+  tracker.querySelectorAll('.research-followup-delete').forEach(button=>button.addEventListener('click',()=>{const id=button.closest('[data-followup-id]')?.dataset.followupId;if(!id||!confirm('ลบบันทึกความก้าวหน้ารายการนี้?'))return;rp.followUps=rp.followUps.filter(item=>item.id!==id);res.os.researchProgress=rp;researchTouch(rp);saveDB({immediate:true});researchRefreshContext(res,context);}));
+  tracker.querySelector('.research-followup-add-btn')?.addEventListener('click',()=>{const date=tracker.querySelector('.research-followup-new-date')?.value||'',note=tracker.querySelector('.research-followup-new-note')?.value.trim()||'';if(!date||!note){toast('กรุณาระบุวันที่และสรุปความก้าวหน้า','error');return;}rp.followUps.push({id:`follow_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,date,status:'on_track',note,actor:currentActorLabel(),createdAt:new Date().toISOString()});researchTouch(rp);saveAndConfirm('เพิ่มบันทึกความก้าวหน้าแล้ว');researchRefreshContext(res,context);});
+  tracker.querySelector('.research-save-btn')?.addEventListener('click',()=>{researchTouch(rp);saveAndConfirm('บันทึกความก้าวหน้างานวิจัยแล้ว',tracker.querySelector('.research-save-btn'));});
+}
+function renderResearchAdminSection(res){
+  return`<div class="sec-hdr-green" style="margin-top:4px;margin-bottom:13px">🔬 ติดตามความก้าวหน้างานวิจัย</div>${renderResearchTracker(res,'admin','score')}`;
+}
+function renderResearchViewSection(res,targetId){
+  const role=targetId==='adv-port-main'?'advisor':'resident';
+  return`<div class="psec-hdr">🔬 ติดตามความก้าวหน้างานวิจัย</div>${renderResearchTracker(res,role,targetId)}`;
+}
+function renderFeedbackSection(os,sid){
+  syncFeedbackAdvisorDefaults(os,sid);
+  return`<div class="sec-hdr-green" style="margin-top:4px;margin-bottom:13px">Feedback อาจารย์ที่ปรึกษา</div><div class="feedback-wrap"><div class="ytabs" data-yttype="fb">${YEARS.map((y,i)=>`<button class="ytab${i===0?' active':''}" data-yy="${y}" data-yt="fb">${FM_YEAR_LABELS[y]}</button>`).join('')}</div>${YEARS.map((y,yi)=>`<div class="ypanel${yi===0?' active':''}" id="yp-fb-${y}">${(os.feedback[y]||makeEmptyFeedbackYear()).map((row,idx)=>{const aid=effectiveFeedbackAdvisorId(row,sid);return`<div class="feedback-row"><div class="feedback-row-head"><span class="feedback-round">ครั้งที่ ${idx+1}</span><span class="feedback-advisor-name">อาจารย์ที่ปรึกษา: ${escapeHtml(advisorFullName(aid)||'ยังไม่ระบุ')}</span></div><div class="feedback-grid"><div><div class="feedback-card-title">แพทย์ฝึกอบรม</div><textarea class="feedback-textarea fb-textarea" data-y="${y}" data-i="${idx}" data-f="resident" placeholder="บันทึก Feedback ของแพทย์ฝึกอบรม">${escapeHtml(row.resident)}</textarea></div><div><div class="feedback-card-title">อาจารย์ที่ปรึกษา</div><select class="finp feedback-select fb-advsel" data-y="${y}" data-i="${idx}">${feedbackAdvisorOptions(aid)}</select><textarea class="feedback-textarea fb-textarea" data-y="${y}" data-i="${idx}" data-f="advisor" placeholder="บันทึก Feedback ของอาจารย์ที่ปรึกษา">${escapeHtml(row.advisor)}</textarea></div></div><div class="feedback-actions"><button type="button" class="abtn g feedback-save-btn fb-save-row" data-y="${y}" data-i="${idx}">💾 บันทึก Feedback</button></div></div>`;}).join('')}</div>`).join('')}</div>`;}
+function bindFeedbackEvents(area,res){
+  normalizeFeedback(res.os);
+  area.querySelectorAll('.fb-textarea').forEach(inp=>{inp.addEventListener('input',()=>{const row=ensureFeedbackRow(res.os,inp.dataset.y,+inp.dataset.i);row[inp.dataset.f]=inp.value;saveDB();});});
+  area.querySelectorAll('.fb-advsel').forEach(sel=>{sel.addEventListener('change',()=>{const row=ensureFeedbackRow(res.os,sel.dataset.y,+sel.dataset.i);row.advisorId=sel.value;const nameEl=sel.closest('.feedback-row')?.querySelector('.feedback-advisor-name');if(nameEl)nameEl.textContent='อาจารย์ที่ปรึกษา: '+(advisorFullName(sel.value)||'ยังไม่ระบุ');saveDB();});});
+  area.querySelectorAll('.fb-save-row').forEach(btn=>{btn.addEventListener('click',()=>{const box=btn.closest('.feedback-row');if(box){box.querySelectorAll('.fb-textarea').forEach(inp=>{const row=ensureFeedbackRow(res.os,inp.dataset.y,+inp.dataset.i);row[inp.dataset.f]=inp.value;});const sel=box.querySelector('.fb-advsel');if(sel){const row=ensureFeedbackRow(res.os,sel.dataset.y,+sel.dataset.i);row.advisorId=sel.value;}}saveAndConfirm('✅ บันทึก Feedback แล้ว',btn);});});
+}
+function renderFeedbackViewSection(res,targetId){
+  const os=res.os;
+  const role=targetId==='adv-port-main'?'advisor':'resident';
+  const preferredId=role==='advisor'?_curAdvId:'';
+  syncFeedbackAdvisorDefaults(os,res.id,preferredId);
+  const vt=`fb-${targetId}`;
+  const tabsHTML=YEARS.map((y,i)=>`<div class="tab-item${i===0?' active':''}" data-vt="${vt}" data-vy="${y}">${FM_YEAR_LABELS[y]}</div>`).join('');
+  const panelsHTML=YEARS.map((y,i)=>`<div class="tab-panel-p${i===0?' active':''}" id="${targetId}-vtp-${vt}-${y}">${(os.feedback[y]||makeEmptyFeedbackYear()).map((row,idx)=>{const aid=effectiveFeedbackAdvisorId(row,res.id,preferredId);const advisorName=advisorFullName(aid)||'ยังไม่ระบุ';return`<div class="feedback-row"><div class="feedback-row-head"><span class="feedback-round">ครั้งที่ ${idx+1}</span><span class="feedback-advisor-name" data-fbname="${y}-${idx}">อาจารย์ที่ปรึกษา: ${escapeHtml(advisorName)}</span></div><div class="feedback-grid"><div><div class="feedback-card-title">แพทย์ฝึกอบรม</div><textarea class="feedback-textarea fb-view-textarea" data-y="${y}" data-i="${idx}" data-f="resident" ${role==='resident'?'':'readonly'} placeholder="บันทึก Feedback ของแพทย์ฝึกอบรม">${escapeHtml(row.resident)}</textarea></div><div><div class="feedback-card-title">อาจารย์ที่ปรึกษา</div><textarea class="feedback-textarea fb-view-textarea" data-y="${y}" data-i="${idx}" data-f="advisor" ${role==='advisor'?'':'readonly'} placeholder="บันทึก Feedback ของอาจารย์ที่ปรึกษา">${escapeHtml(row.advisor)}</textarea></div></div><div class="feedback-actions"><button type="button" class="abtn g feedback-save-btn fb-view-save-row" data-y="${y}" data-i="${idx}">💾 บันทึก Feedback</button></div></div>`;}).join('')}</div>`).join('');
+  return`<div class="psec-hdr">Feedback อาจารย์ที่ปรึกษา</div><div class="tab-section feedback-view-section" data-role="${role}"><div class="tab-row">${tabsHTML}</div>${panelsHTML}</div>`;
+}
+function bindFeedbackViewEvents(container,res,targetId){
+  const role=targetId==='adv-port-main'?'advisor':'resident';
+  normalizeFeedback(res.os);
+  container.querySelectorAll('.fb-view-textarea:not([readonly])').forEach(inp=>{inp.addEventListener('input',()=>{const row=ensureFeedbackRow(res.os,inp.dataset.y,+inp.dataset.i);row[inp.dataset.f]=inp.value;if(role==='advisor'&&_curAdvId){row.advisorId=_curAdvId;const nameEl=container.querySelector(`[data-fbname="${inp.dataset.y}-${inp.dataset.i}"]`);if(nameEl)nameEl.textContent='อาจารย์ที่ปรึกษา: '+(advisorFullName(_curAdvId)||'ยังไม่ระบุ');}else if(!row.advisorId){row.advisorId=defaultAdvisorIdForResident(res.id);}saveDB();});});
+  container.querySelectorAll('.fb-view-save-row').forEach(btn=>{btn.addEventListener('click',()=>{const box=btn.closest('.feedback-row');if(box){box.querySelectorAll('.fb-view-textarea').forEach(inp=>{const row=ensureFeedbackRow(res.os,inp.dataset.y,+inp.dataset.i);row[inp.dataset.f]=inp.value;if(role==='advisor'&&_curAdvId)row.advisorId=_curAdvId;else if(!row.advisorId)row.advisorId=defaultAdvisorIdForResident(res.id);});}saveAndConfirm('✅ บันทึก Feedback แล้ว',btn);});});
+}
+function bindScoreEvents(area,sid,res){
+  const os=res.os;
+  bindResearchTrackerEvents(area,res,'admin','score');
+  bindFeedbackEvents(area,res);
+  area.querySelectorAll('.score-main-inp').forEach(inp=>{inp.addEventListener('input',()=>{if(inp.validity?.badInput)return;const ex=inp.dataset.exam,exam=RCOST.find(e=>e.key===ex);if(exam){const fixed=clampScoreValue(inp.value,exam.max);if(fixed!==inp.value)inp.value=fixed;}os.rc[ex].score=inp.value;saveDB();const bar=area.querySelector(`[data-bar="${ex}"]`);if(bar&&exam&&inp.value){const p=Math.min(parseFloat(inp.value)/exam.max*100,100);bar.style.width=p.toFixed(1)+'%';bar.style.background=p>=60?'#22863a':p>=40?'#d97706':'#dc2626';}});});
+  area.querySelectorAll('input[data-stat]').forEach(inp=>{inp.addEventListener('input',()=>{if(inp.validity?.badInput)return;os.rc[inp.dataset.exam].stats[inp.dataset.stat]=inp.value;saveDB();});});
+  area.querySelectorAll('input[data-sf]').forEach(inp=>{inp.addEventListener('input',()=>{if(inp.validity?.badInput)return;const ex=os.rc[inp.dataset.exam];if(!ex.subs)ex.subs={};if(!ex.subs[inp.dataset.sub])ex.subs[inp.dataset.sub]={label:'',score:'',max:''};ex.subs[inp.dataset.sub][inp.dataset.sf]=inp.value;saveDB();});});
+  area.querySelectorAll('.sub-add-btn').forEach(btn=>btn.addEventListener('click',()=>addScoreSubBox(btn.dataset.sid,btn.dataset.exam)));
+  area.querySelectorAll('.sub-del').forEach(btn=>btn.addEventListener('click',()=>deleteScoreSubBox(btn.dataset.sid,btn.dataset.exam,btn.dataset.sub)));
+  area.querySelectorAll('.rc-savebtn').forEach(btn=>{btn.addEventListener('click',()=>{const exKey=btn.dataset.exam,card=btn.closest('.se-card'),exam=RCOST.find(e=>e.key===exKey);if(!os.rc[exKey])os.rc[exKey]={score:'',max:exam?.max||'',stats:{max:'',min:'',mean:'',sd:'',mpl:''}};const ex=os.rc[exKey];if(!ex.stats)ex.stats={};const main=card?.querySelector(`.score-main-inp[data-exam="${exKey}"]`);if(main&&!main.validity?.badInput){const fixed=clampScoreValue(main.value,exam?.max);main.value=fixed;ex.score=fixed;}card?.querySelectorAll(`input[data-stat][data-exam="${exKey}"]`).forEach(inp=>{if(!inp.validity?.badInput)ex.stats[inp.dataset.stat]=inp.value;});card?.querySelectorAll(`input[data-sf][data-exam="${exKey}"]`).forEach(inp=>{if(inp.validity?.badInput)return;if(!ex.subs)ex.subs={};if(!ex.subs[inp.dataset.sub])ex.subs[inp.dataset.sub]={label:'',score:'',max:''};ex.subs[inp.dataset.sub][inp.dataset.sf]=inp.value;});recordChange('score',sid,'บันทึกคะแนนราชวิทยาลัย',exKey,ex.score===''?'—':ex.score);saveAndConfirm('✅ บันทึกคะแนนราชวิทยาลัยแล้ว',btn);});});
+  bindTermScores(area.querySelector('.term-score-section'),os);
+}
+
+// ═══════════════════════════════════════════════════════
+//  CENTRAL SCORES
+// ═══════════════════════════════════════════════════════
+function renderCentral(){
+  const sid=document.getElementById('cc-sel').value;
+  const area=document.getElementById('cc-area');
+  const resident=DB.residents.find(item=>String(item.id)===sid);
+  if(!resident){area.innerHTML='<div class="empty-st">เลือกแพทย์เพื่อกรอกคะแนน</div>';return;}
+  if(!resident.cs)resident.cs={};
+  if(!DB.cats.length){area.innerHTML='<div class="empty-st">ยังไม่มีหมวดคะแนน</div>';return;}
+  const percent=(score,max)=>score!==''&&max>0?Math.round(Number(score)/max*100):null;
+  const color=value=>value===null?'var(--text3)':value>=80?'#22863a':value>=60?'#1a56db':value>=40?'#d97706':'#dc2626';
+  area.innerHTML=`<table class="tbl"><thead><tr><th>#</th><th>หมวด</th><th style="width:85px">เต็ม</th><th style="width:105px">คะแนน</th><th>%</th><th style="width:34px"></th></tr></thead><tbody>${DB.cats.map((category,index)=>{
+    const score=resident.cs[category.id]??'';
+    const pct=percent(score,category.max);
+    return `<tr><td style="color:var(--text3)">${index+1}</td><td>${escapeHtml(category.name)}</td><td style="color:var(--text2)">${escapeHtml(category.max)}</td><td><input type="number" class="s-num cc-sc" value="${escapeHtml(score)}" min="0" max="${escapeHtml(category.max)}" placeholder="—" data-cat="${escapeHtml(category.id)}" style="width:76px"></td><td><span class="cc-pct" style="font-size:12px;font-weight:700;color:${color(pct)}">${pct===null?'—':pct+'%'}</span></td><td><button type="button" class="ibtn del cc-del" data-cat="${escapeHtml(category.id)}">✕</button></td></tr>`;
+  }).join('')}</tbody></table><button type="button" class="add-row-btn" id="cc-addcat">＋ เพิ่มหมวดคะแนน</button>`;
+  area.querySelectorAll('.cc-sc').forEach(input=>input.addEventListener('input',()=>{
+    if(input.validity?.badInput)return;
+    const max=Number(input.max);
+    const value=input.value===''?'':Number(input.value);
+    if(value!==''&&!Number.isFinite(value))return;
+    const score=value!==''&&value>max?max:value;
+    if(score!==value)input.value=String(score);
+    resident.cs[input.dataset.cat]=score;
+    const pct=percent(score,max);
+    const label=input.closest('tr')?.querySelector('.cc-pct');
+    if(label){label.textContent=pct===null?'—':pct+'%';label.style.color=color(pct);}
+    saveDB();
+  }));
+  area.querySelectorAll('.cc-del').forEach(button=>button.addEventListener('click',()=>delCat(button.dataset.cat)));
+  document.getElementById('cc-addcat')?.addEventListener('click',addCatPrompt);
+}
+
+function addCatPrompt(){const nm=prompt('ชื่อหมวดคะแนน:');if(!nm||!nm.trim())return;const mx=parseInt(prompt('คะแนนเต็ม:')||'100')||100;DB.cats.push({id:'c'+Date.now(),name:nm.trim(),max:mx});saveDB();renderCentral();renderGcats();toast('✅ เพิ่มหมวดแล้ว');}
+function delCat(id){if(!confirm('ลบหมวดนี้?'))return;DB.cats=DB.cats.filter(c=>c.id!==id);saveDB();renderCentral();renderGcats();toast('🗑️ ลบแล้ว');}
+function renderGcats(){const el=document.getElementById('gcat-list');if(!el)return;el.innerHTML=DB.cats.map(c=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 11px;background:#f8fafc;border:1px solid var(--border);border-radius:7px;margin-bottom:6px"><span style="flex:1;font-size:13px;font-weight:500">${c.name}</span><span style="font-size:11px;color:var(--text3);background:#ede9fe;border:1px solid #ddd6fe;border-radius:10px;padding:2px 9px">เต็ม ${c.max}</span><button class="ibtn del gc-del" data-cat="${c.id}">✕</button></div>`).join('')||'<div style="font-size:13px;color:var(--text3)">ยังไม่มีหมวด</div>';el.querySelectorAll('.gc-del').forEach(b=>b.addEventListener('click',()=>delCat(b.dataset.cat)));}
+
+// ═══════════════════════════════════════════════════════
+//  PORTFOLIO RENDER
+// ═══════════════════════════════════════════════════════
+function renderPortfolio(res,targetId){
+  res.os=normalizeOS(res.os);const os=res.os;
+  const ini=(String(res.fn||'').replace(/[นพ.พญ.รศ.ผศ.ดร.]/g,'')[0]||'?')+(String(res.ln||'')[0]||'');
+  if(targetId==='port-main'){setProfilePhoto('ps-photo','ps-ini',res,ini);document.getElementById('ps-name').textContent=res.fn+' '+res.ln;document.getElementById('ps-role').textContent='แพทย์ประจำบ้าน '+yrFullText(res.yr);} else{setProfilePhoto('adv-ps-photo','adv-ps-ini',res,ini);document.getElementById('adv-ps-name').textContent=res.fn+' '+res.ln;document.getElementById('adv-ps-role').textContent='แพทย์ประจำบ้าน '+yrFullText(res.yr);document.getElementById('adv-detail-name').textContent=res.fn+' '+res.ln;}
+  const leftItems=RCOST.filter(e=>e.col==='left'),rightItems=RCOST.filter(e=>e.col==='right');
+  const nRows=Math.max(leftItems.length,rightItems.length);let accRows='';
+  for(let i=0;i<nRows;i++){accRows+=`<div class="acc-grid">${leftItems[i]?accCard(leftItems[i],os):'<div style="border-right:1px solid var(--border)"></div>'}${rightItems[i]?accCard(rightItems[i],os):'<div></div>'}</div>`;}
+
+  const semTabsHTML=(type)=>{const tabsHTML=YEARS.map((y,i)=>`<div class="tab-item${i===0?' active':''}" data-vt="${type}" data-vy="${y}">${FM_YEAR_LABELS[y]}</div>`).join('');const panelsHTML=YEARS.map((y,i)=>{const yData=os[type]?.[y]||{};const periodHTML=['mid','final'].map(p=>{const rawPeriod=yData[p]||{};let mcqRows=[],seqRows=[];if(Array.isArray(rawPeriod)){mcqRows=rawPeriod;seqRows=[];}else{mcqRows=rawPeriod.mcq||[];seqRows=rawPeriod.seq||[];}const renderSecTable=(rows,sec)=>{if(!rows.length)return'';const secColor={mcq:'#1a6b3a',seq:'#7c3aed'};const secBg={mcq:'#e8f5e9',seq:'#f3e8ff'};const secLabel={mcq:'MCQ',seq:'SEQ'};return`<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:${secColor[sec]};letter-spacing:.5px;margin-bottom:4px;padding:2px 7px;background:${secBg[sec]};border-radius:4px;display:inline-block">${secLabel[sec]}</div><table class="sem-tbl" style="background:#fff;border:1px solid var(--border);border-radius:6px;overflow:hidden"><thead><tr><th>วิชา/หัวข้อ</th><th style="width:70px">คะแนน</th><th style="width:58px">เต็ม</th><th style="width:50px">MAX</th><th style="width:50px">MIN</th><th style="width:55px">MEAN</th><th style="width:48px">MPL</th></tr></thead><tbody>${rows.filter(Boolean).map(r=>{return`<tr><td>${scoreDisplay(r.s)}</td><td style="${scoreStatusCellStyle(scoreMplStatus(r.sc,r.mpl))}">${scoreDisplay(r.sc)}</td><td style="text-align:center;color:var(--text2)">${scoreDisplay(r.mx)}</td><td style="text-align:center;color:var(--text2);font-size:11px">${scoreDisplay(r.max)}</td><td style="text-align:center;color:var(--text2);font-size:11px">${scoreDisplay(r.min)}</td><td style="text-align:center;color:var(--text2);font-size:11px">${scoreDisplay(r.mean)}</td><td style="text-align:center;color:var(--text2);font-size:11px">${scoreDisplay(r.mpl)}</td></tr>`;}).join('')}</tbody></table></div>`;};const allEmpty=!mcqRows.length&&!seqRows.length;const content=allEmpty?`<div style="padding:13px;text-align:center;font-size:12px;color:var(--text3);background:#fff;border:1px solid var(--border);border-radius:6px">ยังไม่มีข้อมูล</div>`:`${renderSecTable(mcqRows,'mcq')}${renderSecTable(seqRows,'seq')}`;return`<div><div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:7px;padding:7px 11px;background:#f8fafc;border-radius:6px;border:1px solid var(--border)">${p==='mid'?'กลางภาค (Midterm)':'ปลายภาค (Final)'}</div>${content}</div>`;}).join('');return`<div class="tab-panel-p${i===0?' active':''}" id="${targetId}-vtp-${type}-${y}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">${periodHTML}</div></div>`;}).join('');return`<div class="tab-section"><div class="tab-row">${tabsHTML}</div>${panelsHTML}</div>`;};
+
+  const evidenceHtml=(res.portfolioEvidence||[]).length?`<div style="margin-top:12px"><div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px">หลักฐาน Portfolio</div>${res.portfolioEvidence.map(e=>{const evidenceUrl=safeExternalUrl(e.url);return`<div style="padding:8px 10px;background:#faf8ff;border:1px solid #e9e1ff;border-radius:7px;margin-bottom:6px"><div style="font-size:12px;font-weight:700">${escapeHtml(e.title||'หลักฐาน')}</div><div style="font-size:11px;color:var(--text3)">${escapeHtml(e.type||'Other')}${e.date?` · ${escapeHtml(e.date)}`:''}</div>${evidenceUrl?`<a href="${escapeHtml(evidenceUrl)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:4px;font-size:11px;color:var(--purple)">เปิดหลักฐาน</a>`:''}</div>`;}).join('')}</div>`:'';
+
+  document.getElementById(targetId).innerHTML=`
+    <div class="psec-hdr">คะแนนสอบ ราชวิทยาลัยออร์โธปิดิกส์แห่งประเทศไทย</div>
+    ${accRows}
+    <div class="psec-hdr">ผลสอบ กลางภาค-ปลายภาค สาขาวิชาออร์โธปิดิกส์</div>
+    ${semTabsHTML('fm')}
+    ${renderResearchViewSection(res,targetId)}
+    ${renderFeedbackViewSection(res,targetId)}
+    <div style="padding:16px">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:9px">🏆 กิจกรรม & รางวัล</div>
+        ${(res.acts&&res.acts.length)?res.acts.map((a,i)=>`<div style="display:flex;gap:9px;margin-bottom:9px"><div style="width:30px;height:30px;background:linear-gradient(135deg,var(--green),#14a84e);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">${['🏆','🎖️','🌟','📌','✨'][i%5]}</div><div><div style="font-size:13px;font-weight:600">${a}</div><div style="font-size:11px;color:var(--text3)">กิจกรรม/รางวัล</div></div></div>`).join(''):`<div class="empty-st" style="padding:16px">ยังไม่มีกิจกรรม</div>`}
+        ${(res.links&&res.links.length)?`<div style="margin-top:12px"><div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px">🗂️ Portfolio</div>${res.links.map(u=>`<a href="${u}" target="_blank" style="display:flex;align-items:center;gap:6px;padding:7px 11px;background:#f0f8f4;border:1px solid #c6e8d4;border-radius:7px;text-decoration:none;color:var(--green);font-size:12px;font-weight:600;margin-bottom:6px">${u.includes('github')?'🐙':'🔗'} ${u.replace('https://','')}</a>`).join('')}</div>`:''}${evidenceHtml}
+      </div>
+    </div>
+    <!-- ROTATION ASSESSMENT SECTION -->
+    <div class="psec-hdr teal" style="margin-top:0">📋 แบบประเมิน Rotation</div>
+    <div style="padding:16px" id="${targetId}-assess-wrap">
+      <div id="${targetId}-assess-container"></div>
+    </div>`;
+
+  // Render assessment section for resident and advisor portfolio views.
+  setTimeout(()=>{
+    const assessContainer=document.getElementById(`${targetId}-assess-container`);
+    if(assessContainer) renderResidentAssessmentSection(res.id, `${targetId}-assess-container`);
+  },50);
+
+  const container=document.getElementById(targetId);
+  container.querySelectorAll('.acc-hdr').forEach(hdr=>{hdr.addEventListener('click',()=>{const body=hdr.nextElementSibling;if(body&&body.classList.contains('acc-body')){body.classList.toggle('open');hdr.querySelector('.acc-arrow').textContent=body.classList.contains('open')?'▲':'▼';}});});
+  container.querySelectorAll('.tab-item').forEach(tab=>{tab.addEventListener('click',()=>{const{vt,vy}=tab.dataset;container.querySelectorAll(`.tab-item[data-vt="${vt}"]`).forEach(t=>t.classList.remove('active'));tab.classList.add('active');YEARS.forEach(y=>{const p=container.querySelector(`#${targetId}-vtp-${vt}-${y}`);if(p)p.classList.toggle('active',y===vy);});});});
+  bindResearchTrackerEvents(container,res,targetId==='adv-port-main'?'advisor':'resident',targetId);
+  bindFeedbackViewEvents(container,res,targetId);
+}
+
+function accCard(exam,os){
+  const ex=os.rc?.[exam.key]||{score:'',max:exam.max,stats:{},subs:{}};
+  const hasScore=ex.score!==''&&ex.score!==undefined&&ex.score!==null;
+  const pct=hasScore?Math.min(parseFloat(ex.score)/exam.max*100,100):0;
+  const status=scoreMplStatus(ex.score,ex.stats?.mpl,exam.key);
+  const fallbackCol=pct>=60?'#22863a':pct>=40?'#d97706':'#dc2626';
+  const col=scoreStatusTextColor(status,fallbackCol);
+  let scoreDisp=hasScore?`<div class="acc-score-main"><span class="score-status-pill ${status||''}" style="${status?'':'color:'+col}">"${ex.score} คะแนน"</span></div>`:`<div class="acc-score-main"><span style="color:var(--text3);font-style:italic">"ยังไม่มีคะแนน"</span></div>`;
+  let subsLine='';
+  if(exam.hasSubs&&ex.subs){const parts=scoreSubEntries(exam,ex).map(s=>s.score!==''?`${s.label} "${s.score}/${s.max||'?'}"`:null).filter(Boolean);if(parts.length)subsLine=`<div class="acc-subs">${parts.join(' · ')}</div>`;}
+  const statsKeys=exam.key==='bkr_r1'?['max','min','mean','sd']:['max','min','mean','sd','mpl'];
+  const filled=statsKeys.filter(k=>ex.stats?.[k]!==''&&ex.stats?.[k]!=null);
+  let statsLine='';
+  if(filled.length)statsLine=`<div class="acc-stats">${filled.map(k=>`${k.toUpperCase()} "${ex.stats[k]}"`).join(' · ')}</div>`;
+  return`<div class="acc-item"><div class="acc-hdr"><div class="acc-title">${exam.label} (เต็ม ${exam.max})</div><span class="acc-arrow">▲</span></div><div class="acc-body open">${scoreDisp}${subsLine?`<div class="acc-divider"></div>${subsLine}`:''}${statsLine?`<div class="acc-divider"></div>${statsLine}`:''}</div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  ADVISOR VIEW — list + tabs
+// ═══════════════════════════════════════════════════════
+function renderAdvView(adv){
+  document.getElementById('adv-uname').textContent=adv.fn+' '+adv.ln;
+  document.getElementById('adv-welcome').textContent='สวัสดี '+adv.fn+' '+adv.ln;
+  document.getElementById('adv-list-view').style.display='block';
+  document.getElementById('adv-detail-view').style.display='none';
+  document.querySelectorAll('.anavbtn[data-advap]').forEach(b=>b.classList.toggle('active',b.dataset.advap==='residents'));
+  document.getElementById('advap-residents').style.display='block';
+  document.getElementById('advap-assessment').style.display='none';
+  document.getElementById('advap-meetings').style.display='none';
+
+  // bind nav tabs
+  document.querySelectorAll('.anavbtn[data-advap]').forEach(btn=>{
+    btn.onclick=()=>{
+      document.querySelectorAll('.anavbtn[data-advap]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const p=btn.dataset.advap;
+      document.getElementById('advap-residents').style.display=p==='residents'?'block':'none';
+      document.getElementById('advap-assessment').style.display=p==='assessment'?'block':'none';
+      document.getElementById('advap-meetings').style.display=p==='meetings'?'block':'none';
+      if(p==='assessment') renderAdvAssessListView(adv);
+      if(p==='meetings') renderMeetingsAdvisor();
+    };
+  });
+
+  // render resident cards
+  const allowed=advisorAllowedResidentIds(adv);
+  const residents=DB.residents.filter(r=>allowed.includes(String(r.id)));
+  const grid=document.getElementById('adv-res-grid');
+  if(!residents.length){
+    grid.innerHTML='<div class="empty-st" style="grid-column:1/-1;padding:40px">ยังไม่มีแพทย์ประจำบ้านที่ได้รับมอบหมาย</div>';
+  } else {
+    grid.innerHTML=residents.map(r=>{
+      const ini=residentInitials(r);
+      const avatar=r.photo?`<div class="arc-avatar"><img src="${escapeHtml(r.photo)}" alt="${escapeHtml(r.fn||'')}"></div>`:`<div class="arc-avatar">${escapeHtml(ini)}</div>`;
+      const sumScore=r.os?.rc?.sum_r2?.score;
+      const assessCount=DB.rotaRecords.filter(rec=>rec.resId===r.id).length;
+      const research=normalizeResearchProgress(r.os||(r.os={})),researchYear=Number(r.yr)>=2&&Number(r.yr)<=4?`R${r.yr}`:'',researchState=researchYear?researchCriterionState(research,researchYear):{key:'pending',label:'ยังไม่ถึงเกณฑ์ R2'};
+      return`<div class="adv-res-card" data-rid="${r.id}">
+        ${avatar}
+        <div class="arc-name">${r.fn} ${r.ln}</div>
+        <div class="arc-sub">${r.id} · ${r.dept}</div>
+        <span class="badge-yr ${YR_CLASS[r.yr]||'yr1'}" style="margin-top:7px;display:inline-block">${yrFullText(r.yr)}</span>
+        ${sumScore?`<div style="font-size:11px;color:var(--text3);margin-top:6px">Summative R2: <strong style="color:var(--green)">${sumScore}</strong>/150</div>`:''}
+        ${assessCount>0?`<div style="font-size:11px;color:var(--teal);margin-top:4px;font-weight:600">📋 แบบประเมิน ${assessCount} รายการ</div>`:''}
+        <div class="research-year-state ${researchState.key}" style="margin-top:6px">วิจัย ${researchYear||'R1'}: ${escapeHtml(researchState.label)}</div>
+      </div>`;
+    }).join('');
+    grid.querySelectorAll('.adv-res-card').forEach(card=>{
+      card.addEventListener('click',()=>{
+        const r=DB.residents.find(x=>x.id===card.dataset.rid);
+        if(!r)return;
+        openAdvDetailView(r);
+      });
+    });
+  }
+
+  // back button
+  document.getElementById('adv-back-btn').onclick=()=>{
+    document.getElementById('adv-detail-view').style.display='none';
+    document.getElementById('adv-list-view').style.display='block';
+  };
+}
+
+// ─── เปิด detail view (portfolio + assessment tabs) ────
+function openAdvDetailView(res){
+  if(_curAdvId&&!advisorCanAccessResident(_curAdvId,res?.id)){
+    toast('ไม่มีสิทธิ์ดูข้อมูลแพทย์คนนี้','error');
+    return;
+  }
+  _advDetailResId=res.id;
+  document.getElementById('adv-list-view').style.display='none';
+  document.getElementById('adv-detail-view').style.display='block';
+
+  // render portfolio
+  renderPortfolio(res,'adv-port-main');
+
+  // render assessment panel immediately
+  renderAdvResAssessPanel(res.id);
+
+  // bind detail tabs
+  document.querySelectorAll('.adv-detail-tab').forEach(tab=>{
+    tab.onclick=()=>{
+      document.querySelectorAll('.adv-detail-tab').forEach(t=>{
+        t.style.borderBottomColor='transparent';
+        t.style.color='var(--text2)';
+        t.style.fontWeight='500';
+      });
+      tab.style.borderBottomColor='var(--purple)';
+      tab.style.color='var(--purple)';
+      tab.style.fontWeight='700';
+      const dt=tab.dataset.dtab;
+      document.getElementById('adv-dtab-portfolio').style.display=dt==='portfolio'?'block':'none';
+      document.getElementById('adv-dtab-assess').style.display=dt==='assess'?'block':'none';
+      if(dt==='assess') renderAdvResAssessPanel(res.id);
+    };
+  });
+  // reset tab state
+  document.querySelectorAll('.adv-detail-tab').forEach(t=>{
+    const isPortfolio=t.dataset.dtab==='portfolio';
+    t.style.borderBottomColor=isPortfolio?'var(--purple)':'transparent';
+    t.style.color=isPortfolio?'var(--purple)':'var(--text2)';
+    t.style.fontWeight=isPortfolio?'700':'500';
+  });
+  document.getElementById('adv-dtab-portfolio').style.display='block';
+  document.getElementById('adv-dtab-assess').style.display='none';
+}
+
+// ─── แบบประเมินของแพทย์คนที่กำลังดู (in detail tab) ────
+function renderAdvResAssessPanel(resId){
+  const el=document.getElementById('adv-res-assess-panel');
+  if(!el)return;
+  const res=DB.residents.find(x=>x.id===resId);
+  if(!res||!advisorCanAccessResident(_curAdvId,resId)){
+    el.innerHTML='<div class="empty-st" style="padding:40px">ไม่มีสิทธิ์ดูแบบประเมิน Rotation ของแพทย์คนนี้</div>';
+    return;
+  }
+  const allowedRotIds=advisorAllowedRotationIds(_curAdvId);
+  const canAssessResident=isAssessmentEligibleResident(res);
+  const records=DB.rotaRecords.filter(r=>r.resId===resId);
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:15px;font-weight:700">📋 แบบประเมิน — ${res?.fn||''} ${res?.ln||''}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">
+          แสดงผลประเมิน Rotation ทั้งหมดของแพทย์ในความดูแล ${records.length} รายการ
+        </div>
+      </div>
+      <button class="abtn t" id="adv-new-assess-btn" ${allowedRotIds.length&&canAssessResident?'':'disabled'} style="padding:8px 16px${allowedRotIds.length&&canAssessResident?'':';opacity:.55;cursor:not-allowed'}" title="${canAssessResident?'สร้างแบบประเมินใหม่':'ศิษย์เก่าไม่อยู่ในรายชื่อผู้ถูกประเมิน'}">＋ สร้างแบบประเมินใหม่</button>
+    </div>
+    ${records.length===0?`<div class="empty-st" style="padding:40px">ยังไม่มีแบบประเมิน Rotation</div>`:`<div id="adv-res-rec-list">${renderAssessmentGroupedByYear(records,'adv-res-rec-list')}</div>`}`;
+
+  function bindButtons(){
+    el.querySelectorAll('.view-assess-btn').forEach(b=>b.addEventListener('click',()=>openViewAssessModal(b.dataset.recid)));
+    el.querySelectorAll('.del-assess-btn-adv').forEach(b=>b.addEventListener('click',()=>{
+      if(!confirm('ลบแบบประเมินนี้?'))return;
+      DB.rotaRecords=DB.rotaRecords.filter(r=>r.id!==b.dataset.recid);
+      saveDB();renderAdvResAssessPanel(resId);toast('🗑️ ลบแล้ว');
+    }));
+  }
+  bindButtons();
+  bindAssessmentGroupedTabs(el,'adv-res-rec-list');
+
+  el.querySelector('#adv-new-assess-btn')?.addEventListener('click',()=>{
+    if(!canAssessResident){toast('ศิษย์เก่าจบการฝึกอบรมแล้ว จึงไม่สามารถสร้างแบบประเมินใหม่ได้','error');return;}
+    if(!allowedRotIds.length){toast('ยังไม่มีแบบประเมิน Rotation ที่ admin กำหนดสิทธิ์ให้','error');return;}
+    openNewAssessModal(resId,'advisor',_curAdvId);
+  });
+  el.querySelectorAll('#adv-res-rot-tabs .rota-rtab')?.forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      el.querySelectorAll('#adv-res-rot-tabs .rota-rtab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const listEl=el.querySelector('#adv-res-rec-list');
+      if(listEl){
+        listEl.innerHTML=_renderAdvRecList(records,btn.dataset.rot);
+        bindButtons();
+      }
+    });
+  });
+}
+
+function _renderAdvRecList(records,filterRot){
+  const filtered=filterRot==='all'?records:records.filter(r=>r.rotation===filterRot);
+  if(!filtered.length)return'<div class="empty-st">ไม่มีแบบประเมินใน rotation นี้</div>';
+  // reuse renderRotationSummary which shows full detail for all types
+  return renderRotationSummary([...filtered]);
+}
+
+// ─── Rotation assessment shortcuts for advisor panel ────
+function renderAdvAssessListView(adv){
+  const el=document.getElementById('adv-assess-list-content');
+  if(!el)return;
+  const allowedRotIds=advisorAllowedRotationIds(adv);
+  const allowedRotations=assessmentRotations().filter(r=>allowedRotIds.includes(r.id));
+  const residentCount=assessmentEligibleResidents().length;
+  const formDesc={
+    trauma:'Mini-CEX / CBD / PBA / DOPS',
+    tumor:'Mini-CEX / CBD / PBA / DOPS',
+    pediatric:'EPA / CBD / Mini-CEX / PBA / DOPS',
+    sports:'Mini-CEX / CBD / DOPS / PBA',
+    spine:'Mini-CEX / CBD / PBA / DOPS',
+    hk:'Mini-CEX / CBD / PBA / DOPS',
+    footankle:'CBD / DOPS',
+    hand:'Mini-CEX / CBD / PBA / DOPS',
+    elective:'Elective',
+    unit_rotation:'ประเมินการวนหน่วย',
+    jc:'Journal Club'
+  };
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:15px;font-weight:700">📋 เลือกแบบประเมิน Rotation</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">สามารถประเมินแพทย์ที่ยังอยู่ในการฝึกอบรมและ Fellow ได้ทุกคน (${residentCount} คน) ไม่รวมศิษย์เก่า</div>
+      </div>
+    </div>
+    ${allowedRotations.length?`
+      <div class="adv-assess-grid">
+        ${allowedRotations.map(r=>`
+          <button type="button" class="adv-assess-card" data-rot="${r.id}" aria-label="เริ่มประเมิน ${escapeHtml(r.label)}">
+            <div class="adv-assess-top">
+              <div class="adv-assess-icon">${r.emoji}</div>
+              <div>
+                <div class="adv-assess-title">${escapeHtml(r.label)}</div>
+                <div class="adv-assess-sub">${escapeHtml(formDesc[r.id]||'แบบประเมิน Rotation')}</div>
+              </div>
+            </div>
+            <div class="adv-assess-action">＋ เริ่มประเมิน</div>
+          </button>
+        `).join('')}
+      </div>
+    `:`<div class="empty-st" style="padding:40px">ยังไม่มีแบบประเมิน Rotation ที่ admin กำหนดสิทธิ์ให้</div>`}`;
+
+  el.querySelectorAll('.adv-assess-card').forEach(card=>{
+    card.addEventListener('click',()=>{
+      if(!residentCount){
+        toast('ยังไม่มีแพทย์ประจำบ้านในระบบ','error');
+        return;
+      }
+      openNewAssessModal('','advisor',adv.id,card.dataset.rot);
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  SAVE / SYNC
+// ═══════════════════════════════════════════════════════
+function setSyncStatus(msg,color){const el=document.getElementById('sync-status');if(el){el.textContent=msg;el.style.color=color||'var(--text2)';}}
+function setScoreSaveStatus(text,color){
+  const label=document.getElementById('score-db-source');
+  if(label){label.textContent=text;label.style.color=color||'#047857';}
+}
+function renderSheetTabsList(tabs){
+  const tabsEl=document.getElementById('sheet-tabs-info');
+  const tabsList=document.getElementById('sheet-tabs-list');
+  if(!tabsEl||!tabsList)return;
+  if(!tabs||!tabs.length){tabsEl.style.display='none';tabsList.innerHTML='';return;}
+  tabsList.innerHTML=tabs.map(t=>`<span style="padding:3px 10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;font-size:11px;color:var(--teal2);font-weight:600">${escapeHtml(t)}</span>`).join('');
+  tabsEl.style.display='block';
+}
+function updateSheetConfigUI(cfg){
+  cfg=cfg||{};
+  const inp=document.getElementById('sheet-id-input');
+  const cur=document.getElementById('sheet-id-current');
+  if(inp&&cfg.sheetId)inp.value=cfg.sheetId;
+  renderSheetTabsList(cfg.sheetTabs||[]);
+  if(cur){
+    const tabs=cfg.sheetTabs||[];
+    const missing=[];
+    if(tabs.length&&!tabs.includes('DB'))missing.push('DB');
+    if(tabs.length&&!tabs.includes('DR'))missing.push('DR');
+    if(cfg.ok===false){
+      cur.style.color='var(--red)';
+      cur.textContent='Sheet ID ปัจจุบัน: '+(cfg.sheetId||'-')+' · '+(cfg.message||'เปิด Sheet ไม่ได้');
+    }else if(missing.length){
+      cur.style.color='var(--gold)';
+      cur.textContent='ใช้งาน: '+(cfg.name||'Google Sheet')+' · '+(cfg.sheetId||'-')+' · ไม่พบ tab '+missing.join(', ');
+    }else{
+      cur.style.color='var(--teal2)';
+      cur.textContent='ใช้งาน: '+(cfg.name||'Google Sheet')+' · '+(cfg.sheetId||'-');
+    }
+  }
+}
+let _saveTimer=null;
+let _saveQueue={revision:0,baseline:null,pending:false,request:null,sequence:0,conflict:null,exportReports:false};
+const WORKSPACE_LISTS=['cats','residents','advisors','meetings','rotaRecords','unitRotationSchedule'];
+const WORKSPACE_FIELDS=[...WORKSPACE_LISTS,'unitRotationScheduleMeta','modernization'];
+
+function dbPayload(data=DB){
+  const payload=Object.fromEntries(WORKSPACE_LISTS.map(key=>[key,data[key]||[]]));
+  payload.unitRotationScheduleMeta=data.unitRotationScheduleMeta||{};
+  payload.modernization=data.modernization||{};
+  return payload;
+}
+
+function sameSavedValue(a,b){
+  if(a===b)return true;
+  if(!a||!b||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)!==Array.isArray(b))return false;
+  const keys=Object.keys(a);
+  return keys.length===Object.keys(b).length&&keys.every(key=>Object.hasOwn(b,key)&&sameSavedValue(a[key],b[key]));
+}
+
+function savedRecordMap(list){
+  if(!Array.isArray(list))return null;
+  const byId=new Map();
+  for(const item of list){
+    if(!item||(typeof item.id!=='string'&&typeof item.id!=='number')||item.id===''||byId.has(String(item.id)))return null;
+    byId.set(String(item.id),item);
+  }
+  return byId;
+}
+
+function buildWorkspaceChanges(baseline,desired){
+  const values={},lists={};
+  for(const key of WORKSPACE_FIELDS){
+    const before=baseline[key], after=desired[key];
+    if(sameSavedValue(before,after))continue;
+    const original=savedRecordMap(before), current=savedRecordMap(after);
+    if(!original||!current){values[key]=after;continue;}
+    const order=[...current.keys()];
+    const upsert=order.filter(id=>!sameSavedValue(original.get(id),current.get(id))).map(id=>current.get(id));
+    lists[key]={order,upsert};
+  }
+  return {values,lists};
+}
+
+function acknowledgeWorkspaceChanges(baseline,changes){
+  const saved={...baseline,...changes.values};
+  for(const [key,patch] of Object.entries(changes.lists)){
+    const byId=savedRecordMap(baseline[key]);
+    for(const item of patch.upsert)byId.set(String(item.id),item);
+    saved[key]=patch.order.map(id=>byId.get(id));
+  }
+  return saved;
+}
+
+function mergeWorkspaceValue(base,local,server,conflicts){
+  if(sameSavedValue(local,base)||sameSavedValue(local,server))return server;
+  if(sameSavedValue(server,base))return local;
+  const maps=[base,local,server].map(savedRecordMap);
+  if(maps.every(Boolean)){
+    const [original,draft,latest]=maps;
+    const order=new Set([...latest.keys(),...draft.keys()]);
+    return [...order].map(id=>mergeWorkspaceValue(original.get(id),draft.get(id),latest.get(id),conflicts)).filter(value=>value!==undefined);
+  }
+  if([base,local,server].every(value=>value&&typeof value==='object'&&!Array.isArray(value))){
+    const merged=Object.create(null);
+    for(const key of new Set([...Object.keys(base),...Object.keys(local),...Object.keys(server)])){
+      const value=mergeWorkspaceValue(base[key],local[key],server[key],conflicts);
+      if(value!==undefined)merged[key]=value;
+    }
+    return merged;
+  }
+  conflicts.count++;
+  return local;
+}
+
+function clearSubmittedAccountFields(sent,current){
+  for(const field of ['residents','advisors']){
+    const submitted=new Map((sent[field]||[]).map(account=>[String(account.id),account]));
+    for(const account of current[field]||[]){
+      const saved=submitted.get(String(account.id));
+      if(!saved)continue;
+      if(account.newPassword===saved.newPassword)delete account.newPassword;
+      if(account.photo===saved.photo&&account.photoClear===saved.photoClear)delete account.photoClear;
+    }
+    for(const account of sent[field]||[]){
+      delete account.newPassword;
+      delete account.photoClear;
+    }
+  }
+}
+
+function hasPendingSaves(){
+  return _saveQueue.pending||Boolean(_saveQueue.request);
+}
+
+function resetSaveQueue(){
+  clearTimeout(_saveTimer);
+  _saveQueue={revision:0,baseline:null,pending:false,request:null,sequence:0,conflict:null,exportReports:false};
+}
+
+function repaintSyncedWorkspace(){
+  const scoreArea=document.getElementById('sc-area');
+  const residentId=scoreArea?.dataset.residentId;
+  const year=scoreArea?.querySelector('.ytab.active')?.dataset.yy;
+  const picker=document.getElementById('cc-sel');
+  const centralId=picker?.value;
+  renderActiveWorkspace();
+  if(!isAdminSession())return;
+  if(document.getElementById('ap-assessment')?.classList.contains('active'))renderAssessList_admin();
+  if(residentId&&DB.residents.some(resident=>resident.id===residentId)){
+    renderScoreEntry(residentId);
+    if(year)scoreArea.querySelector(`.ytab[data-yy="${year}"]`)?.click();
+  }else if(residentId)renderScorePicker();
+  if(picker&&centralId&&DB.residents.some(resident=>resident.id===centralId)){
+    picker.value=centralId;
+    renderCentral();
+  }
+}
+
+function rebasePendingSave(state,approveConflict){
+  const server=state.conflict;
+  if(!server||!Array.isArray(server.residents)||!Number.isSafeInteger(server.revision))throw new Error('เซิร์ฟเวอร์ส่งข้อมูลฉบับล่าสุดมาไม่ครบ');
+  const baseline=state.baseline;
+  const local=dbPayload();
+  const latest=dbPayload(server);
+  const conflicts={count:0};
+  const merged={};
+  for(const field of WORKSPACE_FIELDS){
+    if(field==='modernization'){
+      const omitMeta=value=>{
+        const {lastLocalSaveAt,lastServerSaveAt,auditLog,changeLog,...data}=value;
+        return data;
+      };
+      merged[field]=mergeWorkspaceValue(omitMeta(baseline[field]),omitMeta(local[field]),omitMeta(latest[field]),conflicts);
+      for(const key of ['lastLocalSaveAt','lastServerSaveAt','auditLog','changeLog']){
+        if(Object.hasOwn(local[field],key))merged[field][key]=local[field][key];
+      }
+    }else merged[field]=mergeWorkspaceValue(baseline[field],local[field],latest[field],conflicts);
+  }
+  if(conflicts.count){
+    const message='ข้อมูลเดียวกันถูกแก้ไขในอีกหน้าหรืออุปกรณ์ ค่าที่กรอกไว้ยังอยู่ กรุณากดบันทึกอีกครั้งเพื่อเลือกใช้ค่าของหน้านี้';
+    if(!approveConflict){
+      notifySheetSaveFailure(message,{popup:false});
+      return false;
+    }
+    if(!confirm(`มีข้อมูลที่แก้ไขพร้อมกัน ${conflicts.count} จุด ต้องการใช้ค่าที่กรอกในหน้านี้สำหรับจุดที่ชนกันหรือไม่?`))return false;
+  }
+  state.conflict=null;
+  applyServerData({...server,...merged},server);
+  repaintSyncedWorkspace();
+  return true;
+}
+
+async function processSaveQueue(state,token,approveConflict){
+  let rebases=0;
+  let reportError='';
+  const current=()=>_saveQueue===state&&_sessionToken===token;
+  while(state.pending&&current()){
+    let exportReports=false;
+    try{
+      if(state.conflict&&!rebasePendingSave(state,approveConflict))return false;
+      approveConflict=false;
+      const desired=dbPayload();
+      const revision=state.revision;
+      const baseline=state.baseline||desired;
+      const changes=buildWorkspaceChanges(baseline,desired);
+      exportReports=state.exportReports;
+      if(exportReports)changes.structuredExport=true;
+      const payload=JSON.stringify(changes);
+      state.pending=false;
+      state.exportReports=false;
+      setSyncStatus('⏳ กำลังบันทึก DB / DR...','var(--gold)');
+      setScoreSaveStatus('กำลังบันทึก...','var(--gold)');
+      const raw=await new Promise((resolve,reject)=>google.script.run
+        .withSuccessHandler(resolve).withFailureHandler(reject)
+        .saveWorkspaceChanges(token,payload,revision));
+      if(!current())return false;
+      const result=JSON.parse(raw);
+      if(result?.code==='REVISION_CONFLICT'){
+        state.pending=true;
+        state.exportReports ||= exportReports;
+        state.conflict=result.data;
+        if(!state.conflict||++rebases>2)throw new Error('มีการบันทึกข้อมูลจากอีกหน้าระหว่างนี้ กรุณากดบันทึกอีกครั้ง');
+        continue;
+      }
+      if(result?.ok!==true||!Number.isSafeInteger(result.revision)||result.revision<=revision){
+        throw new Error(result?.sheetError||result?.message||'เซิร์ฟเวอร์ยังไม่ยืนยันการบันทึก');
+      }
+      state.revision=result.revision;
+      DB.revision=Math.max(Number(DB.revision||0),result.revision);
+      const sent=acknowledgeWorkspaceChanges(baseline,JSON.parse(payload));
+      clearSubmittedAccountFields(sent,DB);
+      state.baseline=sent;
+      reportError=result.structuredError||reportError;
+      rebases=0;
+    }catch(error){
+      if(current()){
+        state.pending=true;
+        state.exportReports ||= exportReports;
+        notifySheetSaveFailure(error?.message||String(error),{popup:false});
+      }
+      return false;
+    }
+  }
+  if(!current())return false;
+  clearSheetSaveFailureAlert();
+  setScoreSaveStatus('บันทึกแล้ว · revision '+state.revision);
+  if(reportError){
+    const message='บันทึกข้อมูลแล้ว แต่สร้างรายงานไม่สำเร็จ: '+reportError;
+    setSyncStatus(message,'var(--gold)');
+    toast(message,'error');
+  }else{
+    setSyncStatus('✅ บันทึก DB / DR สำเร็จ '+new Date().toLocaleTimeString('th-TH'),'var(--green)');
+  }
+  return true;
+}
+
+function flushPendingSaves(approveConflict=false){
+  clearTimeout(_saveTimer);
+  const state=_saveQueue;
+  if(state.request)return state.request;
+  if(!state.pending)return Promise.resolve(true);
+  if(typeof google==='undefined'||!_sessionToken){
+    notifySheetSaveFailure('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล',{popup:false});
+    return Promise.resolve(false);
+  }
+  state.request=processSaveQueue(state,_sessionToken,approveConflict).finally(()=>{state.request=null;});
+  return state.request;
+}
+
+function saveDB(options={}){
+  _saveQueue.pending=true;
+  _saveQueue.sequence++;
+  if(options.exportReports)_saveQueue.exportReports=true;
+  clearTimeout(_saveTimer);
+  if(options.immediate)return flushPendingSaves(options.approveConflict===true);
+  setSyncStatus('⏳ รอบันทึกข้อมูล...','var(--gold)');
+  setScoreSaveStatus('รอบันทึก...','var(--gold)');
+  _saveTimer=setTimeout(()=>flushPendingSaves(),1500);
+}
+
+async function saveAndConfirm(message,button){
+  const label=button?.textContent;
+  if(button){button.disabled=true;button.textContent='⏳ กำลังบันทึก...';}
+  try{
+    if(await saveDB({immediate:true,approveConflict:true})&&message)toast(message);
+  }finally{
+    if(button){button.disabled=false;button.textContent=label;}
+  }
+}
+
+function syncUp(){
+  return saveAndConfirm('✅ บันทึก DB / DR สำเร็จ',document.getElementById('btn-sync-up'));
+}
+
+async function syncDown(){
+  if(typeof google==='undefined'||!hasServerSession()){toast('กรุณาเข้าสู่ระบบก่อนโหลดข้อมูล','error');return;}
+  if(!await flushPendingSaves())return;
+  const state=_saveQueue;
+  const sequence=state.sequence;
+  const revision=state.revision;
+  const token=_sessionToken;
+  const current=()=>_saveQueue===state&&_sessionToken===token&&state.sequence===sequence&&state.revision===revision&&!hasPendingSaves();
+  setSyncStatus('⏳ กำลังโหลด...','var(--gold)');
+  google.script.run
+    .withSuccessHandler(raw=>{
+      if(!current())return;
+      try{
+        const data=JSON.parse(raw);
+        if(!Array.isArray(data?.residents)||!Number.isSafeInteger(data.revision))throw new Error(data?.error||data?.message||'ข้อมูลจากเซิร์ฟเวอร์ไม่ครบ');
+        if(data.revision<revision)throw new Error('ข้อมูลที่โหลดเป็นเวอร์ชันเก่า กรุณาลองใหม่');
+        applyServerData(data);
+        repaintSyncedWorkspace();
+        setSyncStatus(`✅ โหลด DB / DR สำเร็จ · revision ${DB.revision}`,'var(--green)');
+        toast('โหลดข้อมูลจาก DB / DR สำเร็จ');
+      }catch(error){setSyncStatus('❌ '+error.message,'var(--red)');toast(error.message,'error');}
+    })
+    .withFailureHandler(error=>{if(current()){setSyncStatus('❌ '+error.message,'var(--red)');toast(error.message,'error');}})
+    .loadRotaData(token);
+}
+
+async function writeToSheet(){
+  await saveDB({immediate:true,approveConflict:true,exportReports:true});
+}
+
+function readFromSheetDB(){
+  return syncDown();
+}
+
+function importFromSheet(){
+  setSyncStatus('⏳ กำลังซ่อมจากตารางรายงาน...','var(--gold)');
+  const btn=document.getElementById('btn-import-sheet');
+  if(btn){btn.disabled=true;btn.textContent='⏳ กำลังซ่อม...';}
+  if(typeof google==='undefined'||!hasServerSession()){
+    setSyncStatus('⚠️ ทดสอบ local — ไม่มี Google Sheet','var(--gold)');
+    if(btn){btn.disabled=false;btn.textContent='🛠️ ซ่อมจากตารางรายงาน';}
+    toast('ไม่สามารถเชื่อม Sheet ได้ใน local mode','error');
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(raw=>{
+      if(btn){btn.disabled=false;btn.textContent='🛠️ ซ่อมจากตารางรายงาน';}
+      try{
+        const d=JSON.parse(raw);
+        applyServerData(d);
+        renderActiveWorkspace();
+        storeSessionSnapshot();
+        populateSels();
+        // แสดง import result
+        const ir=d._importResult||{};
+        const resEl=document.getElementById('sheet-import-result');
+        const tabsEl=document.getElementById('sheet-tabs-info');
+        const tabsList=document.getElementById('sheet-tabs-list');
+        if(ir.sheetTabs?.length&&tabsEl&&tabsList){
+          tabsList.innerHTML=ir.sheetTabs.map(t=>`<span style="padding:3px 10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;font-size:11px;color:var(--teal2);font-weight:600">${t}</span>`).join('');
+          tabsEl.style.display='block';
+        }
+        if(resEl){
+          const imp=ir.imported||{};
+          const errs=ir.errors||[];
+          const hasErr=errs.length>0;
+          resEl.style.display='block';
+          resEl.style.background=hasErr?'#fef9c3':'#f0fdf4';
+          resEl.style.border=`1px solid ${hasErr?'#fde68a':'#bbf7d0'}`;
+          resEl.innerHTML=`<strong style="color:${hasErr?'var(--gold)':'#15803d'}">✅ ซ่อมข้อมูลสำเร็จ</strong><br>
+            👨‍⚕️ แพทย์ประจำบ้าน: <strong>${imp.residents||0}</strong> รายการ &nbsp;|&nbsp;
+            👨‍🏫 อาจารย์: <strong>${imp.advisors||0}</strong> รายการ &nbsp;|&nbsp;
+            📝 คะแนน: <strong>${imp.scores||0}</strong> รายการ
+            ${hasErr?`<br><span style="color:var(--red)">⚠️ ${errs.join(', ')}</span>`:''}`;
+        }
+        setSyncStatus('✅ ซ่อมจากตารางรายงานสำเร็จ '+new Date().toLocaleTimeString('th-TH'),'var(--green)');
+        toast(`✅ ซ่อมข้อมูล ${(ir.imported?.residents||0)} แพทย์ ${(ir.imported?.advisors||0)} อาจารย์`);
+      }catch(e){
+        setSyncStatus('❌ parse error: '+e.message,'var(--red)');
+        toast('❌ เกิดข้อผิดพลาด','error');
+      }
+    })
+    .withFailureHandler(e=>{
+      if(btn){btn.disabled=false;btn.textContent='🛠️ ซ่อมจากตารางรายงาน';}
+      setSyncStatus('❌ '+e.message,'var(--red)');
+      toast('❌ เชื่อม Sheet ไม่ได้: '+e.message,'error');
+    })
+    .loadFromSheet(_sessionToken);
+}
+
+// ═══════════════════════════════════════════════════════
+//  CHANGE PASSWORD
+// ═══════════════════════════════════════════════════════
+function openResChPass(){document.getElementById('rcp-p1').value='';document.getElementById('rcp-p2').value='';document.getElementById('rcp-err').style.display='none';document.getElementById('rcp-modal').classList.add('open');}
+function closeResChPass(){document.getElementById('rcp-modal').classList.remove('open');}
+function persistUserPasswordChange(kind,id,newPass,closeFn,err,btnId){
+  const list=kind==='advisor'?DB.advisors:DB.residents;
+  const user=list.find(x=>x.id===id);
+  const btn=document.getElementById(btnId);
+  if(!user){if(err){err.textContent='ไม่พบผู้ใช้งาน';err.style.display='block';}return;}
+  if(!hasServerSession()){if(err){err.textContent='Session หมดอายุ กรุณาเข้าสู่ระบบใหม่';err.style.display='block';}return;}
+  const finish=(res)=>{
+    if(btn){btn.disabled=false;btn.textContent='บันทึก';}
+    closeFn();
+    user.passwordUpdatedAt=new Date().toISOString();user.passwordChangeRequired=false;
+    if(res?.revision!==undefined)DB.revision=res.revision;
+    if(_sessionInfo)_sessionInfo.passwordChangeRequired=false;
+    renderActiveWorkspace();
+    if(res?.sheetError){notifySheetSaveFailure('เปลี่ยนรหัสผ่านแล้ว แต่สำรองลง Sheet ไม่สำเร็จ: '+res.sheetError,{forcePopup:true});return;}
+    logAudit('password_change',`${kind} ${id} changed password`,currentActorLabel(),false);
+    recordChange(kind,id,'เปลี่ยนรหัสผ่าน','ซ่อนค่าเดิม','ตั้งรหัสใหม่แล้ว');
+    clearSheetSaveFailureAlert();
+    showSuccessPopup('เปลี่ยนรหัสผ่านสำเร็จ');
+  };
+  if(btn){btn.disabled=true;btn.textContent='กำลังบันทึก...';}
+  google.script.run
+    .withSuccessHandler(raw=>{
+      let res={ok:false};
+      try{res=JSON.parse(raw);}catch(e){}
+      if(res.ok){finish(res);}
+      else{
+        if(btn){btn.disabled=false;btn.textContent='บันทึก';}
+        if(err){err.textContent=res.message||'บันทึกรหัสผ่านไม่สำเร็จ';err.style.display='block';}
+      }
+    })
+    .withFailureHandler(e=>{
+      if(btn){btn.disabled=false;btn.textContent='บันทึก';}
+      if(err){err.textContent='บันทึกรหัสผ่านไม่สำเร็จ: '+e.message;err.style.display='block';}
+    })
+    .saveUserPassword(_sessionToken,kind,id,newPass);
+}
+function saveResChPass(){const p1=document.getElementById('rcp-p1').value.trim(),p2=document.getElementById('rcp-p2').value.trim(),err=document.getElementById('rcp-err');if(!p1){err.textContent='กรุณากรอกรหัสผ่านใหม่';err.style.display='block';return;}if(p1!==p2){err.textContent='รหัสผ่านไม่ตรงกัน';err.style.display='block';return;}persistUserPasswordChange('resident',_curResId,p1,closeResChPass,err,'rcp-save');}
+function openAdvChPass(){const modal=document.getElementById('vcp-modal');if(modal.parentElement!==document.body)document.body.appendChild(modal);document.getElementById('vcp-p1').value='';document.getElementById('vcp-p2').value='';document.getElementById('vcp-err').style.display='none';modal.style.display='flex';}
+function closeAdvChPass(){document.getElementById('vcp-modal').style.display='none';}
+function saveAdvChPass(){const p1=document.getElementById('vcp-p1').value.trim(),p2=document.getElementById('vcp-p2').value.trim(),err=document.getElementById('vcp-err');if(!p1){err.textContent='กรุณากรอกรหัสผ่านใหม่';err.style.display='block';return;}if(p1!==p2){err.textContent='รหัสผ่านไม่ตรงกัน';err.style.display='block';return;}persistUserPasswordChange('advisor',_curAdvId,p1,closeAdvChPass,err,'vcp-save');}
+
+// ═══════════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ═══════════════════════════════════════════════════════
+
+// ─── Login tabs ───────────────────────────────────────
+document.querySelectorAll('.ltab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.ltab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.lpanel').forEach(p=>p.classList.remove('active'));
+    const panel=document.getElementById('lp-'+tab.dataset.ltab);
+    if(panel) panel.classList.add('active');
+  });
+});
+
+// ─── Login buttons ────────────────────────────────────
+document.getElementById('btn-al').addEventListener('click',doAdminLogin);
+document.getElementById('btn-rl').addEventListener('click',doResLogin);
+document.getElementById('btn-vl').addEventListener('click',doAdvLogin);
+document.getElementById('l-apass').addEventListener('keydown',e=>{if(e.key==='Enter')doAdminLogin();});
+document.getElementById('l-rpass').addEventListener('keydown',e=>{if(e.key==='Enter')doResLogin();});
+document.getElementById('l-vpass').addEventListener('keydown',e=>{if(e.key==='Enter')doAdvLogin();});
+
+// ─── Logout buttons ───────────────────────────────────
+document.getElementById('btn-alo').addEventListener('click',logout);
+document.getElementById('btn-rlo').addEventListener('click',logout);
+document.getElementById('btn-vlo').addEventListener('click',logout);
+document.getElementById('btn-vchpass').addEventListener('click',openAdvChPass);
+document.getElementById('btn-rprint').addEventListener('click',printCurrentResidentProfile);
+document.getElementById('btn-adv-print-profile').addEventListener('click',printAdvisorResidentProfile);
+
+// ─── Admin nav (ใช้ selector เฉพาะ #page-admin) ───────
+document.querySelectorAll('#page-admin .anavbtn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#page-admin .anavbtn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  const p=b.dataset.ap;
+  document.querySelectorAll('#page-admin .apanel').forEach(x=>x.classList.remove('active'));
+  const panel=document.getElementById('ap-'+p);
+  if(panel) panel.classList.add('active');
+  if(p==='settings')loadSheetConfig(false);
+  if(p==='scores')renderScoreTab();
+  if(p==='advisors')renderAdvTable();
+  if(p==='assessment')renderAssessmentAdmin();
+  if(p==='meetings')renderMeetingsAdmin();
+  if(p==='modern')renderModernizationCenter();
+}));
+
+// ─── Resident modal ───────────────────────────────────
+document.getElementById('btn-oadd').addEventListener('click',openAddRes);
+document.getElementById('m-close').addEventListener('click',closeResModal);
+document.getElementById('m-cancel').addEventListener('click',closeResModal);
+document.getElementById('m-save').addEventListener('click',saveRes);
+document.getElementById('m-pass-toggle').addEventListener('click',e=>togglePasswordEditor(e.currentTarget,'m-pass','resident',editResId||''));
+document.getElementById('m-photo').addEventListener('change',handleResidentPhotoFile);
+document.getElementById('m-photo-clear').addEventListener('click',()=>{document.getElementById('m-photo').value='';setResPhotoPreview('',true);});
+document.getElementById('res-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeResModal();});
+document.getElementById('a-search').addEventListener('input',renderTable);
+
+// ─── Advisor modal ────────────────────────────────────
+document.getElementById('btn-oaddadv').addEventListener('click',openAddAdv);
+document.getElementById('am-close').addEventListener('click',closeAdvModal);
+document.getElementById('am-cancel').addEventListener('click',closeAdvModal);
+document.getElementById('am-save').addEventListener('click',saveAdv);
+document.getElementById('am-pass-toggle').addEventListener('click',e=>togglePasswordEditor(e.currentTarget,'am-pass','advisor',editAdvId||''));
+document.getElementById('adv-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAdvModal();});
+
+// ─── Permission modal ─────────────────────────────────
+document.getElementById('pm-close').addEventListener('click',closePermModal);
+document.getElementById('pm-cancel').addEventListener('click',closePermModal);
+document.getElementById('pm-save').addEventListener('click',savePerm);
+document.getElementById('perm-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePermModal();});
+document.getElementById('pm-selall').addEventListener('click',()=>visiblePermResidentChecks().forEach(c=>c.checked=true));
+document.getElementById('pm-deselall').addEventListener('click',()=>visiblePermResidentChecks().forEach(c=>c.checked=false));
+
+// ─── Central scores ───────────────────────────────────
+document.getElementById('cc-sel')?.addEventListener('change',renderCentral);
+document.getElementById('btn-addcat')?.addEventListener('click',addCatPrompt);
+
+// ─── Sync / Sheet ─────────────────────────────────────
+const externalElectiveAdmin=createExternalElectiveAdmin({
+  getAdminToken:()=>isAdminSession()?_sessionToken:'',getResidents:assessmentEligibleResidents,units:ELECTIVE_UNITS,
+  escapeHtml,flushPendingSaves,onUpdated:syncDown
+});
+const {loadSheetConfig,saveSheetIdSetting,consolidateDbDr}=createLegacyDatabaseUI({
+  getAdminToken:()=>isAdminSession()?_sessionToken:'',
+  escapeHtml,renderSheetTabsList,setSyncStatus,syncDown,flushPendingSaves,
+  setRevision:revision=>{DB.revision=revision;}
+});
+document.getElementById('btn-sync-up').addEventListener('click',syncUp);
+document.getElementById('btn-sync-down').addEventListener('click',syncDown);
+document.getElementById('btn-db-consolidate')?.addEventListener('click',consolidateDbDr);
+document.getElementById('btn-import-sheet')?.addEventListener('click',importFromSheet);
+document.getElementById('btn-write-sheet')?.addEventListener('click',writeToSheet);
+document.getElementById('btn-read-sheet')?.addEventListener('click',readFromSheetDB);
+document.getElementById('btn-save-sheet-id').addEventListener('click',saveSheetIdSetting);
+document.getElementById('btn-check-sheet-id').addEventListener('click',()=>loadSheetConfig(true));
+
+// ─── Settings ─────────────────────────────────────────
+document.getElementById('btn-chpass').addEventListener('click',()=>{
+  const a=document.getElementById('np1').value,b=document.getElementById('np2').value;
+  if(!a){toast('กรุณากรอกรหัสผ่าน','error');return;}
+  if(a!==b){toast('รหัสผ่านไม่ตรงกัน','error');return;}
+  if(!hasServerSession()){toast('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่','error');return;}
+  const btn=document.getElementById('btn-chpass');if(btn){btn.disabled=true;btn.textContent='กำลังบันทึก...';}
+  google.script.run.withSuccessHandler(raw=>{
+    if(btn){btn.disabled=false;btn.textContent='เปลี่ยนรหัสผ่าน Admin';}
+    let r={};try{r=JSON.parse(raw);}catch(e){}
+    if(!r.ok){toast(r.message||'เปลี่ยนรหัสผ่านไม่สำเร็จ','error');return;}
+    if(r.revision!==undefined)DB.revision=r.revision;
+    if(_sessionInfo)_sessionInfo.passwordChangeRequired=false;
+    logAudit('admin_password_change','Admin password updated','Admin',false);
+    document.getElementById('np1').value='';document.getElementById('np2').value='';showSuccessPopup('เปลี่ยนรหัสผ่านสำเร็จ');
+  }).withFailureHandler(e=>{if(btn){btn.disabled=false;btn.textContent='เปลี่ยนรหัสผ่าน Admin';}toast('เปลี่ยนรหัสผ่านไม่สำเร็จ: '+e.message,'error');}).changeAdminPassword(_sessionToken,a);
+});
+document.getElementById('btn-gcat')?.addEventListener('click',()=>{
+  const nm=document.getElementById('gc-name').value.trim(),mx=parseInt(document.getElementById('gc-max').value)||100;
+  if(!nm){toast('กรุณากรอกชื่อหมวด','error');return;}
+  DB.cats.push({id:'c'+Date.now(),name:nm,max:mx});
+  saveDB();renderGcats();renderCentral();
+  document.getElementById('gc-name').value='';document.getElementById('gc-max').value='';
+  toast('✅ เพิ่มหมวดแล้ว');
+});
+
+// ─── Change password (resident) ───────────────────────
+document.getElementById('btn-rchpass').addEventListener('click',openResChPass);
+document.getElementById('rcp-cancel').addEventListener('click',closeResChPass);
+document.getElementById('rcp-save').addEventListener('click',saveResChPass);
+document.getElementById('rcp-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeResChPass();});
+
+// ─── Change password (advisor) ────────────────────────
+document.getElementById('vcp-cancel').addEventListener('click',closeAdvChPass);
+document.getElementById('vcp-save').addEventListener('click',saveAdvChPass);
+document.getElementById('vcp-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAdvChPass();});
+
+// ─── Meeting modal ────────────────────────
+document.getElementById('mt-close').addEventListener('click',closeMeetingModal);
+document.getElementById('mt-cancel').addEventListener('click',closeMeetingModal);
+document.getElementById('mt-save').addEventListener('click',saveMeeting);
+document.getElementById('meeting-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeMeetingModal();});
+
+// ─── Success popup ────────────────────────
+document.getElementById('success-popup-close').addEventListener('click',closeSuccessPopup);
+document.getElementById('success-popup-ok').addEventListener('click',closeSuccessPopup);
+document.getElementById('success-popup').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSuccessPopup();});
+document.getElementById('sheet-save-alert-retry').addEventListener('click',writeToSheet);
+document.getElementById('sheet-save-alert-close').addEventListener('click',clearSheetSaveFailureAlert);
+
+// ─── Assessment modals ────────────────────────────────
+document.getElementById('assess-modal-close').addEventListener('click',closeAssessModal);
+document.getElementById('assess-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAssessModal();});
+document.getElementById('assessment-template-close').addEventListener('click',closeAssessmentTemplateModal);
+document.getElementById('assessment-template-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAssessmentTemplateModal();});
+document.getElementById('view-assess-close').addEventListener('click',()=>document.getElementById('view-assess-modal').classList.remove('open'));
+document.getElementById('view-assess-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)document.getElementById('view-assess-modal').classList.remove('open');});
+// ─── AUTO-LOAD DB FROM SERVER ON PAGE LOAD ─────────────
+window.addEventListener('beforeunload',event=>{
+  if(!hasPendingSaves())return;
+  event.preventDefault();
+  event.returnValue='';
+});
+window.ORTHOFOLIO_PAGES.onLoad(()=>{
+  restoreSheetSaveFailureAlert();
+  if(typeof google==='undefined'){
+    setSyncStatus('โหมด local: ต้องเปิดผ่าน Google Apps Script เพื่อทดสอบการเข้าสู่ระบบ','var(--gold)');
+    return;
+  }
+  if(!hasServerSession()){
+    setSyncStatus('พร้อมเข้าสู่ระบบ','var(--green)');
+    return;
+  }
+  setSyncStatus('⏳ กำลังกู้คืน session...','var(--gold)');
+  google.script.run.withSuccessHandler(raw=>{
+    try{
+      const res=JSON.parse(raw);
+      if(!res?.ok)throw new Error(res?.message||'session ไม่พร้อมใช้งาน');
+      _sessionInfo=res.session||{};applyServerData(res.data);enterAuthenticatedWorkspace(_sessionInfo);
+      setSyncStatus('✅ โหลดข้อมูลล่าสุดแล้ว '+new Date().toLocaleTimeString('th-TH'),'var(--green)');
+    }catch(e){sessionExpired('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');}
+  }).withFailureHandler(()=>sessionExpired('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่')).getSessionData(_sessionToken);
+});
+})();
